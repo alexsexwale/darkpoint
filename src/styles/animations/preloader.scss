@@ -1,0 +1,142 @@
+@use "../variables" as *;
+
+.nk-preloader {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: $z-preloader;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  
+  // Background with flame animation
+  .nk-preloader-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    background-repeat: no-repeat;
+    background-position: 100% 50%;
+    background-size: cover;
+    will-change: background-position;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  // Content
+  .nk-preloader-content {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    
+    > div {
+      text-align: center;
+    }
+    
+    img {
+      max-width: 500px;
+      width: 90vw;
+      height: auto;
+    }
+  }
+  
+  // Skip button
+  .nk-preloader-skip {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: 25px;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    animation: preloader-skip 6s linear forwards;
+    z-index: 10;
+    opacity: 0;
+  }
+}
+
+// Skip button fade in animation
+@keyframes preloader-skip {
+  0%,
+  90% {
+    visibility: hidden;
+    opacity: 0;
+  }
+  100% {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+// Preloader dot animation - Godlike style
+.nk-preloader-animation {
+  position: relative;
+  display: block;
+  margin: 30px auto;
+  opacity: 0.7;
+  width: 4px;
+  height: 4px;
+  
+  &::after,
+  &::before,
+  .dot {
+    content: "";
+    position: absolute;
+    display: block;
+    width: 4px;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+  }
+  
+  .dot {
+    left: 0;
+    top: 0;
+    animation: preloader-dot-animation 1.2s linear infinite 0.4s;
+  }
+  
+  &::before {
+    left: -20px;
+    top: 0;
+    animation: preloader-dot-animation 1.2s linear infinite 0s;
+  }
+  
+  &::after {
+    right: -20px;
+    left: auto;
+    top: 0;
+    animation: preloader-dot-animation 1.2s linear infinite 0.8s;
+  }
+}
+
+@keyframes preloader-dot-animation {
+  0%,
+  60%,
+  100% {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  30% {
+    background-color: #fff;
+  }
+}
+
+// Legacy spinner (fallback)
+@keyframes preloader-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

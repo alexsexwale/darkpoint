@@ -1,0 +1,318 @@
+@use "variables" as *;
+@use "animations/preloader";
+@use "animations/link-effects";
+@use "animations/carousels";
+@use "components/forms";
+
+// Tailwind base import
+@import "tailwindcss";
+
+// CSS Custom Properties (for Tailwind v4)
+:root {
+  // Colors
+  --color-main-1: #{$color-main-1};
+  --color-main-2: #{$color-main-2};
+  --color-main-3: #{$color-main-3};
+  --color-main-4: #{$color-main-4};
+  --color-main-5: #{$color-main-5};
+  
+  --color-dark-1: #{$color-dark-1};
+  --color-dark-2: #{$color-dark-2};
+  --color-dark-3: #{$color-dark-3};
+  --color-dark-4: #{$color-dark-4};
+  
+  --color-gray-1: #{$color-gray-1};
+  --color-gray-2: #{$color-gray-2};
+  --color-gray-3: #{$color-gray-3};
+  --color-gray-4: #{$color-gray-4};
+  
+  // Semantic
+  --background: #{$color-dark-1};
+  --foreground: #{$color-gray-1};
+  --muted: #{$color-dark-3};
+  --muted-foreground: rgba(255, 255, 255, 0.6);
+  --border: #{$color-dark-3};
+  --accent: #{$color-main-1};
+  
+  // Typography
+  --font-headings: #{$font-headings};
+  --font-body: #{$font-body};
+  --font-buttons: #{$font-buttons};
+  
+  // Transitions
+  --transition-fast: #{$transition-fast};
+  --transition-normal: #{$transition-normal};
+  --transition-slow: #{$transition-slow};
+}
+
+// Tailwind v4 theme customization
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  
+  --color-main-1: var(--color-main-1);
+  --color-main-2: var(--color-main-2);
+  --color-main-3: var(--color-main-3);
+  --color-main-4: var(--color-main-4);
+  --color-main-5: var(--color-main-5);
+  
+  --color-dark-1: var(--color-dark-1);
+  --color-dark-2: var(--color-dark-2);
+  --color-dark-3: var(--color-dark-3);
+  --color-dark-4: var(--color-dark-4);
+  
+  --font-heading: var(--font-headings);
+  --font-body: var(--font-body);
+}
+
+// Base styles
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: $html-font-size;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: $font-body;
+  font-size: 1rem;
+  line-height: $body-line-height;
+  color: var(--foreground);
+  background-color: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Headings
+h1, h2, h3, h4, h5, h6 {
+  font-family: $font-headings;
+  font-weight: 400;
+  line-height: 1.3;
+  margin-top: 0;
+  margin-bottom: 0.5em;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+h4 { font-size: 1.5rem; }
+h5 { font-size: 1.25rem; }
+h6 { font-size: 1rem; }
+
+// Links
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color $transition-normal;
+  
+  &:hover {
+    color: $color-main-1;
+  }
+}
+
+// Images
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+// Selection
+::selection {
+  background-color: $color-main-1;
+  color: white;
+}
+
+// Scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: $color-dark-2;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $color-dark-4;
+  border-radius: 4px;
+  
+  &:hover {
+    background: $color-main-1;
+  }
+}
+
+// Focus visible
+:focus-visible {
+  outline: 2px solid $color-main-1;
+  outline-offset: 2px;
+}
+
+// Page background styles
+.page-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+  
+  &.op-3::after { background-color: rgba(0, 0, 0, 0.3); }
+  &.op-5::after { background-color: rgba(0, 0, 0, 0.5); }
+  &.op-7::after { background-color: rgba(0, 0, 0, 0.7); }
+}
+
+// Page border decoration - Godlike style flamey borders
+.nk-page-border {
+  .nk-page-border-t,
+  .nk-page-border-r,
+  .nk-page-border-b,
+  .nk-page-border-l {
+    position: fixed;
+    pointer-events: none;
+    user-select: none;
+    z-index: 40; // Below header (z-50) so it doesn't block navigation
+    background-repeat: no-repeat;
+  }
+  
+  .nk-page-border-t,
+  .nk-page-border-b {
+    left: 0;
+    width: 100%;
+    height: 100px;
+    background-size: 100% 100%;
+  }
+  
+  .nk-page-border-t {
+    top: 0;
+    background-image: url('/images/border-top.png');
+    background-position: top center;
+  }
+  
+  .nk-page-border-b {
+    bottom: 0;
+    background-image: url('/images/border-bottom.png');
+    background-position: bottom center;
+  }
+  
+  .nk-page-border-r,
+  .nk-page-border-l {
+    top: 0;
+    width: 100px;
+    height: 100%;
+    // Don't stretch - use contain to maintain aspect ratio and repeat
+    background-size: 100% auto;
+    background-repeat: repeat-y;
+  }
+  
+  .nk-page-border-r {
+    right: 0;
+    background-image: url('/images/border-right.png');
+    background-position: right top;
+  }
+  
+  .nk-page-border-l {
+    left: 0;
+    background-image: url('/images/border-left.png');
+    background-position: left top;
+  }
+  
+  @media (max-width: 480px) {
+    .nk-page-border-t,
+    .nk-page-border-b {
+      height: 50px;
+    }
+    .nk-page-border-r,
+    .nk-page-border-l {
+      width: 50px;
+    }
+  }
+}
+
+// Utility classes
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.nk-gap { height: 30px; }
+.nk-gap-1 { height: 15px; }
+.nk-gap-2 { height: 40px; }
+.nk-gap-3 { height: 60px; }
+.nk-gap-4 { height: 80px; }
+.nk-gap-5 { height: 100px; }
+
+// Background colors
+.bg-dark-1 { background-color: $color-dark-1; }
+.bg-dark-2 { background-color: $color-dark-2; }
+.bg-dark-3 { background-color: $color-dark-3; }
+.bg-dark-4 { background-color: $color-dark-4; }
+
+// Text colors
+.text-main-1 { color: $color-main-1; }
+.text-main-2 { color: $color-main-2; }
+.text-main-3 { color: $color-main-3; }
+.text-main-4 { color: $color-main-4; }
+.text-main-5 { color: $color-main-5; }
+
+// Global cursor pointer for interactive elements
+button,
+[role="button"],
+a,
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+.nk-btn,
+.cursor-pointer,
+[onclick],
+select,
+label {
+  cursor: pointer;
+}
+
+// Icons should have pointer when clickable
+svg[onclick],
+.icon-clickable {
+  cursor: pointer;
+}
+
+// Skeleton shimmer animation
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+

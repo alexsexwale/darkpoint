@@ -1,0 +1,721 @@
+@use "../variables" as *;
+
+// ===========================================
+// Form Controls - Godlike Style
+// ===========================================
+
+.nk-form-group {
+  position: relative;
+  margin-bottom: 0;
+}
+
+// Base form control (inputs, textareas, selects)
+.nk-form-control {
+  display: block;
+  width: 100%;
+  padding: 12px 0;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: white;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0;
+  outline: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+    opacity: 1;
+  }
+  
+  &:focus,
+  &:active {
+    border-bottom-color: white;
+    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.5);
+  }
+  
+  &:disabled,
+  &[readonly] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Textarea specific
+.nk-form-control-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+// Select specific
+select.nk-form-control {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+  background-size: 1.5em 1.5em;
+  padding-right: 2rem;
+  
+  option {
+    color: black;
+    background-color: white;
+  }
+}
+
+// Error state
+.nk-form-control-error {
+  border-bottom-color: $color-main-5 !important;
+}
+
+.nk-form-error {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.85rem;
+  color: $color-main-5;
+}
+
+// Form row layout
+.nk-form-row {
+  display: grid;
+  gap: 1.5rem;
+  
+  &.nk-form-row-2 {
+    grid-template-columns: repeat(2, 1fr);
+    
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  &.nk-form-row-3 {
+    grid-template-columns: repeat(3, 1fr);
+    
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+// ===========================================
+// Buttons - Godlike Style
+// ===========================================
+
+.nk-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 30px;
+  font-family: $font-headings;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+  background-color: rgba(14, 14, 14, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  transition: 0.2s box-shadow, 0.2s background-color, 0.2s color, 0.2s transform, 0.2s border-color;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+// Inner border effect (Godlike signature style)
+.nk-btn-inner {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  bottom: 4px;
+  left: 4px;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.nk-btn:hover .nk-btn-inner {
+  opacity: 1;
+}
+
+.nk-btn-content {
+  position: relative;
+  z-index: 1;
+}
+
+// Button Variants
+.nk-btn-default {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.3);
+  
+  .nk-btn-inner {
+    border-color: rgba(255, 255, 255, 0.6);
+  }
+  
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.nk-btn-primary {
+  color: $color-main-1;
+  border-color: $color-main-1;
+  
+  .nk-btn-inner {
+    border-color: $color-main-1;
+  }
+  
+  &:hover {
+    color: white;
+    background-color: $color-main-1;
+    border-color: $color-main-1;
+    
+    .nk-btn-inner {
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+  }
+}
+
+.nk-btn-outline {
+  color: white;
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.5);
+  
+  .nk-btn-inner {
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: white;
+    
+    .nk-btn-inner {
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+  }
+  
+  &.nk-btn-active {
+    color: $color-main-1;
+    border-color: $color-main-1;
+    background-color: rgba($color-main-1, 0.1);
+    
+    .nk-btn-inner {
+      border-color: $color-main-1;
+    }
+  }
+}
+
+.nk-btn-ghost {
+  color: white;
+  background-color: transparent;
+  border-color: transparent;
+  
+  .nk-btn-inner {
+    display: none;
+  }
+  
+  &:hover {
+    color: $color-main-1;
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+// Button Sizes
+.nk-btn-sm {
+  padding: 10px 20px;
+  font-size: 0.8rem;
+}
+
+.nk-btn-md {
+  padding: 12px 30px;
+  font-size: 0.9rem;
+}
+
+.nk-btn-lg {
+  padding: 14px 36px;
+  font-size: 0.95rem;
+}
+
+.nk-btn-xl {
+  padding: 18px 45px;
+  font-size: 1rem;
+}
+
+// Full width button
+.nk-btn-block {
+  display: flex;
+  width: 100%;
+}
+
+// Button with icon
+.nk-btn-icon {
+  padding: 12px;
+  
+  .icon {
+    display: inline-block;
+    min-width: 18px;
+    margin: 0;
+  }
+}
+
+// Loading state
+.nk-btn-loading {
+  pointer-events: none;
+}
+
+// ===========================================
+// Quantity Picker - Godlike Style
+// ===========================================
+
+.nk-form-control-number {
+  display: inline-flex;
+  padding: 4px;
+  background-color: rgba(14, 14, 14, 0.9);
+  border-radius: 2px;
+  white-space: nowrap;
+  
+  > * {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 45px;
+    padding: 12px 15px;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.2;
+    vertical-align: middle;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    background: transparent;
+    color: white;
+  }
+  
+  .nk-form-control-number-down,
+  .nk-form-control-number-up {
+    min-width: 45px;
+    padding: 12px 12px;
+    font-family: sans-serif;
+    font-size: 1.2rem;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition: 0.3s background-color;
+    
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+  
+  .nk-form-control-number-down {
+    border-right: none;
+    border-top-left-radius: 1px;
+    border-bottom-left-radius: 1px;
+  }
+  
+  .nk-form-control-number-up {
+    border-left: none;
+    border-top-right-radius: 1px;
+    border-bottom-right-radius: 1px;
+  }
+  
+  input {
+    text-align: center;
+    -moz-appearance: textfield;
+    background: transparent;
+    border-left: none;
+    border-right: none;
+    min-width: 60px;
+    
+    &:focus,
+    &:active {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.8);
+    }
+    
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      margin: 0;
+      -webkit-appearance: none;
+    }
+  }
+}
+
+// ===========================================
+// Tabs - Godlike Style
+// ===========================================
+
+.nk-tabs {
+  .nk-tabs-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 0;
+    list-style: none;
+    padding: 0;
+  }
+  
+  .nk-tabs-nav-item {
+    margin: 0;
+  }
+  
+  .nk-tabs-nav-link {
+    display: inline-block;
+    padding: 12px 24px;
+    font-family: $font-headings;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.7);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.3s ease, border-color 0.3s ease;
+    
+    &:hover {
+      color: white;
+    }
+    
+    &.active {
+      color: white;
+      border-bottom-color: white;
+    }
+    
+    small {
+      margin-left: 4px;
+      opacity: 0.6;
+    }
+  }
+  
+  .nk-tabs-content {
+    padding-top: 2rem;
+  }
+  
+  .nk-tabs-pane {
+    display: none;
+    
+    &.active {
+      display: block;
+    }
+  }
+}
+
+// Tab content box
+.nk-box-3 {
+  padding: 30px;
+  background-color: rgba(14, 14, 14, 0.9);
+  
+  p {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.8;
+    margin-bottom: 1rem;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+// Parameters/Specifications table
+.nk-specs-table {
+  width: 100%;
+  border-collapse: collapse;
+  
+  tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+  
+  td {
+    padding: 15px 20px;
+    vertical-align: middle;
+    
+    &:first-child {
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.6);
+      width: 40%;
+    }
+    
+    &:last-child {
+      color: white;
+    }
+  }
+}
+
+// Reviews styles
+.nk-reviews-summary {
+  text-align: center;
+  
+  .nk-reviews-rating {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    
+    .stars {
+      color: $color-main-1;
+    }
+  }
+  
+  .nk-reviews-count {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+.nk-reviews-progress {
+  margin-top: 1.5rem;
+  
+  table {
+    width: 100%;
+    
+    td {
+      padding: 8px 0;
+      
+      &:first-child {
+        width: 60px;
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+      
+      &:last-child {
+        padding-left: 15px;
+      }
+    }
+  }
+  
+  .nk-progress-bar {
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    
+    .nk-progress-fill {
+      height: 100%;
+      background-color: $color-main-1;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+  }
+  
+  .nk-progress-percent {
+    display: inline-block;
+    min-width: 40px;
+    text-align: right;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-left: 10px;
+  }
+}
+
+// Review form
+.nk-review-form {
+  .nk-rating-input {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+    
+    .star {
+      font-size: 1.5rem;
+      color: rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      transition: color 0.2s ease;
+      
+      &:hover,
+      &.active {
+        color: $color-main-1;
+      }
+    }
+  }
+}
+
+// ===========================================
+// Size Selector - Godlike Style
+// ===========================================
+
+.nk-size-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  
+  .nk-size-label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 50px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+    cursor: pointer;
+    background-color: $color-dark-1;
+    color: rgba(255, 255, 255, 0.8);
+    transition: 0.2s background-color, 0.2s color;
+    margin-left: -1px;
+    
+    &:first-of-type {
+      margin-left: 0;
+    }
+    
+    &::after {
+      content: "";
+      position: absolute;
+      display: block;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: 0.2s opacity, 0.2s border-color;
+    }
+    
+    &:hover {
+      color: white;
+      
+      &::after {
+        border-color: rgba(255, 255, 255, 0.5);
+        z-index: 1;
+      }
+    }
+    
+    &.selected {
+      color: white;
+      
+      &::after {
+        border-color: white;
+        z-index: 1;
+      }
+    }
+    
+    &.out-of-stock {
+      opacity: 0.4;
+      cursor: not-allowed;
+      text-decoration: line-through;
+      
+      &:hover::after {
+        border-color: rgba(255, 255, 255, 0.15);
+      }
+    }
+  }
+}
+
+// ===========================================
+// Color Selector - Godlike Style
+// ===========================================
+
+.nk-color-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  
+  .nk-color-label {
+    position: relative;
+    display: block;
+    width: 28px;
+    height: 28px;
+    font-size: 0;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: 0.2s transform, 0.2s box-shadow;
+    
+    &::after {
+      content: "";
+      position: absolute;
+      display: block;
+      top: -5px;
+      right: -5px;
+      bottom: -5px;
+      left: -5px;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+      opacity: 0;
+      transition: 0.2s opacity;
+    }
+    
+    &:hover {
+      transform: scale(1.1);
+      
+      &::after {
+        opacity: 0.4;
+      }
+    }
+    
+    &.selected {
+      &::after {
+        opacity: 1;
+      }
+    }
+    
+    &.out-of-stock {
+      opacity: 0.4;
+      cursor: not-allowed;
+      
+      &::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: -2px;
+        right: -2px;
+        height: 2px;
+        background-color: rgba(0, 0, 0, 0.6);
+        transform: rotate(-45deg);
+      }
+      
+      &:hover {
+        transform: none;
+        
+        &::after {
+          opacity: 0;
+        }
+      }
+    }
+  }
+}
+
+// Product variant sections
+.nk-product-size,
+.nk-product-color,
+.nk-product-variant {
+  h4 {
+    margin-bottom: 12px;
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+

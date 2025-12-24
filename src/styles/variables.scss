@@ -1,0 +1,76 @@
+// Dark Point Design Tokens - Adapted from Godlike template
+
+// Main colors - Tech/Modern palette
+$color-main-1: #e08821; // Orange accent
+$color-main-2: #39a228; // Green
+$color-main-3: #2953b1; // Blue
+$color-main-4: #7c34a8; // Purple
+$color-main-5: #c82e2e; // Red
+
+// Bootstrap-style semantic colors
+$color-primary: #0275d8;
+$color-success: #5cb85c;
+$color-info: #5bc0de;
+$color-warning: #f0ad4e;
+$color-danger: #d9534f;
+
+// Dark colors - primary backgrounds
+$color-dark-1: #0e0e0e;
+$color-dark-2: #161616;
+$color-dark-3: #1e1e1e;
+$color-dark-4: #262626;
+
+// Gray colors
+$color-gray-1: #fafafa;
+$color-gray-2: #f8f8f8;
+$color-gray-3: #f5f5f5;
+$color-gray-4: #f2f2f2;
+
+// Typography
+$font-headings: "Marcellus SC", serif;
+$font-body: "Roboto Condensed", sans-serif;
+$font-buttons: "Marcellus SC", serif;
+$font-nav: "Marcellus SC", serif;
+
+$html-font-size: 16px;
+$body-line-height: 1.7;
+
+// Audio player
+$audio-player-height: 62px;
+$audio-player-playlist-height: 250px;
+$audio-player-mobile-height: 170px;
+
+// Media breakpoints
+$media-xxs: "(max-width: 575px)";
+$media-xs: "(max-width: 767px)";
+$media-sm: "(min-width: 768px) and (max-width: 991px)";
+$media-md: "(min-width: 992px) and (max-width: 1199px)";
+$media-lg: "(min-width: 1200px)";
+
+$media-smaller-xs: "(max-width: 767px)";
+$media-smaller-sm: "(max-width: 991px)";
+$media-smaller-md: "(max-width: 1199px)";
+$media-larger-xs: "(min-width: 576px)";
+$media-larger-sm: "(min-width: 768px)";
+$media-larger-md: "(min-width: 992px)";
+$media-larger-lg: "(min-width: 1200px)";
+
+// Z-index layers
+$z-preloader: 10000;
+$z-navbar: 1000;
+$z-sidebar: 900;
+$z-modal: 800;
+$z-cart: 700;
+$z-search: 700;
+
+// Transitions
+$transition-fast: 0.15s ease;
+$transition-normal: 0.3s ease;
+$transition-slow: 0.6s ease;
+
+// Border radius
+$border-radius-sm: 2px;
+$border-radius: 4px;
+$border-radius-lg: 8px;
+
+
