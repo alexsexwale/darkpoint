@@ -498,7 +498,7 @@ export const useGamificationStore = create<GamificationStore>()(
       reset: () => set(initialState),
     }),
     {
-      name: "quirky-lane-gamification",
+      name: "dark-point-gamification",
       partialize: (state) => ({
         // Only persist essential user data
         userProfile: state.userProfile,
