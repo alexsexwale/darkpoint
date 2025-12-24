@@ -211,7 +211,7 @@ export function useGamification() {
           user_id: profile.id,
           day_of_streak: profile.current_streak,
           xp_earned: reward.xp,
-          bonus_reward: reward.bonus || null,
+          bonus_reward: reward.reward ? JSON.stringify(reward.reward) : null,
         });
       } catch (error) {
         console.error("Failed to sync daily login:", error);
