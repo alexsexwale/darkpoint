@@ -64,7 +64,6 @@ export function GamesPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [showOverlay, setShowOverlay] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showPs2Emulator, setShowPs2Emulator] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
   const emulatorStore = useEmulatorStore();
@@ -239,17 +238,6 @@ export function GamesPageClient() {
     setRomFile(null);
     romsStore.setSelectedRom(null);
     setError(null);
-  };
-
-  // Handle PS2 emulator
-  const handlePlayPs2 = () => {
-    setShowPs2Emulator(true);
-    document.body.style.overflow = "hidden";
-  };
-
-  const closePs2Emulator = () => {
-    setShowPs2Emulator(false);
-    document.body.style.overflow = "";
   };
 
   const currentConsole = ALL_CONSOLES.find((c) => c.value === selectedCore);
@@ -627,9 +615,12 @@ export function GamesPageClient() {
                         PS2 emulation in browsers is still in early development. For the best experience, 
                         we recommend using PCSX2 on desktop.
                       </p>
-                      <Button variant="primary" onClick={handlePlayPs2}>
-                        Try PS2 Emulator Anyway
-                      </Button>
+                      {/* Use regular anchor tag to force full page load for COOP/COEP headers */}
+                      <a href="/games/ps2">
+                        <Button variant="primary">
+                          Try PS2 Emulator Anyway
+                        </Button>
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -822,39 +813,6 @@ export function GamesPageClient() {
         )}
       </AnimatePresence>
 
-      {/* PS2 Emulator Overlay */}
-      <AnimatePresence>
-        {showPs2Emulator && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black z-[9999] flex flex-col"
-          >
-            <div className="flex justify-between items-center px-4 py-3 bg-gradient-to-r from-[var(--color-dark-2)] to-[var(--color-dark-1)] border-b border-[var(--color-dark-3)]">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🎮</span>
-                <span className="text-white font-medium">PlayStation 2 Emulator</span>
-                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">BETA</span>
-              </div>
-              <button
-                onClick={closePs2Emulator}
-                className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Exit
-              </button>
-            </div>
-            <iframe
-              src="https://nicokosi.github.io/aethersx2-web/"
-              className="flex-1 w-full border-0"
-              title="PS2 Emulator"
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
