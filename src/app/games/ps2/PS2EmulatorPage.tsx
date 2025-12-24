@@ -12,6 +12,7 @@ import {
   isPS2EmulatorLoaded,
   isCrossOriginIsolated,
 } from "@/lib/ps2Emulator";
+import { useAudioStore } from "@/stores";
 
 type EmulatorStatus = "idle" | "initializing" | "ready" | "loading" | "running" | "error";
 
@@ -24,6 +25,26 @@ export function PS2EmulatorPage() {
   const [showControls, setShowControls] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fpsIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get audio store actions
+  const { isMuted, mute, unmute } = useAudioStore();
+  const previousMuteStateRef = useRef<boolean>(false);
+
+  // Mute background audio when on PS2 emulator page
+  useEffect(() => {
+    // Save the current mute state
+    previousMuteStateRef.current = isMuted;
+    
+    // Always mute when entering the PS2 page
+    mute();
+    
+    return () => {
+      // Restore previous mute state when leaving
+      if (!previousMuteStateRef.current) {
+        unmute();
+      }
+    };
+  }, [mute, unmute]); // Note: intentionally not including isMuted to only capture initial state
 
   // Lock body scroll and hide site UI when component mounts
   useEffect(() => {
@@ -201,11 +222,11 @@ export function PS2EmulatorPage() {
           </div>
         </div>
         <Link href="/games">
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Button variant="outline" size="sm">
+            <svg className="w-4 h-4 inline-block align-middle mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            Exit
+            <span className="inline-block align-middle">Exit</span>
           </Button>
         </Link>
       </div>
