@@ -97,9 +97,9 @@ export default function ContactPage() {
                 <div>
                   <h3 className="font-heading text-lg mb-2">Email Us</h3>
                   <p className="text-gray-400">
-                    General: hello@darkpoint.co.za<br />
+                    General: support@darkpoint.co.za<br />
                     Support: support@darkpoint.co.za<br />
-                    Sales: sales@darkpoint.co.za
+                    Sales: support@darkpoint.co.za
                   </p>
                 </div>
               </div>

@@ -74,7 +74,7 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-heading text-white mb-4">7. Contact Us</h2>
             <p className="text-white/70 leading-relaxed">
               If you have any questions about this Privacy Policy, please contact us at 
-              privacy@darkpoint.co.za or through our contact page.
+              support@darkpoint.co.za or through our contact page.
             </p>
           </section>
 

@@ -46,7 +46,7 @@ const faqs = [
   },
   {
     question: "Do you offer bulk or esports team discounts?",
-    answer: "Yes, we offer special pricing for esports teams, gaming cafes, and bulk orders. Contact us at teams@darkpoint.co.za for more information about our partnership programs."
+    answer: "Yes, we offer special pricing for esports teams, gaming cafes, and bulk orders. Contact us at support@darkpoint.co.za for more information about our partnership programs."
   },
   {
     question: "How can I contact customer support?",

@@ -107,7 +107,7 @@ function PolicyAccordion() {
           If you receive a defective item, please contact us immediately. We&apos;ll arrange 
           for a free return and send you a replacement or full refund. Defective items 
           can be returned within 6 months of purchase. For defective items, you can also 
-          email us directly at <a href="mailto:returns@darkpoint.co.za" className="text-[var(--color-main-1)] hover:underline">returns@darkpoint.co.za</a>.
+          email us directly at <a href="mailto:support@darkpoint.co.za" className="text-[var(--color-main-1)] hover:underline">support@darkpoint.co.za</a>.
         </p>
       ),
     },
