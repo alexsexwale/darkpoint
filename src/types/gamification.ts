@@ -20,6 +20,8 @@ export type UserCoupon = Tables<"user_coupons">;
 // Re-export enum types from database
 export type { RarityType, AchievementCategory };
 export type XPAction = DBXPAction;
+// Alias for backward compatibility (Rarity was the old name)
+export type Rarity = RarityType;
 
 // XP Rewards Configuration
 export const XP_REWARDS: Record<XPAction, number | ((value?: number) => number)> = {
