@@ -1,5 +1,5 @@
 // Gamification System Types
-import type { Tables } from "./database";
+import type { Tables, XPAction as DBXPAction, RarityType, AchievementCategory } from "./database";
 
 // Re-export database types for convenience
 export type UserProfile = Tables<"user_profiles">;
@@ -17,20 +17,9 @@ export type MysteryBoxPurchase = Tables<"mystery_box_purchases">;
 export type XPTransaction = Tables<"xp_transactions">;
 export type UserCoupon = Tables<"user_coupons">;
 
-// XP Action Types
-export type XPAction =
-  | "signup"
-  | "daily_login"
-  | "first_purchase"
-  | "purchase"
-  | "review"
-  | "photo_review"
-  | "share"
-  | "referral"
-  | "quest"
-  | "achievement"
-  | "spin_reward"
-  | "bonus";
+// Re-export enum types from database
+export type { RarityType, AchievementCategory };
+export type XPAction = DBXPAction;
 
 // XP Rewards Configuration
 export const XP_REWARDS: Record<XPAction, number | ((value?: number) => number)> = {
@@ -51,6 +40,7 @@ export const XP_REWARDS: Record<XPAction, number | ((value?: number) => number)>
   achievement: 0, // Variable based on achievement
   spin_reward: 0, // Variable based on spin result
   bonus: 0, // Variable
+  admin: 0, // Admin-granted XP (variable)
 };
 
 // Level Tier Configuration
@@ -114,9 +104,7 @@ export const LEVEL_TIERS: LevelTier[] = [
   },
 ];
 
-// Achievement Categories
-export type AchievementCategory = "shopping" | "social" | "engagement" | "collector" | "special";
-
+// Achievement Categories (using type from database)
 export const ACHIEVEMENT_CATEGORIES: { id: AchievementCategory; name: string; icon: string }[] = [
   { id: "shopping", name: "Shopping", icon: "🛒" },
   { id: "social", name: "Social", icon: "🤝" },
@@ -125,10 +113,8 @@ export const ACHIEVEMENT_CATEGORIES: { id: AchievementCategory; name: string; ic
   { id: "special", name: "Special", icon: "✨" },
 ];
 
-// Rarity Types
-export type Rarity = "common" | "rare" | "epic" | "legendary" | "mythic";
-
-export const RARITY_CONFIG: Record<Rarity, { color: string; glow: string; name: string }> = {
+// Rarity Types (using RarityType from database)
+export const RARITY_CONFIG: Record<RarityType, { color: string; glow: string; name: string }> = {
   common: { color: "#9ca3af", glow: "0 0 20px rgba(156, 163, 175, 0.5)", name: "Common" },
   rare: { color: "#3b82f6", glow: "0 0 20px rgba(59, 130, 246, 0.5)", name: "Rare" },
   epic: { color: "#8b5cf6", glow: "0 0 20px rgba(139, 92, 246, 0.5)", name: "Epic" },

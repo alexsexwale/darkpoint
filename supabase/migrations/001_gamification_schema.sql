@@ -462,7 +462,7 @@ RETURNS TEXT AS $$
 DECLARE
   code TEXT;
 BEGIN
-  code := 'QUIRKY-' || UPPER(LEFT(COALESCE(username, 'USER'), 6)) || FLOOR(RANDOM() * 9000 + 1000)::TEXT;
+  code := 'DARK-' || UPPER(LEFT(COALESCE(username, 'USER'), 6)) || FLOOR(RANDOM() * 9000 + 1000)::TEXT;
   RETURN code;
 END;
 $$ LANGUAGE plpgsql;

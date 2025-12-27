@@ -13,6 +13,7 @@ import {
   NotificationStack,
 } from "@/components/gamification";
 import { ExitIntentPopup } from "@/components/marketing";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import "@/styles/globals.scss";
 
 const marcellusSC = Marcellus_SC({
@@ -69,74 +70,76 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${marcellusSC.variable} ${robotoCondensed.variable}`}>
       <body className="min-h-screen flex flex-col antialiased">
-        {/* Preloader */}
-        <Preloader />
+        <AuthProvider>
+          {/* Preloader */}
+          <Preloader />
 
-        {/* Page Transition Handler */}
-        <PageTransition />
+          {/* Page Transition Handler */}
+          <PageTransition />
 
-        {/* Page Border Decoration */}
-        <PageBorder />
+          {/* Page Border Decoration */}
+          <PageBorder />
 
-        {/* Video Background - Fire/Ember effect */}
-        <BackgroundVideo
-          youtubeId="UkeDo1LhUqQ"
-          posterImage="/images/page-background.jpg"
-          opacity={0.5}
-          muted={true}
-          loop={true}
-        />
+          {/* Video Background - Fire/Ember effect */}
+          <BackgroundVideo
+            youtubeId="UkeDo1LhUqQ"
+            posterImage="/images/page-background.jpg"
+            opacity={0.5}
+            muted={true}
+            loop={true}
+          />
 
-        {/* Header */}
-        <Header />
+          {/* Header */}
+          <Header />
 
-        {/* Side Navigation */}
-        <SideNav />
+          {/* Side Navigation */}
+          <SideNav />
 
-        {/* Cart Drawer */}
-        <CartDrawer />
+          {/* Cart Drawer */}
+          <CartDrawer />
 
-        {/* Search Modal */}
-        <SearchModal />
+          {/* Search Modal */}
+          <SearchModal />
 
-        {/* Sign In Modal */}
-        <SignInModal />
+          {/* Sign In Modal */}
+          <SignInModal />
 
-        {/* Forgot Password Modal */}
-        <ForgotPasswordModal />
+          {/* Forgot Password Modal */}
+          <ForgotPasswordModal />
 
-        {/* Gamification Modals */}
-        <LevelUpModal />
-        <AchievementUnlockModal />
-        <DailyRewardModal />
-        <StreakMilestoneModal />
+          {/* Gamification Modals */}
+          <LevelUpModal />
+          <AchievementUnlockModal />
+          <DailyRewardModal />
+          <StreakMilestoneModal />
 
-        {/* Gamification Notifications */}
-        <XPGainPopup />
-        <NotificationStack />
+          {/* Gamification Notifications */}
+          <XPGainPopup />
+          <NotificationStack />
 
-        {/* Marketing - Exit Intent Popup */}
-        <ExitIntentPopup discount={10} />
+          {/* Marketing - Exit Intent Popup */}
+          <ExitIntentPopup discount={10} />
 
-        {/* Social Share Buttons - Left Side */}
-        <SocialShareButtons />
+          {/* Social Share Buttons - Left Side */}
+          <SocialShareButtons />
 
-        {/* Main Content with Daily Reward Auto-Popup */}
-        <DailyRewardProvider>
-          <main className="flex-1">{children}</main>
-        </DailyRewardProvider>
+          {/* Main Content with Daily Reward Auto-Popup */}
+          <DailyRewardProvider>
+            <main className="flex-1">{children}</main>
+          </DailyRewardProvider>
 
-        {/* Footer */}
-        <Footer />
+          {/* Footer */}
+          <Footer />
 
-        {/* Background Audio - auto-plays if user hasn't muted, persists mute state */}
-        <BackgroundAudio
-          src="/audio/purpleplanetmusic-desolation.mp3"
-          loop={true}
-        />
+          {/* Background Audio - auto-plays if user hasn't muted, persists mute state */}
+          <BackgroundAudio
+            src="/audio/purpleplanetmusic-desolation.mp3"
+            loop={true}
+          />
 
-        {/* Side Buttons - Bottom Right (Keep in Touch + Audio Toggle) */}
-        <SideButtons />
+          {/* Side Buttons - Bottom Right (Keep in Touch + Audio Toggle) */}
+          <SideButtons />
+        </AuthProvider>
       </body>
     </html>
   );

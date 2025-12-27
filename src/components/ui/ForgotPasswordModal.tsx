@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUIStore } from "@/stores";
+import { useUIStore, useAuthStore } from "@/stores";
 import { Button } from "./Button";
 
 export function ForgotPasswordModal() {
   const { isForgotPasswordOpen, closeForgotPassword, openSignIn } = useUIStore();
+  const { resetPassword, isLoading } = useAuthStore();
+  
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Close on escape
   useEffect(() => {
@@ -38,13 +41,26 @@ export function ForgotPasswordModal() {
     if (!isForgotPasswordOpen) {
       setEmail("");
       setSubmitted(false);
+      setError(null);
     }
   }, [isForgotPasswordOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual password reset
-    setSubmitted(true);
+    setError(null);
+
+    if (!email) {
+      setError("Please enter your email address");
+      return;
+    }
+
+    const result = await resetPassword(email);
+    
+    if (result.success) {
+      setSubmitted(true);
+    } else {
+      setError(result.error || "Failed to send reset email");
+    }
   };
 
   const handleBackToSignIn = () => {
@@ -76,7 +92,7 @@ export function ForgotPasswordModal() {
             onClick={closeForgotPassword}
           >
             <div
-              className="w-full max-w-md bg-[var(--color-dark-1)] border border-[var(--color-dark-3)]"
+              className="w-full max-w-md bg-[var(--color-dark-1)] border border-[var(--color-dark-3)] rounded-lg overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -102,6 +118,23 @@ export function ForgotPasswordModal() {
                     <p className="text-[var(--muted-foreground)] text-sm text-center mb-6">
                       Enter your email address and we&apos;ll send you a link to reset your password.
                     </p>
+                    
+                    {/* Error Message */}
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-sm text-red-400">{error}</p>
+                        </div>
+                      </motion.div>
+                    )}
+                    
                     <form onSubmit={handleSubmit} className="space-y-6">
                       <input
                         type="email"
@@ -109,15 +142,35 @@ export function ForgotPasswordModal() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Email Address *"
                         required
+                        disabled={isLoading}
                         className="nk-form-control"
                       />
-                      <Button variant="outline" className="w-full cursor-pointer">
-                        Send Reset Link
+                      <Button 
+                        type="submit" 
+                        variant="primary" 
+                        className="w-full"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            Sending...
+                          </span>
+                        ) : (
+                          "Send Reset Link"
+                        )}
                       </Button>
                     </form>
                   </>
                 ) : (
-                  <div className="text-center py-4">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center py-4"
+                  >
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
                       <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -130,13 +183,16 @@ export function ForgotPasswordModal() {
                     <p className="text-[var(--muted-foreground)] text-xs">
                       Didn&apos;t receive the email? Check your spam folder or{" "}
                       <button
-                        onClick={() => setSubmitted(false)}
+                        onClick={() => {
+                          setSubmitted(false);
+                          setError(null);
+                        }}
                         className="text-[var(--color-main-1)] hover:underline cursor-pointer"
                       >
                         try again
                       </button>
                     </p>
-                  </div>
+                  </motion.div>
                 )}
 
                 {/* Back to Sign In */}
@@ -156,4 +212,3 @@ export function ForgotPasswordModal() {
     </AnimatePresence>
   );
 }
-

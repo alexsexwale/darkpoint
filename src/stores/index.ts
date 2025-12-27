@@ -5,4 +5,5 @@ export { useWishlistStore } from "./wishlistStore";
 export { useGamificationStore } from "./gamificationStore";
 export { useEmulatorStore } from "./emulatorStore";
 export { useRomsStore } from "./romsStore";
+export { useAuthStore } from "./authStore";
 
