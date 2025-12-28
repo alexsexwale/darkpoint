@@ -10,7 +10,7 @@ export function NavIcons() {
   const { toggleCart, itemCount } = useCartStore();
   const { itemCount: wishlistItemCount } = useWishlistStore();
   const { toggleSearch, toggleSignIn, toggleMobileMenu } = useUIStore();
-  const { userProfile, isAuthenticated: isGamificationAuth, setDailyRewardModal } = useGamificationStore();
+  const { userProfile, setDailyRewardModal } = useGamificationStore();
   const { user, signOut, isLoading, isAuthenticated, isInitialized } = useAuthStore();
   
   const [mounted, setMounted] = useState(false);
@@ -42,7 +42,7 @@ export function NavIcons() {
   // Check if daily reward has been claimed
   const today = new Date().toISOString().split("T")[0];
   const hasClaimed = mounted && userProfile?.last_login_date === today;
-  const showDailyRewardIcon = mounted && isGamificationAuth && !hasClaimed;
+  const showDailyRewardIcon = mounted && isAuthenticated && !hasClaimed;
 
   const handleSignOut = async () => {
     setUserMenuOpen(false);
