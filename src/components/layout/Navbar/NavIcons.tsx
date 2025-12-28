@@ -11,13 +11,14 @@ export function NavIcons() {
   const { itemCount: wishlistItemCount } = useWishlistStore();
   const { toggleSearch, toggleSignIn, toggleMobileMenu } = useUIStore();
   const { userProfile, isAuthenticated: isGamificationAuth, setDailyRewardModal } = useGamificationStore();
-  const { user, signOut, isLoading } = useAuthStore();
+  const { user, signOut, isLoading, isAuthenticated, isInitialized } = useAuthStore();
   
   const [mounted, setMounted] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const isAuthenticated = !!user;
+  // Only show authenticated state after both mounted and auth initialized
+  const showAuthenticatedUI = mounted && isInitialized && isAuthenticated;
 
   // Only show counts after hydration to avoid mismatch
   useEffect(() => {
@@ -145,7 +146,7 @@ export function NavIcons() {
 
       {/* User Icon / Menu */}
       <div className="relative hidden md:block" ref={userMenuRef}>
-        {mounted && isAuthenticated ? (
+        {showAuthenticatedUI ? (
           <>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}

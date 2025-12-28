@@ -9,6 +9,7 @@ interface AuthState {
   isLoading: boolean;
   isInitialized: boolean;
   error: string | null;
+  isAuthenticated: boolean;
 }
 
 interface AuthActions {
@@ -40,6 +41,7 @@ const initialState: AuthState = {
   isLoading: true,
   isInitialized: false,
   error: null,
+  isAuthenticated: false,
 };
 
 export const useAuthStore = create<AuthState & AuthActions>()(
@@ -47,8 +49,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     (set, get) => ({
       ...initialState,
 
-      setUser: (user) => set({ user }),
-      setSession: (session) => set({ session }),
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      setSession: (session) => set({ session, user: session?.user ?? null, isAuthenticated: !!session }),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
       setInitialized: (isInitialized) => set({ isInitialized }),
@@ -71,6 +73,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           set({
             session,
             user: session?.user ?? null,
+            isAuthenticated: !!session,
             isLoading: false,
             isInitialized: true,
             error: null,
@@ -81,6 +84,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             set({
               session,
               user: session?.user ?? null,
+              isAuthenticated: !!session,
             });
           });
         } catch (error) {
@@ -99,13 +103,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           set({
             session,
             user: session?.user ?? null,
+            isAuthenticated: !!session,
           });
         } catch (error) {
           console.error("Error refreshing session:", error);
         }
       },
 
-      signIn: async (email, password) => {
+      signIn: async (emailOrUsername, password) => {
         if (!isSupabaseConfigured()) {
           return { success: false, error: "Authentication is not configured" };
         }
@@ -113,19 +118,57 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true, error: null });
 
         try {
+          let email = emailOrUsername;
+
+          // Check if input is a username (doesn't contain @)
+          if (!emailOrUsername.includes("@")) {
+            // Look up email by username from user_profiles
+            type ProfileLookup = { email: string | null; id: string };
+            const { data: profileData, error: profileError } = await supabase
+              .from("user_profiles")
+              .select("email, id")
+              .eq("username", emailOrUsername.toLowerCase())
+              .single<ProfileLookup>();
+
+            if (profileError || !profileData?.email) {
+              // Try the RPC function as fallback (in case email column doesn't exist yet)
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { data: rpcData, error: rpcError } = await (supabase as any)
+                  .rpc("get_email_by_username", { lookup_username: emailOrUsername });
+
+                if (rpcError || !rpcData) {
+                  set({ error: "Invalid username or password", isLoading: false });
+                  return { success: false, error: "Invalid username or password" };
+                }
+                email = rpcData as string;
+              } catch {
+                set({ error: "Invalid username or password", isLoading: false });
+                return { success: false, error: "Invalid username or password" };
+              }
+            } else {
+              email = profileData.email;
+            }
+          }
+
           const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
           });
 
           if (error) {
-            set({ error: error.message, isLoading: false });
-            return { success: false, error: error.message };
+            // Provide friendlier error message
+            const errorMessage = error.message.includes("Invalid login credentials")
+              ? "Invalid email/username or password"
+              : error.message;
+            set({ error: errorMessage, isLoading: false });
+            return { success: false, error: errorMessage };
           }
 
           set({
             user: data.user,
             session: data.session,
+            isAuthenticated: true,
             isLoading: false,
             error: null,
           });
@@ -163,8 +206,21 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           if (error) {
-            set({ error: error.message, isLoading: false });
-            return { success: false, error: error.message };
+            // Provide more user-friendly error messages
+            let errorMessage = error.message;
+            
+            if (error.message.includes("Database error") || error.message.includes("500") || error.message.includes("Internal Server Error")) {
+              errorMessage = "Database error saving new user. Please try again or contact support.";
+            } else if (error.message.includes("User already registered") || error.message.includes("already registered")) {
+              errorMessage = "An account with this email already exists. Please sign in instead.";
+            } else if (error.message.includes("Password") || error.message.includes("password")) {
+              errorMessage = "Password does not meet requirements. Please use a stronger password.";
+            } else if (error.message.includes("Email") || error.message.includes("email")) {
+              errorMessage = "Invalid email address. Please check and try again.";
+            }
+            
+            set({ error: errorMessage, isLoading: false });
+            return { success: false, error: errorMessage };
           }
 
           // Check if email confirmation is required
@@ -179,6 +235,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           set({
             user: data.user,
             session: data.session,
+            isAuthenticated: !!data.session,
             isLoading: false,
             error: null,
           });
@@ -201,6 +258,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           set({
             user: null,
             session: null,
+            isAuthenticated: false,
             isLoading: false,
             error: null,
           });

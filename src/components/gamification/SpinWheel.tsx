@@ -13,12 +13,36 @@ interface SpinWheelProps {
   onSpinComplete?: (prize: SpinPrize) => void;
 }
 
+// Hook to get responsive size
+function useResponsiveSize(defaultSize: number) {
+  const [size, setSize] = useState(defaultSize);
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (window.innerWidth < 640) {
+        setSize(280); // Mobile
+      } else if (window.innerWidth < 768) {
+        setSize(320); // Small tablet
+      } else {
+        setSize(defaultSize); // Desktop
+      }
+    };
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, [defaultSize]);
+
+  return size;
+}
+
 export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelProps) {
   const wheelRef = useRef<SVGGElement>(null);
   const { spinPrizes, isSpinning, availableSpins, setSpinning, spin, setLastSpinResult } =
     useGamificationStore();
   const [hasSpun, setHasSpun] = useState(false);
   const [selectedPrize, setSelectedPrize] = useState<SpinPrize | null>(null);
+  const responsiveSize = useResponsiveSize(size);
 
   // Reset on mount
   useEffect(() => {
@@ -69,9 +93,9 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
     }
   };
 
-  const centerX = size / 2;
-  const centerY = size / 2;
-  const radius = size / 2 - 10;
+  const centerX = responsiveSize / 2;
+  const centerY = responsiveSize / 2;
+  const radius = responsiveSize / 2 - 10;
 
   // Calculate segment paths
   const segmentAngle = spinPrizes.length > 0 ? 360 / spinPrizes.length : 360;
@@ -102,9 +126,9 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
   };
 
   return (
-    <div className={cn("relative inline-block", className)}>
+    <div className={cn("relative inline-block w-full max-w-full", className)}>
       {/* Wheel container */}
-      <div className="relative" style={{ width: size, height: size }}>
+      <div className="relative mx-auto" style={{ width: responsiveSize, height: responsiveSize, maxWidth: "100%" }}>
         {/* Outer glow */}
         <div
           className="absolute inset-0 rounded-full blur-xl"
@@ -115,7 +139,7 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
         />
 
         {/* SVG Wheel */}
-        <svg width={size} height={size} className="relative">
+        <svg width={responsiveSize} height={responsiveSize} className="relative" viewBox={`0 0 ${responsiveSize} ${responsiveSize}`}>
           <defs>
             {/* Drop shadow for wheel */}
             <filter id="wheelShadow" x="-20%" y="-20%" width="140%" height="140%">
@@ -151,7 +175,7 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
                     x={textPos.x}
                     y={textPos.y}
                     fill="white"
-                    fontSize="11"
+                    fontSize={responsiveSize < 320 ? "9" : responsiveSize < 380 ? "10" : "11"}
                     fontWeight="bold"
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -179,7 +203,7 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
               x={centerX}
               y={centerY}
               fill="var(--color-main-1)"
-              fontSize="24"
+              fontSize={responsiveSize < 320 ? "18" : responsiveSize < 380 ? "20" : "24"}
               textAnchor="middle"
               dominantBaseline="middle"
             >
@@ -218,7 +242,7 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
               availableSpins <= 0 && "cursor-not-allowed"
             )}
           >
-            <div className="bg-[var(--color-main-1)] px-6 py-3 font-heading uppercase tracking-wider">
+            <div className="bg-[var(--color-main-1)] px-4 sm:px-6 py-2 sm:py-3 font-heading uppercase tracking-wider text-sm sm:text-base">
               {availableSpins > 0 ? "SPIN!" : "No Spins"}
             </div>
           </motion.button>
@@ -226,8 +250,8 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
       </div>
 
       {/* Available spins indicator */}
-      <div className="text-center mt-4">
-        <p className="text-sm text-white/60">
+      <div className="text-center mt-3 sm:mt-4">
+        <p className="text-xs sm:text-sm text-white/60">
           Available Spins:{" "}
           <span className="text-[var(--color-main-1)] font-bold">{availableSpins}</span>
         </p>

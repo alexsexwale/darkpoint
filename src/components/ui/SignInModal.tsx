@@ -10,7 +10,9 @@ export function SignInModal() {
   const { signIn, signUp, signInWithGoogle, signInWithGithub, isLoading, user } = useAuthStore();
   
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -53,7 +55,9 @@ export function SignInModal() {
   // Reset form when modal opens/closes
   useEffect(() => {
     if (!isSignInOpen) {
+      setEmailOrUsername("");
       setEmail("");
+      setUsername("");
       setPassword("");
       setConfirmPassword("");
       setFirstName("");
@@ -67,12 +71,12 @@ export function SignInModal() {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
+    if (!emailOrUsername || !password) {
       setError("Please fill in all fields");
       return;
     }
 
-    const result = await signIn(email, password);
+    const result = await signIn(emailOrUsername, password);
     if (!result.success) {
       setError(result.error || "Sign in failed");
     }
@@ -83,8 +87,19 @@ export function SignInModal() {
     setError(null);
     setSuccessMessage(null);
 
-    if (!email || !password || !firstName || !lastName) {
+    if (!email || !password || !firstName || !lastName || !username) {
       setError("Please fill in all required fields");
+      return;
+    }
+
+    // Validate username
+    if (username.length < 3) {
+      setError("Username must be at least 3 characters");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setError("Username can only contain letters, numbers, and underscores");
       return;
     }
 
@@ -103,7 +118,7 @@ export function SignInModal() {
       return;
     }
 
-    const result = await signUp(email, password, { firstName, lastName });
+    const result = await signUp(email, password, { firstName, lastName, username });
     
     if (result.success) {
       if (result.error) {
@@ -240,10 +255,10 @@ export function SignInModal() {
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
                       <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Email Address *"
+                        type="text"
+                        value={emailOrUsername}
+                        onChange={(e) => setEmailOrUsername(e.target.value)}
+                        placeholder="Email or Username *"
                         className="nk-form-control"
                         disabled={isLoading}
                         required
@@ -302,6 +317,17 @@ export function SignInModal() {
                   </form>
                 ) : (
                   <form onSubmit={handleRegister} className="space-y-4">
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                      placeholder="Username *"
+                      className="nk-form-control"
+                      disabled={isLoading}
+                      required
+                      minLength={3}
+                      maxLength={30}
+                    />
                     <div className="grid grid-cols-2 gap-4">
                       <input
                         type="text"

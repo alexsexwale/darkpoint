@@ -28,6 +28,7 @@ export interface Database {
       user_profiles: {
         Row: {
           id: string; // UUID
+          email: string | null; // VARCHAR(255) - for username login lookup
           username: string | null; // VARCHAR(30)
           display_name: string | null; // VARCHAR(50)
           avatar_url: string | null; // VARCHAR(512)
@@ -49,6 +50,7 @@ export interface Database {
         };
         Insert: {
           id: string;
+          email?: string | null;
           username?: string | null;
           display_name?: string | null;
           avatar_url?: string | null;
@@ -70,6 +72,7 @@ export interface Database {
         };
         Update: {
           id?: string;
+          email?: string | null;
           username?: string | null;
           display_name?: string | null;
           avatar_url?: string | null;
@@ -524,6 +527,14 @@ export interface Database {
       generate_referral_code: {
         Args: { username: string };
         Returns: string;
+      };
+      get_email_by_username: {
+        Args: { lookup_username: string };
+        Returns: string | null;
+      };
+      get_user_email_by_id: {
+        Args: { user_id: string };
+        Returns: string | null;
       };
     };
     Enums: {
