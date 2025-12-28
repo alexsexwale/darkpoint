@@ -15,7 +15,8 @@ interface SpinWheelModalProps {
 }
 
 export function SpinWheelModal({ isOpen, onClose }: SpinWheelModalProps) {
-  const { availableSpins, isSpinning, lastSpinResult } = useGamificationStore();
+  const { userProfile, isSpinning, lastSpinResult } = useGamificationStore();
+  const availableSpins = userProfile?.available_spins || 0;
   const { addXP } = useGamification();
   const [showResult, setShowResult] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
