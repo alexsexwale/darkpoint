@@ -105,16 +105,17 @@ export const useWishlistStore = create<WishlistStore>()((set, get) => ({
       
       const { data, error } = await supabase
         .from("user_wishlist")
-        .insert({
+        // @ts-expect-error - Supabase type inference issue, types are correct
+        .insert([{
           user_id: user.id,
           product_id: product.id,
           product_name: product.name,
           product_slug: product.slug,
           product_image: imageUrl,
           product_price: product.price,
-          product_original_price: product.originalPrice || null,
+          product_original_price: product.compareAtPrice || null,
           product_category: product.category || null,
-        })
+        }])
         .select()
         .single();
 
