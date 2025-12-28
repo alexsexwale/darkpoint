@@ -17,8 +17,9 @@ export function AchievementCard({
   className,
 }: AchievementCardProps) {
   const rarity = RARITY_CONFIG[achievement.rarity];
-  const isLocked = !achievement.isUnlocked && achievement.is_hidden;
-  const progress = achievement.isUnlocked
+  const isUnlocked = achievement.is_unlocked;
+  const isLocked = !isUnlocked && achievement.is_hidden;
+  const progress = isUnlocked
     ? 100
     : (achievement.progress / achievement.requirement_value) * 100;
 
@@ -31,19 +32,19 @@ export function AchievementCard({
         "relative group cursor-pointer",
         "bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]",
         "p-4 transition-all duration-300",
-        achievement.isUnlocked && "border-opacity-100",
-        !achievement.isUnlocked && "opacity-60 grayscale-[30%]",
+        isUnlocked && "border-opacity-100",
+        !isUnlocked && "opacity-60 grayscale-[30%]",
         className
       )}
       style={{
-        borderColor: achievement.isUnlocked ? rarity.color : undefined,
-        boxShadow: achievement.isUnlocked ? rarity.glow : undefined,
+        borderColor: isUnlocked ? rarity.color : undefined,
+        boxShadow: isUnlocked ? rarity.glow : undefined,
       }}
     >
       {/* Rarity indicator */}
       <div
         className="absolute top-0 left-0 w-full h-1"
-        style={{ background: rarity.color, opacity: achievement.isUnlocked ? 1 : 0.3 }}
+        style={{ background: rarity.color, opacity: isUnlocked ? 1 : 0.3 }}
       />
 
       {/* Content */}
@@ -53,16 +54,16 @@ export function AchievementCard({
           className={cn(
             "flex-shrink-0 w-14 h-14 flex items-center justify-center text-3xl",
             "bg-[var(--color-dark-3)] border",
-            achievement.isUnlocked ? "border-opacity-100" : "border-[var(--color-dark-4)]"
+            isUnlocked ? "border-opacity-100" : "border-[var(--color-dark-4)]"
           )}
           style={{
-            borderColor: achievement.isUnlocked ? rarity.color : undefined,
+            borderColor: isUnlocked ? rarity.color : undefined,
           }}
         >
           {isLocked ? (
             <span className="text-white/30">🔒</span>
           ) : (
-            <span className={cn(!achievement.isUnlocked && "opacity-50")}>
+            <span className={cn(!isUnlocked && "opacity-50")}>
               {achievement.icon}
             </span>
           )}
@@ -74,7 +75,7 @@ export function AchievementCard({
             <h3
               className={cn(
                 "font-heading text-sm uppercase tracking-wider truncate",
-                achievement.isUnlocked ? "text-white" : "text-white/60"
+                isUnlocked ? "text-white" : "text-white/60"
               )}
             >
               {isLocked ? "???" : achievement.name}
@@ -95,7 +96,7 @@ export function AchievementCard({
           </p>
 
           {/* Progress bar */}
-          {!achievement.isUnlocked && !isLocked && (
+          {!isUnlocked && !isLocked && (
             <div className="h-1 bg-[var(--color-dark-4)] overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
@@ -111,9 +112,9 @@ export function AchievementCard({
             <span className="text-xs text-[var(--color-main-1)]">
               +{achievement.xp_reward} XP
             </span>
-            {achievement.isUnlocked && achievement.unlockedAt && (
+            {isUnlocked && achievement.unlocked_at && (
               <span className="text-[10px] text-white/30">
-                {new Date(achievement.unlockedAt).toLocaleDateString()}
+                {new Date(achievement.unlocked_at).toLocaleDateString()}
               </span>
             )}
           </div>
@@ -121,7 +122,7 @@ export function AchievementCard({
       </div>
 
       {/* Unlocked checkmark */}
-      {achievement.isUnlocked && (
+      {isUnlocked && (
         <div
           className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full"
           style={{ background: rarity.color }}

@@ -304,8 +304,8 @@ export interface GamificationNotification {
 
 // Extended achievement with user progress
 export interface AchievementWithProgress extends Achievement {
-  isUnlocked: boolean;
-  unlockedAt?: string;
+  is_unlocked: boolean;
+  unlocked_at?: string | null;
   progress: number;
 }
 
