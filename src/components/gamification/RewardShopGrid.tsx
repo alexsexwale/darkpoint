@@ -138,7 +138,7 @@ const SAMPLE_REWARDS: Reward[] = [
 
 export function RewardShopGrid({ className }: RewardShopGridProps) {
   const { userProfile, rewards: storeRewards } = useGamificationStore();
-  const { redeemReward } = useGamification();
+  const { purchaseReward } = useGamification();
   const [selectedCategory, setSelectedCategory] = useState<RewardCategory>("all");
   const [redeeming, setRedeeming] = useState<string | null>(null);
 
@@ -155,7 +155,7 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
     if (redeeming) return;
 
     setRedeeming(reward.id);
-    const success = await redeemReward(reward.id);
+    const success = await purchaseReward(reward.id);
     setRedeeming(null);
 
     if (!success) {
