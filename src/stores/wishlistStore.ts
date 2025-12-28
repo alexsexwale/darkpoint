@@ -43,8 +43,8 @@ interface WishlistGetters {
 type WishlistStore = WishlistState & WishlistActions & WishlistGetters;
 
 export const useWishlistStore = create<WishlistStore>()((set, get) => ({
-  // State
-  items: [],
+      // State
+      items: [],
   isLoading: false,
   isInitialized: false,
   pendingProduct: null,
@@ -187,7 +187,7 @@ export const useWishlistStore = create<WishlistStore>()((set, get) => ({
     if (isInWishlist) {
       await get().removeItem(product.id);
       return { success: true, added: false };
-    } else {
+        } else {
       const result = await get().addItem(product);
       return { ...result, added: result.success };
     }
@@ -211,14 +211,14 @@ export const useWishlistStore = create<WishlistStore>()((set, get) => ({
 
       if (error) throw error;
 
-      set({ items: [] });
+        set({ items: [] });
     } catch (error) {
       console.error("Error clearing wishlist:", error);
     }
-  },
+      },
 
   // Check if product is in wishlist
-  isInWishlist: (productId) => {
+      isInWishlist: (productId) => {
     return get().items.some((item) => item.product_id === productId);
   },
 
@@ -242,10 +242,10 @@ export const useWishlistStore = create<WishlistStore>()((set, get) => ({
   // Clear local state (on logout)
   clearLocalState: () => {
     set({ items: [], isInitialized: false, pendingProduct: null });
-  },
+      },
 
-  // Getters
-  itemCount: () => {
-    return get().items.length;
-  },
+      // Getters
+      itemCount: () => {
+        return get().items.length;
+      },
 }));
