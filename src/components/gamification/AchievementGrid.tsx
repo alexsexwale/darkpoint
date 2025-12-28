@@ -13,24 +13,24 @@ interface AchievementGridProps {
 }
 
 export function AchievementGrid({ className, showFilters = true }: AchievementGridProps) {
-  const { userAchievements } = useGamificationStore();
+  const { achievements } = useGamificationStore();
   const [selectedCategory, setSelectedCategory] = useState<AchievementCategory | "all">("all");
   const [showUnlockedOnly, setShowUnlockedOnly] = useState(false);
 
   // Filter achievements
-  const filteredAchievements = userAchievements.filter((achievement) => {
+  const filteredAchievements = achievements.filter((achievement) => {
     if (selectedCategory !== "all" && achievement.category !== selectedCategory) {
       return false;
     }
-    if (showUnlockedOnly && !achievement.isUnlocked) {
+    if (showUnlockedOnly && !achievement.is_unlocked) {
       return false;
     }
     return true;
   });
 
   // Calculate stats
-  const totalAchievements = userAchievements.length;
-  const unlockedCount = userAchievements.filter((a) => a.isUnlocked).length;
+  const totalAchievements = achievements.length;
+  const unlockedCount = achievements.filter((a) => a.is_unlocked).length;
   const completionPercent = totalAchievements > 0 
     ? Math.round((unlockedCount / totalAchievements) * 100) 
     : 0;
