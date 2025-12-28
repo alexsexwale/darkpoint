@@ -38,11 +38,13 @@ function useResponsiveSize(defaultSize: number) {
 
 export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelProps) {
   const wheelRef = useRef<SVGGElement>(null);
-  const { spinPrizes, isSpinning, availableSpins, setSpinning, spin, setLastSpinResult } =
+  const { spinPrizes, isSpinning, userProfile, setSpinning, spinWheel, setLastSpinResult, addNotification } =
     useGamificationStore();
   const [hasSpun, setHasSpun] = useState(false);
   const [selectedPrize, setSelectedPrize] = useState<SpinPrize | null>(null);
   const responsiveSize = useResponsiveSize(size);
+  
+  const availableSpins = userProfile?.available_spins || 0;
 
   // Reset on mount
   useEffect(() => {
@@ -50,14 +52,14 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
     setSelectedPrize(null);
   }, []);
 
-  const handleSpin = () => {
+  const handleSpin = async () => {
     if (isSpinning || availableSpins <= 0 || spinPrizes.length === 0) return;
 
     setSpinning(true);
     setHasSpun(true);
 
-    // Get the prize before spinning (for landing calculation)
-    const prize = spin();
+    // Call the database to spin and get result
+    const prize = await spinWheel();
     if (!prize) {
       setSpinning(false);
       return;
@@ -87,6 +89,15 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
           setSpinning(false);
           setSelectedPrize(prize);
           setLastSpinResult(prize);
+          
+          // Add notification for prize
+          addNotification({
+            type: "reward",
+            title: "You Won!",
+            message: prize.name,
+            icon: "🎉",
+          });
+          
           onSpinComplete?.(prize);
         },
       });

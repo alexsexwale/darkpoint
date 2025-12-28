@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAuthStore, useWishlistStore } from "@/stores";
+import { useAuthStore, useWishlistStore, useGamificationStore } from "@/stores";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 interface AuthProviderProps {
@@ -11,6 +11,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const { initialize, isInitialized, isAuthenticated } = useAuthStore();
   const { fetchWishlist, clearLocalState, processPendingProduct, pendingProduct } = useWishlistStore();
+  const { initialize: initGamification, reset: resetGamification } = useGamificationStore();
 
   // Initialize auth
   useEffect(() => {
@@ -19,7 +20,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [initialize, isInitialized]);
 
-  // Fetch wishlist when auth state changes
+  // Fetch user data when auth state changes
   useEffect(() => {
     if (isInitialized && isAuthenticated) {
       // Fetch wishlist when user is authenticated
@@ -29,11 +30,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           processPendingProduct();
         }
       });
+      
+      // Initialize gamification system
+      initGamification();
     } else if (isInitialized && !isAuthenticated) {
-      // Clear wishlist state when user logs out
+      // Clear state when user logs out
       clearLocalState();
+      resetGamification();
     }
-  }, [isInitialized, isAuthenticated, fetchWishlist, clearLocalState, processPendingProduct, pendingProduct]);
+  }, [isInitialized, isAuthenticated, fetchWishlist, clearLocalState, processPendingProduct, pendingProduct, initGamification, resetGamification]);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -41,22 +46,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
-        // Clear wishlist on sign out
+        // Clear state on sign out
         clearLocalState();
+        resetGamification();
       } else if (event === "SIGNED_IN") {
-        // Fetch wishlist on sign in
+        // Fetch user data on sign in
         fetchWishlist().then(() => {
           if (pendingProduct) {
             processPendingProduct();
           }
         });
+        initGamification();
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [fetchWishlist, clearLocalState, processPendingProduct, pendingProduct]);
+  }, [fetchWishlist, clearLocalState, processPendingProduct, pendingProduct, initGamification, resetGamification]);
 
   return <>{children}</>;
 }

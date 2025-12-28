@@ -4,7 +4,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { MysteryBoxCard, MysteryBoxOpening } from "@/components/gamification";
-import { useGamificationStore } from "@/stores";
 import { Button } from "@/components/ui";
 import type { MysteryBox, Rarity } from "@/types/gamification";
 
@@ -61,7 +60,6 @@ const SAMPLE_ITEMS = [
 ];
 
 export function MysteryBoxesPageClient() {
-  const { mysteryBoxes } = useGamificationStore();
   const [isOpening, setIsOpening] = useState(false);
   const [selectedBox, setSelectedBox] = useState<MysteryBox | null>(null);
   const [revealedItem, setRevealedItem] = useState<{
@@ -71,8 +69,8 @@ export function MysteryBoxesPageClient() {
     imageUrl?: string;
   } | null>(null);
 
-  // Use sample data if no boxes from store
-  const boxes = mysteryBoxes.length > 0 ? mysteryBoxes : SAMPLE_BOXES;
+  // Use sample data for now (mystery boxes will be fetched from DB when fully integrated)
+  const boxes = SAMPLE_BOXES;
 
   const handlePurchase = (box: MysteryBox) => {
     setSelectedBox(box);

@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Product } from "@/types";
+import { useGamificationStore } from "./gamificationStore";
 
 export interface WishlistItem {
   id: string;
@@ -128,6 +129,10 @@ export const useWishlistStore = create<WishlistStore>()((set, get) => ({
       set((state) => ({
         items: [data, ...state.items],
       }));
+
+      // Trigger quest progress for "Wishful Thinking" quest
+      const gamificationStore = useGamificationStore.getState();
+      gamificationStore.updateQuestProgress("add_wishlist", 1);
 
       return { success: true };
     } catch (error) {

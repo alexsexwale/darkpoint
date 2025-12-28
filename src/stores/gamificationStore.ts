@@ -1,43 +1,159 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type {
-  UserProfile,
   Achievement,
-  AchievementWithProgress,
   SpinPrize,
   Reward,
-  MysteryBox,
   GamificationNotification,
-  XPAction,
-  DailyReward,
-  StreakMilestone,
   DailyQuest,
+  StreakMilestone,
 } from "@/types/gamification";
 import {
-  XP_REWARDS,
-  getLevelFromXP,
   getLevelTier,
   getXPProgress,
-  DAILY_REWARDS,
   getStreakMilestone,
   getDailyQuests,
 } from "@/types/gamification";
+
+// RPC Response types
+interface GamificationStatsResponse {
+  success: boolean;
+  error?: string;
+  profile?: {
+    total_xp: number;
+    current_level: number;
+    current_streak: number;
+    longest_streak: number;
+    available_spins: number;
+    store_credit: number;
+    referral_code: string | null;
+    referral_count: number;
+    last_login_date: string | null;
+  };
+  level_info?: LevelInfo;
+  next_level?: { level: number; xp_required: number; xp_needed: number } | null;
+  achievements?: { total: number; unlocked: number; legendary: number; xpEarned: number };
+}
+
+interface DailyRewardResponse {
+  success: boolean;
+  error?: string;
+  claimed?: boolean;
+  streak?: number;
+  longest_streak?: number;
+  cycle_day?: number;
+  xp_earned?: number;
+  bonus_reward?: string | null;
+  free_spin_earned?: boolean;
+}
+
+interface SpinWheelResponse {
+  success: boolean;
+  error?: string;
+  prize?: SpinPrize;
+  remaining_spins?: number;
+}
+
+interface PurchaseRewardResponse {
+  success: boolean;
+  error?: string;
+  reward?: { id: string; name: string; category: string };
+  xp_spent?: number;
+  remaining_xp?: number;
+}
+
+interface AddXPResponse {
+  success: boolean;
+  error?: string;
+  xp_earned?: number;
+  total_xp?: number;
+  old_level?: number;
+  new_level?: number;
+  leveled_up?: boolean;
+}
+
+interface CheckAchievementsResponse {
+  success: boolean;
+  error?: string;
+  unlocked?: string[];
+  count?: number;
+}
+
+interface AchievementsResponse {
+  success: boolean;
+  error?: string;
+  achievements?: AchievementWithProgress[];
+}
+
+interface DailyRewardStatusResponse {
+  success: boolean;
+  error?: string;
+  claimed_today?: boolean;
+  current_streak?: number;
+  next_cycle_day?: number;
+  last_login_date?: string | null;
+}
+
+// Extended user profile from database
+interface UserProfile {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  total_xp: number;
+  current_level: number;
+  current_streak: number;
+  longest_streak: number;
+  last_login_date: string | null;
+  total_spent: number;
+  total_orders: number;
+  total_reviews: number;
+  referral_code: string | null;
+  referred_by: string | null;
+  referral_count: number;
+  available_spins: number;
+  store_credit: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface LevelInfo {
+  level: number;
+  title: string;
+  badge_color: string;
+  discount_percent: number;
+  perks: string[];
+}
+
+interface AchievementWithProgress extends Achievement {
+  is_unlocked: boolean;
+  unlocked_at: string | null;
+  progress: number;
+}
 
 // State interface
 interface GamificationState {
   // User data
   userProfile: UserProfile | null;
+  levelInfo: LevelInfo | null;
+  nextLevelXP: number | null;
   isLoading: boolean;
-  isAuthenticated: boolean;
+  isInitialized: boolean;
 
   // Cached data
-  achievements: Achievement[];
-  userAchievements: AchievementWithProgress[];
+  achievements: AchievementWithProgress[];
   spinPrizes: SpinPrize[];
   rewards: Reward[];
-  mysteryBoxes: MysteryBox[];
+  
+  // Stats
+  achievementStats: {
+    total: number;
+    unlocked: number;
+    legendary: number;
+    xpEarned: number;
+  };
 
   // UI State
   notifications: GamificationNotification[];
@@ -46,52 +162,55 @@ interface GamificationState {
   showAchievementModal: boolean;
   unlockedAchievement: Achievement | null;
   showDailyRewardModal: boolean;
-  dailyRewardToClaim: DailyReward | null;
+  dailyRewardData: {
+    streak: number;
+    cycleDay: number;
+    xpEarned: number;
+    bonusReward: string | null;
+    freeSpinEarned: boolean;
+  } | null;
+  canClaimDailyReward: boolean;
   showStreakMilestoneModal: boolean;
   milestoneData: StreakMilestone | null;
 
-  // Daily quests
+  // Daily quests (client-side for now)
   dailyQuests: DailyQuest[];
   questsDate: string | null;
 
   // Spin wheel state
-  availableSpins: number;
   isSpinning: boolean;
   lastSpinResult: SpinPrize | null;
 }
 
 // Actions interface
 interface GamificationActions {
-  // Profile actions
-  setUserProfile: (profile: UserProfile | null) => void;
-  updateProfile: (updates: Partial<UserProfile>) => void;
-  setLoading: (loading: boolean) => void;
-  setAuthenticated: (authenticated: boolean) => void;
-
-  // XP actions
-  addXP: (action: XPAction, value?: number, description?: string) => void;
+  // Initialization
+  initialize: () => Promise<void>;
+  fetchUserProfile: () => Promise<void>;
+  fetchAchievements: (category?: string) => Promise<void>;
+  fetchSpinPrizes: () => Promise<void>;
+  fetchRewards: () => Promise<void>;
   
-  // Achievement actions
-  setAchievements: (achievements: Achievement[]) => void;
-  setUserAchievements: (achievements: AchievementWithProgress[]) => void;
-  unlockAchievement: (achievement: Achievement) => void;
-
-  // Spin wheel actions
-  setSpinPrizes: (prizes: SpinPrize[]) => void;
-  setAvailableSpins: (spins: number) => void;
-  spin: () => SpinPrize | null;
+  // Daily rewards
+  checkDailyRewardStatus: () => Promise<void>;
+  claimDailyReward: () => Promise<boolean>;
+  setDailyRewardModal: (show: boolean) => void;
+  
+  // Spin wheel
+  spinWheel: () => Promise<SpinPrize | null>;
   setSpinning: (spinning: boolean) => void;
   setLastSpinResult: (result: SpinPrize | null) => void;
 
-  // Rewards actions
-  setRewards: (rewards: Reward[]) => void;
-  setMysteryBoxes: (boxes: MysteryBox[]) => void;
+  // Rewards shop
+  purchaseReward: (rewardId: string) => Promise<{ success: boolean; error?: string }>;
 
-  // Daily login
-  claimDailyReward: () => DailyReward | null;
-  setDailyRewardModal: (show: boolean, reward?: DailyReward | null) => void;
+  // XP
+  addXP: (amount: number, action: string, description?: string) => Promise<boolean>;
 
-  // Daily quests
+  // Achievement check
+  checkAchievements: () => Promise<string[]>;
+
+  // Daily quests (client-side)
   initDailyQuests: () => void;
   updateQuestProgress: (questId: string, progress: number) => void;
   completeQuest: (questId: string) => void;
@@ -117,308 +236,480 @@ type GamificationStore = GamificationState & GamificationActions;
 // Initial state
 const initialState: GamificationState = {
   userProfile: null,
-  isLoading: true,
-  isAuthenticated: false,
+  levelInfo: null,
+  nextLevelXP: null,
+  isLoading: false,
+  isInitialized: false,
   achievements: [],
-  userAchievements: [],
   spinPrizes: [],
   rewards: [],
-  mysteryBoxes: [],
+  achievementStats: { total: 0, unlocked: 0, legendary: 0, xpEarned: 0 },
   notifications: [],
   showLevelUpModal: false,
   levelUpData: null,
   showAchievementModal: false,
   unlockedAchievement: null,
   showDailyRewardModal: false,
-  dailyRewardToClaim: null,
+  dailyRewardData: null,
+  canClaimDailyReward: false,
   showStreakMilestoneModal: false,
   milestoneData: null,
   dailyQuests: [],
   questsDate: null,
-  availableSpins: 0,
   isSpinning: false,
   lastSpinResult: null,
 };
 
-export const useGamificationStore = create<GamificationStore>()(
-  persist(
-    (set, get) => ({
+export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       ...initialState,
 
-      // Profile actions
-      setUserProfile: (profile) => {
-        set({
-          userProfile: profile,
-          availableSpins: profile?.available_spins || 0,
-          isAuthenticated: !!profile,
-        });
-      },
+  // Initialize gamification data
+  initialize: async () => {
+    if (!isSupabaseConfigured()) {
+      set({ isInitialized: true });
+      return;
+    }
 
-      updateProfile: (updates) => {
-        const current = get().userProfile;
-        if (current) {
-          set({ userProfile: { ...current, ...updates } });
-        }
-      },
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      set({ isInitialized: true });
+      return;
+    }
 
-      setLoading: (loading) => set({ isLoading: loading }),
-      setAuthenticated: (authenticated) => set({ isAuthenticated: authenticated }),
+    set({ isLoading: true });
 
-      // XP actions
-      addXP: (action, value, description) => {
-        const profile = get().userProfile;
-        if (!profile) return;
+    try {
+      // Fetch all data in parallel
+      await Promise.all([
+        get().fetchUserProfile(),
+        get().fetchSpinPrizes(),
+        get().fetchRewards(),
+      ]);
 
-        // Calculate XP amount
-        const xpReward = XP_REWARDS[action];
-        let xpAmount: number;
-        if (typeof xpReward === "function") {
-          xpAmount = xpReward(value);
-        } else {
-          xpAmount = value ?? xpReward;
-        }
+      // Check daily reward status
+      await get().checkDailyRewardStatus();
 
-        if (xpAmount <= 0) return;
+      // Initialize daily quests
+      get().initDailyQuests();
 
-        const newTotalXP = profile.total_xp + xpAmount;
-        const currentLevel = profile.current_level;
-        const newLevel = getLevelFromXP(newTotalXP);
+      set({ isInitialized: true, isLoading: false });
+    } catch (error) {
+      console.error("Error initializing gamification:", error);
+      set({ isInitialized: true, isLoading: false });
+    }
+  },
 
-        // Update profile
+  // Fetch user profile with stats
+  fetchUserProfile: async () => {
+    if (!isSupabaseConfigured()) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .rpc("get_gamification_stats", { p_user_id: user.id } as never);
+
+      if (error) throw error;
+
+      const result = data as unknown as GamificationStatsResponse;
+      if (result?.success && result.profile) {
         set({
           userProfile: {
-            ...profile,
-            total_xp: newTotalXP,
-            current_level: newLevel,
+            id: user.id,
+            username: null,
+            display_name: null,
+            avatar_url: null,
+            total_spent: 0,
+            total_orders: 0,
+            total_reviews: 0,
+            referred_by: null,
+            created_at: "",
+            updated_at: "",
+            ...result.profile,
+          } as UserProfile,
+          levelInfo: result.level_info || null,
+          nextLevelXP: result.next_level?.xp_required || null,
+          achievementStats: result.achievements || { total: 0, unlocked: 0, legendary: 0, xpEarned: 0 },
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      
+      // Fallback: try direct query
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        set({ userProfile: profile as UserProfile });
+      }
+    }
+  },
+
+  // Fetch achievements
+  fetchAchievements: async (category?: string) => {
+    if (!isSupabaseConfigured()) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .rpc("get_user_achievements", { 
+          p_user_id: user.id,
+          p_category: category || null
+        } as never);
+
+      if (error) throw error;
+
+      const result = data as unknown as AchievementsResponse;
+      if (result?.success && result.achievements) {
+        set({ achievements: result.achievements });
+      }
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+    }
+  },
+
+  // Fetch spin prizes
+  fetchSpinPrizes: async () => {
+    if (!isSupabaseConfigured()) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("spin_prizes")
+        .select("*")
+        .eq("is_active", true)
+        .order("probability", { ascending: false });
+
+      if (error) throw error;
+
+      set({ spinPrizes: data || [] });
+    } catch (error) {
+      console.error("Error fetching spin prizes:", error);
+    }
+  },
+
+  // Fetch rewards
+  fetchRewards: async () => {
+    if (!isSupabaseConfigured()) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("rewards")
+        .select("*")
+        .eq("is_active", true)
+        .order("xp_cost", { ascending: true });
+
+      if (error) throw error;
+
+      set({ rewards: data || [] });
+    } catch (error) {
+      console.error("Error fetching rewards:", error);
+    }
+  },
+
+  // Check daily reward status
+  checkDailyRewardStatus: async () => {
+    if (!isSupabaseConfigured()) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .rpc("check_daily_reward_status", { p_user_id: user.id } as never);
+
+      if (error) throw error;
+
+      const result = data as unknown as DailyRewardStatusResponse;
+      if (result?.success) {
+        set({ canClaimDailyReward: !result.claimed_today });
+        
+        // If can claim, show modal
+        if (!result.claimed_today) {
+          set({ showDailyRewardModal: true });
+        }
+      }
+    } catch (error) {
+      console.error("Error checking daily reward status:", error);
+    }
+  },
+
+  // Claim daily reward
+  claimDailyReward: async () => {
+    if (!isSupabaseConfigured()) return false;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    try {
+      const { data, error } = await supabase
+        .rpc("claim_daily_reward", { p_user_id: user.id } as never);
+
+      if (error) throw error;
+
+      const result = data as unknown as DailyRewardResponse;
+      if (result?.success) {
+        // Update local state
+        set({
+          canClaimDailyReward: false,
+          dailyRewardData: {
+            streak: result.streak || 1,
+            cycleDay: result.cycle_day || 1,
+            xpEarned: result.xp_earned || 0,
+            bonusReward: result.bonus_reward || null,
+            freeSpinEarned: result.free_spin_earned || false,
           },
         });
 
-        // Add XP notification
+        // Refresh profile
+        await get().fetchUserProfile();
+
+        // Add notification
         get().addNotification({
           type: "xp_gain",
-          title: `+${xpAmount} XP`,
-          message: description || `Earned from ${action.replace("_", " ")}`,
-          xpAmount,
+          title: `+${result.xp_earned || 0} XP`,
+          message: `Day ${result.streak || 1} login streak!`,
+          xpAmount: result.xp_earned || 0,
         });
 
-        // Check for level up
-        if (newLevel > currentLevel) {
-          const tier = getLevelTier(newLevel);
-          get().setLevelUpModal(true, {
-            newLevel,
-            newTitle: tier.title,
-            perks: tier.perks,
-          });
-        }
-      },
-
-      // Achievement actions
-      setAchievements: (achievements) => set({ achievements }),
-      setUserAchievements: (achievements) => set({ userAchievements: achievements }),
-
-      unlockAchievement: (achievement) => {
-        const profile = get().userProfile;
-        if (!profile) return;
-
-        // Update user achievements
-        const current = get().userAchievements;
-        const updated: AchievementWithProgress = {
-          ...achievement,
-          isUnlocked: true,
-          unlockedAt: new Date().toISOString(),
-          progress: achievement.requirement_value,
-        };
-
-        set({
-          userAchievements: [...current.filter((a) => a.id !== achievement.id), updated],
-        });
-
-        // Add XP reward
-        get().addXP("achievement", achievement.xp_reward, `Achievement: ${achievement.name}`);
-
-        // Show achievement modal
-        get().setAchievementModal(true, achievement);
-      },
-
-      // Spin wheel actions
-      setSpinPrizes: (prizes) => set({ spinPrizes: prizes }),
-      setAvailableSpins: (spins) => {
-        set({ availableSpins: spins });
-        const profile = get().userProfile;
-        if (profile) {
-          set({ userProfile: { ...profile, available_spins: spins } });
-        }
-      },
-
-      spin: () => {
-        const { spinPrizes, availableSpins } = get();
-        if (availableSpins <= 0 || spinPrizes.length === 0) return null;
-
-        // Weighted random selection
-        const totalWeight = spinPrizes.reduce((sum, p) => sum + p.probability, 0);
-        let random = Math.random() * totalWeight;
-
-        for (const prize of spinPrizes) {
-          random -= prize.probability;
-          if (random <= 0) {
-            get().setAvailableSpins(availableSpins - 1);
-            set({ lastSpinResult: prize });
-            return prize;
-          }
-        }
-
-        // Fallback to first prize
-        const fallback = spinPrizes[0];
-        get().setAvailableSpins(availableSpins - 1);
-        set({ lastSpinResult: fallback });
-        return fallback;
-      },
-
-      setSpinning: (spinning) => set({ isSpinning: spinning }),
-      setLastSpinResult: (result) => set({ lastSpinResult: result }),
-
-      // Rewards actions
-      setRewards: (rewards) => set({ rewards }),
-      setMysteryBoxes: (boxes) => set({ mysteryBoxes: boxes }),
-
-      // Daily login
-      claimDailyReward: () => {
-        const profile = get().userProfile;
-        if (!profile) return null;
-
-        const today = new Date().toISOString().split("T")[0];
-        const lastLogin = profile.last_login_date;
-
-        // Check if already claimed today
-        if (lastLogin === today) return null;
-
-        // Calculate streak
-        let newStreak = 1;
-        if (lastLogin) {
-          const lastDate = new Date(lastLogin);
-          const todayDate = new Date(today);
-          const diffDays = Math.floor(
-            (todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
-          );
-
-          if (diffDays === 1) {
-            // Consecutive day
-            newStreak = profile.current_streak + 1;
-          }
-          // If diffDays > 1, streak resets to 1
-        }
-
-        // Get reward for current day in 7-day cycle
-        const cycleDay = ((newStreak - 1) % 7) + 1;
-        const reward = DAILY_REWARDS.find((r) => r.day === cycleDay) || DAILY_REWARDS[0];
-
-        // Update profile
-        set({
-          userProfile: {
-            ...profile,
-            current_streak: newStreak,
-            longest_streak: Math.max(newStreak, profile.longest_streak),
-            last_login_date: today,
-          },
-        });
-
-        // Add XP
-        get().addXP("daily_login", newStreak, `Day ${cycleDay} login bonus`);
-
-        // Handle bonus rewards based on reward type
-        if (reward.reward) {
-          switch (reward.reward.type) {
-            case "spin":
-              get().setAvailableSpins(get().availableSpins + 1);
-              get().addNotification({
-                type: "reward",
-                title: "Free Spin Earned!",
-                message: "Head to the Rewards section to spin the wheel",
-                icon: "🎡",
-              });
-              break;
-            case "discount":
-              get().addNotification({
-                type: "reward",
-                title: "Discount Unlocked!",
-                message: reward.reward.description,
-                icon: "🏷️",
-              });
-              break;
-            case "mystery_key":
-              get().addNotification({
-                type: "reward",
-                title: "Mystery Key Earned!",
-                message: reward.reward.description,
-                icon: "🔑",
-              });
-              break;
-            case "xp_multiplier":
-              get().addNotification({
-                type: "reward",
-                title: "XP Boost Active!",
-                message: reward.reward.description,
-                icon: "⚡",
-              });
-              break;
-          }
-        }
-
-        // Check for streak milestones
-        const milestone = getStreakMilestone(newStreak);
+        // Check for streak milestone
+        const milestone = getStreakMilestone(result.streak || 1);
         if (milestone) {
-          // Add milestone XP bonus
-          get().addXP("bonus", milestone.xpBonus, `${milestone.badge} milestone bonus`);
-          
-          // Show milestone modal after a short delay (let daily reward modal close first)
           setTimeout(() => {
             get().setStreakMilestoneModal(true, milestone);
           }, 2000);
         }
 
-        return reward;
-      },
+        return true;
+      }
 
-      setDailyRewardModal: (show, reward = null) => {
-        set({ showDailyRewardModal: show, dailyRewardToClaim: reward });
-      },
+      return false;
+    } catch (error) {
+      console.error("Error claiming daily reward:", error);
+      return false;
+    }
+  },
 
-      // Daily quests
+  setDailyRewardModal: (show) => set({ showDailyRewardModal: show }),
+
+  // Spin the wheel
+  spinWheel: async () => {
+    if (!isSupabaseConfigured()) return null;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const profile = get().userProfile;
+    if (!profile || profile.available_spins <= 0) return null;
+
+    set({ isSpinning: true });
+
+    try {
+      const { data, error } = await supabase
+        .rpc("spin_wheel", { p_user_id: user.id } as never);
+
+      if (error) throw error;
+
+      const result = data as unknown as SpinWheelResponse;
+      if (result?.success && result.prize) {
+        const prize = result.prize;
+        
+        set({ 
+          lastSpinResult: prize,
+          userProfile: {
+            ...profile,
+            available_spins: result.remaining_spins || 0,
+          },
+        });
+
+        // Refresh profile to get updated XP/credits
+        setTimeout(() => get().fetchUserProfile(), 100);
+
+        return prize;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error spinning wheel:", error);
+      return null;
+    } finally {
+      set({ isSpinning: false });
+    }
+  },
+
+  setSpinning: (spinning) => set({ isSpinning: spinning }),
+  setLastSpinResult: (result) => set({ lastSpinResult: result }),
+
+  // Purchase reward
+  purchaseReward: async (rewardId) => {
+    if (!isSupabaseConfigured()) {
+      return { success: false, error: "Not configured" };
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .rpc("purchase_reward", { 
+          p_user_id: user.id, 
+          p_reward_id: rewardId 
+        } as never);
+
+      if (error) throw error;
+
+      const result = data as unknown as PurchaseRewardResponse;
+      if (result?.success) {
+        // Refresh profile
+        await get().fetchUserProfile();
+
+        // Add notification
+        get().addNotification({
+          type: "reward",
+          title: "Reward Purchased!",
+          message: `You got: ${result.reward?.name || "Reward"}`,
+          icon: "🎁",
+        });
+
+        return { success: true };
+      }
+
+      return { success: false, error: result?.error || "Purchase failed" };
+    } catch (error) {
+      console.error("Error purchasing reward:", error);
+      return { success: false, error: "Purchase failed" };
+    }
+  },
+
+  // Add XP
+  addXP: async (amount, action, description) => {
+    if (!isSupabaseConfigured()) return false;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    try {
+      const { data, error } = await supabase
+        .rpc("add_xp", { 
+          p_user_id: user.id, 
+          p_amount: amount,
+          p_action: action,
+          p_description: description || null
+        } as never);
+
+      if (error) throw error;
+
+      const result = data as unknown as AddXPResponse;
+      if (result?.success) {
+        // Refresh profile
+        await get().fetchUserProfile();
+
+        // Add notification
+        get().addNotification({
+          type: "xp_gain",
+          title: `+${amount} XP`,
+          message: description || `Earned from ${action}`,
+          xpAmount: amount,
+        });
+
+        // Check for level up
+        if (result.leveled_up && result.new_level) {
+          const tier = getLevelTier(result.new_level);
+          get().setLevelUpModal(true, {
+            newLevel: result.new_level,
+            newTitle: tier.title,
+            perks: tier.perks,
+          });
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error adding XP:", error);
+      return false;
+    }
+  },
+
+  // Check achievements
+  checkAchievements: async () => {
+    if (!isSupabaseConfigured()) return [];
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    try {
+      const { data, error } = await supabase
+        .rpc("check_achievements", { p_user_id: user.id } as never);
+
+      if (error) throw error;
+
+      const result = data as unknown as CheckAchievementsResponse;
+      if (result?.success && result.unlocked && result.unlocked.length > 0) {
+        // Refresh achievements
+        await get().fetchAchievements();
+
+        // Show achievement modal for first unlocked
+        const { achievements } = get();
+        const firstUnlocked = achievements.find(a => a.id === result.unlocked![0]);
+        if (firstUnlocked) {
+          get().setAchievementModal(true, firstUnlocked);
+        }
+
+        return result.unlocked;
+      }
+
+      return [];
+    } catch (error) {
+      console.error("Error checking achievements:", error);
+      return [];
+    }
+  },
+
+  // Daily quests (client-side for now)
       initDailyQuests: () => {
         const today = new Date().toISOString().split("T")[0];
         const { questsDate, dailyQuests } = get();
 
-        // If quests are already for today, don't regenerate
         if (questsDate === today && dailyQuests.length > 0) {
           return;
         }
 
-        // Generate new quests for today
         const newQuests = getDailyQuests(today);
         set({ dailyQuests: newQuests, questsDate: today });
       },
 
-      updateQuestProgress: (questId, progress) => {
-        const quests = get().dailyQuests;
+  updateQuestProgress: (questId, progressToAdd) => {
+    // Initialize quests if they haven't been loaded yet
+    let quests = get().dailyQuests;
+    if (quests.length === 0) {
+      get().initDailyQuests();
+      quests = get().dailyQuests;
+    }
+
         const quest = quests.find((q) => q.id === questId);
         
+    // Quest might not be in today's rotation - that's OK
         if (!quest || quest.completed) return;
 
         const updatedQuests = quests.map((q) => {
           if (q.id === questId) {
-            const newProgress = Math.min(progress, q.requirement.count);
+        // Add to existing progress (increment, not replace)
+        const newProgress = Math.min(q.progress + progressToAdd, q.requirement.count);
             const completed = newProgress >= q.requirement.count;
             
             if (completed && !q.completed) {
-              // Quest just completed - add XP
-              setTimeout(() => {
-                get().addXP("quest", q.xpReward, `Quest: ${q.title}`);
-                get().addNotification({
-                  type: "achievement",
-                  title: "Quest Complete!",
-                  message: `${q.title} - +${q.xpReward} XP`,
-                  icon: q.icon,
-                });
+          // Quest completed - add XP
+          setTimeout(async () => {
+            await get().addXP(q.xpReward, "quest", `Quest: ${q.title}`);
               }, 0);
             }
 
@@ -436,12 +727,10 @@ export const useGamificationStore = create<GamificationStore>()(
       },
 
       completeQuest: (questId) => {
-        const quests = get().dailyQuests;
-        const quest = quests.find((q) => q.id === questId);
-        
-        if (!quest || quest.completed) return;
-
+    const quest = get().dailyQuests.find((q) => q.id === questId);
+    if (quest && !quest.completed) {
         get().updateQuestProgress(questId, quest.requirement.count);
+    }
       },
 
       // Notification actions
@@ -453,10 +742,9 @@ export const useGamificationStore = create<GamificationStore>()(
         };
 
         set((state) => ({
-          notifications: [...state.notifications, newNotification].slice(-5), // Keep last 5
+      notifications: [...state.notifications, newNotification].slice(-5),
         }));
 
-        // Auto-remove after 5 seconds
         setTimeout(() => {
           get().removeNotification(newNotification.id);
         }, 5000);
@@ -496,17 +784,4 @@ export const useGamificationStore = create<GamificationStore>()(
       },
 
       reset: () => set(initialState),
-    }),
-    {
-      name: "dark-point-gamification",
-      partialize: (state) => ({
-        // Only persist essential user data
-        userProfile: state.userProfile,
-        availableSpins: state.availableSpins,
-        dailyQuests: state.dailyQuests,
-        questsDate: state.questsDate,
-      }),
-    }
-  )
-);
-
+}));

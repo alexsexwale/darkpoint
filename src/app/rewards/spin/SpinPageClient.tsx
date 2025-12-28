@@ -1,22 +1,29 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { SpinWheel, XPBar, LevelBadge } from "@/components/gamification";
 import { Button } from "@/components/ui";
 import { useGamificationStore } from "@/stores";
-import { useGamification } from "@/hooks";
-import type { SpinPrize } from "@/types/gamification";
 
 export function SpinPageClient() {
-  const { userProfile, availableSpins, lastSpinResult, isSpinning } = useGamificationStore();
-  const { addXP } = useGamification();
+  const { 
+    userProfile, 
+    lastSpinResult, 
+    isSpinning,
+    fetchSpinPrizes,
+    isInitialized,
+  } = useGamificationStore();
+  
+  const availableSpins = userProfile?.available_spins || 0;
 
-  const handleSpinComplete = async (prize: SpinPrize) => {
-    if (prize.prize_type === "xp") {
-      await addXP("spin_reward", parseInt(prize.prize_value), `Spin wheel: ${prize.name}`);
+  // Fetch spin prizes if not loaded
+  useEffect(() => {
+    if (isInitialized) {
+      fetchSpinPrizes();
     }
-  };
+  }, [isInitialized, fetchSpinPrizes]);
 
   return (
     <div className="min-h-screen">
@@ -107,10 +114,7 @@ export function SpinPageClient() {
               className="lg:col-span-2 flex flex-col items-center order-1 lg:order-2"
             >
               <div className="w-full flex justify-center">
-                <SpinWheel 
-                  size={380}
-                  onSpinComplete={handleSpinComplete} 
-                />
+                <SpinWheel size={380} />
               </div>
 
               {/* Last result */}

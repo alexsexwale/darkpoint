@@ -7,16 +7,23 @@ import { DailyRewardCalendar, DailyQuestList, StreakIndicator } from "@/componen
 import { useGamificationStore } from "@/stores";
 
 export function RewardsPageClient() {
-  const { userProfile, setDailyRewardModal, initDailyQuests } = useGamificationStore();
+  const { 
+    canClaimDailyReward, 
+    setDailyRewardModal, 
+    initDailyQuests,
+    claimDailyReward,
+    isLoading,
+  } = useGamificationStore();
 
   // Initialize daily quests on mount
   useEffect(() => {
     initDailyQuests();
   }, [initDailyQuests]);
 
-  // Check if daily reward has been claimed
-  const today = new Date().toISOString().split("T")[0];
-  const hasClaimed = userProfile?.last_login_date === today;
+  const handleClaimReward = async () => {
+    setDailyRewardModal(true);
+    await claimDailyReward();
+  };
 
   return (
     <div className="min-h-screen">
@@ -40,7 +47,7 @@ export function RewardsPageClient() {
                 <h2 className="text-xl font-heading uppercase tracking-wider">Daily Rewards</h2>
                 <StreakIndicator />
               </div>
-              {!hasClaimed ? (
+              {canClaimDailyReward ? (
                 <div className="bg-gradient-to-br from-[var(--color-main-1)]/20 to-[var(--color-dark-2)] border-2 border-[var(--color-main-1)] p-8 text-center h-full flex flex-col items-center justify-center">
                   <div className="text-6xl mb-4 animate-bounce">🎁</div>
                   <h3 className="text-2xl font-heading text-[var(--color-main-1)] mb-2">
@@ -49,8 +56,13 @@ export function RewardsPageClient() {
                   <p className="text-white/60 mb-6">
                     Claim your reward to earn XP and special bonuses
                   </p>
-                  <Button variant="primary" size="lg" onClick={() => setDailyRewardModal(true)}>
-                    Claim Now
+                  <Button 
+                    variant="primary" 
+                    size="lg" 
+                    onClick={handleClaimReward}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Claiming..." : "Claim Now"}
                   </Button>
                 </div>
               ) : (
