@@ -22,6 +22,12 @@ export type DiscountType = "percent" | "fixed" | "shipping";
 export type CouponSource = "spin" | "reward" | "referral" | "achievement" | "promotion" | "manual";
 export type XPAction = "signup" | "daily_login" | "first_purchase" | "purchase" | "review" | "photo_review" | "share" | "referral" | "quest" | "achievement" | "spin_reward" | "bonus" | "admin";
 
+// E-commerce Enums
+export type AddressType = "billing" | "shipping";
+export type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
+export type ReviewStatus = "pending" | "published" | "rejected";
+export type ReportStatus = "pending" | "reviewed" | "action_taken" | "dismissed";
+
 export interface Database {
   public: {
     Tables: {
@@ -521,6 +527,262 @@ export interface Database {
           created_at?: string;
         };
       };
+      user_addresses: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: AddressType;
+          is_default: boolean;
+          name: string;
+          company: string | null;
+          address_line1: string;
+          address_line2: string | null;
+          city: string;
+          province: string;
+          postal_code: string;
+          country: string;
+          phone: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: AddressType;
+          is_default?: boolean;
+          name: string;
+          company?: string | null;
+          address_line1: string;
+          address_line2?: string | null;
+          city: string;
+          province: string;
+          postal_code: string;
+          country?: string;
+          phone?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: AddressType;
+          is_default?: boolean;
+          name?: string;
+          company?: string | null;
+          address_line1?: string;
+          address_line2?: string | null;
+          city?: string;
+          province?: string;
+          postal_code?: string;
+          country?: string;
+          phone?: string | null;
+        };
+      };
+      orders: {
+        Row: {
+          id: string;
+          user_id: string;
+          order_number: string;
+          status: OrderStatus;
+          subtotal: number;
+          shipping_cost: number;
+          discount_amount: number;
+          tax_amount: number;
+          total: number;
+          currency: string;
+          shipping_name: string | null;
+          shipping_address_line1: string | null;
+          shipping_address_line2: string | null;
+          shipping_city: string | null;
+          shipping_province: string | null;
+          shipping_postal_code: string | null;
+          shipping_country: string | null;
+          shipping_phone: string | null;
+          billing_name: string | null;
+          billing_address_line1: string | null;
+          billing_address_line2: string | null;
+          billing_city: string | null;
+          billing_province: string | null;
+          billing_postal_code: string | null;
+          billing_country: string | null;
+          billing_phone: string | null;
+          tracking_number: string | null;
+          tracking_url: string | null;
+          shipped_at: string | null;
+          delivered_at: string | null;
+          customer_notes: string | null;
+          admin_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          order_number: string;
+          status?: OrderStatus;
+          subtotal?: number;
+          shipping_cost?: number;
+          discount_amount?: number;
+          tax_amount?: number;
+          total?: number;
+          currency?: string;
+        };
+        Update: {
+          status?: OrderStatus;
+          tracking_number?: string | null;
+          tracking_url?: string | null;
+          shipped_at?: string | null;
+          delivered_at?: string | null;
+          admin_notes?: string | null;
+        };
+      };
+      order_items: {
+        Row: {
+          id: string;
+          order_id: string;
+          product_id: string;
+          product_name: string;
+          product_slug: string | null;
+          product_image: string | null;
+          variant_id: string | null;
+          variant_name: string | null;
+          sku: string | null;
+          quantity: number;
+          unit_price: number;
+          total_price: number;
+          is_digital: boolean;
+          download_url: string | null;
+          download_limit: number;
+          download_count: number;
+          download_expires_at: string | null;
+          has_reviewed: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          product_id: string;
+          product_name: string;
+          product_slug?: string | null;
+          product_image?: string | null;
+          quantity?: number;
+          unit_price: number;
+          total_price: number;
+          is_digital?: boolean;
+        };
+        Update: {
+          has_reviewed?: boolean;
+          download_count?: number;
+        };
+      };
+      product_reviews: {
+        Row: {
+          id: string;
+          user_id: string;
+          order_item_id: string | null;
+          product_id: string;
+          product_name: string;
+          product_slug: string | null;
+          product_image: string | null;
+          rating: number;
+          title: string;
+          content: string;
+          pros: string | null;
+          cons: string | null;
+          status: ReviewStatus;
+          helpful_count: number;
+          not_helpful_count: number;
+          verified_purchase: boolean;
+          admin_response: string | null;
+          admin_responded_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          order_item_id?: string | null;
+          product_id: string;
+          product_name: string;
+          product_slug?: string | null;
+          product_image?: string | null;
+          rating: number;
+          title: string;
+          content: string;
+          pros?: string | null;
+          cons?: string | null;
+          status?: ReviewStatus;
+          verified_purchase?: boolean;
+        };
+        Update: {
+          rating?: number;
+          title?: string;
+          content?: string;
+          pros?: string | null;
+          cons?: string | null;
+          status?: ReviewStatus;
+        };
+      };
+      review_reports: {
+        Row: {
+          id: string;
+          user_id: string;
+          review_id: string;
+          reason: string;
+          description: string | null;
+          status: ReportStatus;
+          admin_notes: string | null;
+          resolved_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          review_id: string;
+          reason: string;
+          description?: string | null;
+        };
+        Update: {
+          status?: ReportStatus;
+          admin_notes?: string | null;
+          resolved_at?: string | null;
+        };
+      };
+      user_downloads: {
+        Row: {
+          id: string;
+          user_id: string;
+          order_id: string;
+          order_item_id: string;
+          product_id: string;
+          product_name: string;
+          file_name: string;
+          file_size: number | null;
+          file_type: string | null;
+          download_url: string | null;
+          download_limit: number;
+          download_count: number;
+          expires_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          order_id: string;
+          order_item_id: string;
+          product_id: string;
+          product_name: string;
+          file_name: string;
+          file_size?: number | null;
+          file_type?: string | null;
+          download_url?: string | null;
+          download_limit?: number;
+          expires_at?: string | null;
+        };
+        Update: {
+          download_count?: number;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -536,6 +798,28 @@ export interface Database {
         Args: { user_id: string };
         Returns: string | null;
       };
+      get_user_stats: {
+        Args: { p_user_id: string };
+        Returns: {
+          total_orders: number;
+          processing_orders: number;
+          delivered_orders: number;
+          total_spent: number;
+          total_reviews: number;
+          helpful_votes: number;
+        }[];
+      };
+      get_reviewable_products: {
+        Args: { p_user_id: string };
+        Returns: {
+          order_item_id: string;
+          product_id: string;
+          product_name: string;
+          product_slug: string | null;
+          product_image: string | null;
+          order_date: string;
+        }[];
+      };
     };
     Enums: {
       achievement_category: AchievementCategory;
@@ -546,6 +830,10 @@ export interface Database {
       discount_type: DiscountType;
       coupon_source: CouponSource;
       xp_action: XPAction;
+      address_type: AddressType;
+      order_status: OrderStatus;
+      review_status: ReviewStatus;
+      report_status: ReportStatus;
     };
   };
 }

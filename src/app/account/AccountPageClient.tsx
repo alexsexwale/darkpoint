@@ -5,18 +5,32 @@ import Link from "next/link";
 import { Button } from "@/components/ui";
 import { AccountLayout } from "@/components/account";
 import { DailyRewardCalendar, DailyQuestList, StreakIndicator } from "@/components/gamification";
-import { useUIStore, useGamificationStore } from "@/stores";
+import { useUIStore, useGamificationStore, useAuthStore, useAccountStore } from "@/stores";
 
 export function AccountPageClient() {
-  // In a real app, this would come from an auth context/store
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // Set to true to show dashboard
-  const { openForgotPassword } = useUIStore();
+  const { openSignIn } = useUIStore();
+  const { isAuthenticated, isInitialized, user, signOut } = useAuthStore();
   const { userProfile, setDailyRewardModal, initDailyQuests } = useGamificationStore();
+  const { orders, stats, isLoadingStats, fetchOrders, fetchStats } = useAccountStore();
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Initialize daily quests on mount
   useEffect(() => {
     initDailyQuests();
   }, [initDailyQuests]);
+
+  // Fetch stats and orders when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchStats();
+      fetchOrders();
+    }
+  }, [isAuthenticated, fetchStats, fetchOrders]);
 
   // Check if daily reward has been claimed
   const today = new Date().toISOString().split("T")[0];
@@ -26,7 +40,36 @@ export function AccountPageClient() {
     setDailyRewardModal(true);
   };
 
-  if (!isLoggedIn) {
+  const handleSignIn = () => {
+    openSignIn();
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  // Show loading while auth is initializing
+  if (!mounted || !isInitialized) {
+    return (
+      <div className="container py-8">
+        <div className="nk-gap-2" />
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-heading uppercase tracking-wider">
+            Account
+          </h1>
+          <div className="w-24 h-px bg-white/20 mx-auto mt-4" />
+        </div>
+        <div className="flex justify-center py-12">
+          <svg className="animate-spin w-8 h-8 text-[var(--color-main-1)]" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return (
       <div className="container py-8">
         <div className="nk-gap-2" />
@@ -55,61 +98,20 @@ export function AccountPageClient() {
               />
             </svg>
 
-            <h2 className="text-2xl mb-4">Sign In</h2>
+            <h2 className="text-2xl mb-4">Sign In Required</h2>
             <p className="text-[var(--muted-foreground)] mb-8">
               Sign in to view your orders, track shipments, and manage your account
               settings.
             </p>
 
-            {/* Login Form */}
-            <form className="space-y-4 text-left">
-              <input
-                type="email"
-                placeholder="Email Address"
-                className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
-              />
+            <Button variant="primary" className="w-full" onClick={handleSignIn}>
+              Sign In
+            </Button>
 
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 accent-[var(--color-main-1)]"
-                  />
-                  <span className="text-sm">Remember me</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={openForgotPassword}
-                  className="text-sm text-[var(--muted-foreground)] hover:text-[var(--color-main-1)] transition-colors"
-                >
-                  Forgot password?
-                </button>
-              </div>
-
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIsLoggedIn(true);
-                }}
-              >
-                Sign In
-              </Button>
-            </form>
-
-            <div className="mt-8 pt-8 border-t border-[var(--color-dark-3)]">
-              <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                Don&apos;t have an account?
+            <div className="mt-6 pt-6 border-t border-[var(--color-dark-3)]">
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Don&apos;t have an account? Click sign in to register.
               </p>
-              <Button variant="outline" className="w-full">
-                Create Account
-              </Button>
             </div>
           </div>
         </div>
@@ -119,16 +121,21 @@ export function AccountPageClient() {
     );
   }
 
-  // Mock data
-  const recentOrders = [
-    { id: "24", date: "Dec 15, 2024", status: "Processing", total: 1207.49 },
-    { id: "18", date: "Dec 10, 2024", status: "Shipped", total: 2875.0 },
-  ];
+  // Get display name and stats
+  const displayName = userProfile?.display_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+  const userInitial = displayName.charAt(0).toUpperCase();
+  const memberSince = user?.created_at ? new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Recently";
+
+  // Recent orders (last 2)
+  const recentOrders = orders.slice(0, 2);
 
   const statusColors: Record<string, string> = {
-    Processing: "text-yellow-500 bg-yellow-500/10",
-    Shipped: "text-blue-400 bg-blue-400/10",
-    Delivered: "text-green-500 bg-green-500/10",
+    pending: "text-gray-400 bg-gray-400/10",
+    processing: "text-yellow-500 bg-yellow-500/10",
+    shipped: "text-blue-400 bg-blue-400/10",
+    delivered: "text-green-500 bg-green-500/10",
+    cancelled: "text-red-400 bg-red-400/10",
+    refunded: "text-purple-400 bg-purple-400/10",
   };
 
   // Logged in state - Dashboard
@@ -139,16 +146,24 @@ export function AccountPageClient() {
         <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-main-1)]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="relative flex items-center gap-4">
           {/* Avatar */}
-          <div className="w-16 h-16 rounded-full bg-[var(--color-main-1)] flex items-center justify-center text-2xl font-heading text-white">
-            J
-          </div>
+          {userProfile?.avatar_url || user?.user_metadata?.avatar_url ? (
+            <img
+              src={userProfile?.avatar_url || user?.user_metadata?.avatar_url}
+              alt={displayName}
+              className="w-16 h-16 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-[var(--color-main-1)] flex items-center justify-center text-2xl font-heading text-white">
+              {userInitial}
+            </div>
+          )}
           <div>
-            <h3 className="text-xl font-semibold">Welcome back, John! 👋</h3>
+            <h3 className="text-xl font-semibold">Welcome back, {displayName.split(" ")[0]}! 👋</h3>
             <p className="text-white/60">
-              Member since December 2024 •{" "}
+              Member since {memberSince} •{" "}
               <button
-                onClick={() => setIsLoggedIn(false)}
-                className="text-[var(--color-main-1)] hover:underline"
+                onClick={handleSignOut}
+                className="text-[var(--color-main-1)] hover:underline cursor-pointer"
               >
                 Log out
               </button>
@@ -166,7 +181,9 @@ export function AccountPageClient() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
             </div>
-            <span className="text-2xl font-bold">3</span>
+            <span className="text-2xl font-bold">
+              {isLoadingStats ? "..." : (stats?.total_orders || 0)}
+            </span>
           </div>
           <p className="text-sm text-white/60">Total Orders</p>
         </Link>
@@ -178,7 +195,9 @@ export function AccountPageClient() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span className="text-2xl font-bold">1</span>
+            <span className="text-2xl font-bold">
+              {isLoadingStats ? "..." : (stats?.processing_orders || 0)}
+            </span>
           </div>
           <p className="text-sm text-white/60">Processing</p>
         </Link>
@@ -190,7 +209,9 @@ export function AccountPageClient() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <span className="text-2xl font-bold">1</span>
+            <span className="text-2xl font-bold">
+              {isLoadingStats ? "..." : (stats?.delivered_orders || 0)}
+            </span>
           </div>
           <p className="text-sm text-white/60">Delivered</p>
         </Link>
@@ -202,7 +223,9 @@ export function AccountPageClient() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span className="text-2xl font-bold">R 5,173</span>
+            <span className="text-2xl font-bold">
+              {isLoadingStats ? "..." : `R ${(stats?.total_spent || 0).toLocaleString()}`}
+            </span>
           </div>
           <p className="text-sm text-white/60">Total Spent</p>
         </div>
@@ -264,12 +287,18 @@ export function AccountPageClient() {
                       </svg>
                     </div>
                     <div>
-                      <p className="font-semibold">Order #{order.id}</p>
-                      <p className="text-sm text-white/60">{order.date}</p>
+                      <p className="font-semibold">Order #{order.order_number}</p>
+                      <p className="text-sm text-white/60">
+                        {new Date(order.created_at).toLocaleDateString("en-ZA", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className={`text-xs px-2 py-1 rounded ${statusColors[order.status] || "text-white/60 bg-white/10"}`}>
+                    <span className={`text-xs px-2 py-1 rounded capitalize ${statusColors[order.status] || "text-white/60 bg-white/10"}`}>
                       {order.status}
                     </span>
                     <p className="mt-1 font-semibold">R {order.total.toFixed(2)}</p>
@@ -350,42 +379,34 @@ export function AccountPageClient() {
       </div>
 
       {/* Account Completion */}
-      <div className="mt-8 bg-[var(--color-dark-2)] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-heading text-xl">Complete Your Profile</h3>
-          <span className="text-[var(--color-main-1)] font-semibold">75%</span>
-        </div>
-        <div className="w-full bg-[var(--color-dark-4)] rounded-full h-2 mb-4">
-          <div className="bg-[var(--color-main-1)] h-2 rounded-full" style={{ width: "75%" }} />
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-white/60">Email verified</span>
+      {userProfile && (
+        <div className="mt-8 bg-[var(--color-dark-2)] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading text-xl">Your Progress</h3>
+            <span className="text-[var(--color-main-1)] font-semibold">
+              Level {userProfile.current_level}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-white/60">Profile complete</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⭐</span>
+              <span className="text-white/60">{userProfile.total_xp.toLocaleString()} XP</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🔥</span>
+              <span className="text-white/60">{userProfile.current_streak} day streak</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📝</span>
+              <span className="text-white/60">{stats?.total_reviews || 0} reviews</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🎰</span>
+              <span className="text-white/60">{userProfile.available_spins} spins available</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-white/60">Address added</span>
-          </div>
-          <Link href="/account/details" className="flex items-center gap-2 hover:text-[var(--color-main-1)] transition-colors">
-            <svg className="w-5 h-5 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-white/40">Add phone number</span>
-          </Link>
         </div>
-      </div>
+      )}
     </AccountLayout>
   );
 }
-
