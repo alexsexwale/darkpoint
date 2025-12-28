@@ -451,3 +451,38 @@ CREATE TRIGGER mark_item_reviewed_on_review
   AFTER INSERT ON product_reviews
   FOR EACH ROW EXECUTE FUNCTION mark_order_item_reviewed();
 
+-- ============================================
+-- WISHLIST TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_wishlist (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  product_id VARCHAR(100) NOT NULL,
+  product_name VARCHAR(255) NOT NULL,
+  product_slug VARCHAR(255),
+  product_image VARCHAR(512),
+  product_price DECIMAL(10,2) NOT NULL,
+  product_original_price DECIMAL(10,2),
+  product_category VARCHAR(100),
+  added_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, product_id)
+);
+
+-- Index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_user_wishlist_user_id ON user_wishlist(user_id);
+
+-- RLS Policies for user_wishlist
+ALTER TABLE user_wishlist ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own wishlist" ON user_wishlist;
+CREATE POLICY "Users can view their own wishlist" ON user_wishlist
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can add to their own wishlist" ON user_wishlist;
+CREATE POLICY "Users can add to their own wishlist" ON user_wishlist
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can remove from their own wishlist" ON user_wishlist;
+CREATE POLICY "Users can remove from their own wishlist" ON user_wishlist
+  FOR DELETE USING (auth.uid() = user_id);
+

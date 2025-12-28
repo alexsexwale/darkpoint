@@ -783,6 +783,35 @@ export interface Database {
           download_count?: number;
         };
       };
+      user_wishlist: {
+        Row: {
+          id: string;
+          user_id: string;
+          product_id: string;
+          product_name: string;
+          product_slug: string | null;
+          product_image: string | null;
+          product_price: number;
+          product_original_price: number | null;
+          product_category: string | null;
+          added_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          product_id: string;
+          product_name: string;
+          product_slug?: string | null;
+          product_image?: string | null;
+          product_price: number;
+          product_original_price?: number | null;
+          product_category?: string | null;
+        };
+        Update: {
+          product_price?: number;
+          product_original_price?: number | null;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: {

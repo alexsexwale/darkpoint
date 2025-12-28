@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUIStore, useAuthStore } from "@/stores";
+import { useUIStore, useAuthStore, useWishlistStore } from "@/stores";
 import { Button } from "./Button";
 
 export function SignInModal() {
   const { isSignInOpen, closeSignIn, openForgotPassword } = useUIStore();
   const { signIn, signUp, signInWithGoogle, signInWithGithub, isLoading, user } = useAuthStore();
+  const { fetchWishlist, processPendingProduct, pendingProduct } = useWishlistStore();
   
   const [mode, setMode] = useState<"login" | "register">("login");
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -22,12 +23,22 @@ export function SignInModal() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Close modal when user is authenticated
+  // Close modal when user is authenticated and handle wishlist
   useEffect(() => {
     if (user && isSignInOpen) {
+      // Close the modal first
       closeSignIn();
+      
+      // Fetch wishlist and process any pending product
+      const handlePostAuth = async () => {
+        await fetchWishlist();
+        if (pendingProduct) {
+          await processPendingProduct();
+        }
+      };
+      handlePostAuth();
     }
-  }, [user, isSignInOpen, closeSignIn]);
+  }, [user, isSignInOpen, closeSignIn, fetchWishlist, processPendingProduct, pendingProduct]);
 
   // Close on escape
   useEffect(() => {

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn, formatPrice } from "@/lib/utils";
-import { useCartStore, useWishlistStore } from "@/stores";
+import { useCartStore, useWishlistStore, useUIStore } from "@/stores";
 import type { Product } from "@/types";
 
 interface ProductCardProps {
@@ -21,10 +21,12 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [isWishlistLoading, setIsWishlistLoading] = useState(false);
   const dragStartX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const { addItem, openCart } = useCartStore();
   const { toggleItem, isInWishlist } = useWishlistStore();
+  const { openSignIn } = useUIStore();
 
   useEffect(() => {
     setMounted(true);
@@ -49,8 +51,20 @@ export function ProductCard({ product, className }: ProductCardProps) {
     openCart();
   };
 
-  const handleToggleWishlist = () => {
-    toggleItem(product);
+  const handleToggleWishlist = async () => {
+    if (isWishlistLoading) return;
+    
+    setIsWishlistLoading(true);
+    try {
+      const result = await toggleItem(product);
+      
+      // If auth is required, open sign-in modal
+      if (result.requiresAuth) {
+        openSignIn();
+      }
+    } finally {
+      setIsWishlistLoading(false);
+    }
   };
 
   // Swipe handlers
@@ -249,8 +263,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
             {/* Wishlist Icon */}
             <button
               onClick={handleToggleWishlist}
+              disabled={isWishlistLoading}
               className={cn(
                 "w-8 h-8 flex items-center justify-center rounded transition-all duration-200 cursor-pointer",
+                isWishlistLoading && "opacity-50 cursor-wait",
                 inWishlist
                   ? "text-[var(--color-main-1)]"
                   : "text-white/40 hover:text-[var(--color-main-1)]"
