@@ -1,16 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
+import Link from "next/link";
 import { Button } from "@/components/ui";
 
 export default function NewsletterPage() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual newsletter subscription
-    setSubscribed(true);
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to subscribe");
+      }
+
+      setSubscribed(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to subscribe");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -18,12 +42,22 @@ export default function NewsletterPage() {
       <div className="nk-gap-4 h-16" />
 
       <div className="max-w-2xl mx-auto text-center">
-        <h1 className="text-4xl md:text-5xl font-heading mb-8">Join Our Newsletter</h1>
+        <motion.h1 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-4xl md:text-5xl font-heading mb-8"
+        >
+          Join Our Newsletter
+        </motion.h1>
         
         <div className="h-px bg-[var(--color-main-1)]/30 mb-12 max-w-xs mx-auto" />
 
         {!subscribed ? (
-          <>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
             <p className="text-white/70 text-lg mb-8 leading-relaxed">
               Subscribe to our newsletter and be the first to know about new products, 
               exclusive deals, and tech tips. Plus, get <span className="text-[var(--color-main-1)] font-semibold">10% off</span> your 
@@ -38,18 +72,29 @@ export default function NewsletterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
+                  disabled={isLoading}
                   className="nk-form-control flex-1"
                 />
-                <Button type="submit" variant="primary" className="sm:flex-shrink-0">
-                  Subscribe
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  className="sm:flex-shrink-0"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Subscribing..." : "Subscribe"}
                 </Button>
               </div>
+              
+              {error && (
+                <p className="text-red-500 text-sm">{error}</p>
+              )}
             </form>
 
             <p className="text-white/40 text-sm mt-6">
               We respect your privacy. Unsubscribe at any time.
             </p>
 
+            {/* Benefits */}
             <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--color-main-1)]/20 flex items-center justify-center">
@@ -79,24 +124,66 @@ export default function NewsletterPage() {
                 <p className="text-white/50 text-sm">Helpful guides and product recommendations</p>
               </div>
             </div>
-          </>
+
+            {/* Extra CTA */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-16 p-8 bg-gradient-to-r from-[var(--color-main-1)]/10 to-transparent border border-[var(--color-main-1)]/30 rounded-lg"
+            >
+              <h3 className="text-xl font-heading mb-3">🎮 Want Even More?</h3>
+              <p className="text-white/60 mb-4">
+                Create a free account to unlock <span className="text-[var(--color-main-1)]">100 bonus XP</span>, 
+                a <span className="text-[var(--color-main-1)]">free spin</span> on our prize wheel, and more!
+              </p>
+              <Link href="/rewards">
+                <Button variant="outline">
+                  Explore Rewards →
+                </Button>
+              </Link>
+            </motion.div>
+          </motion.div>
         ) : (
-          <div className="py-12">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="py-12"
+          >
             <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/20 flex items-center justify-center">
-              <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <motion.svg 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring" }}
+                className="w-10 h-10 text-green-500" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              </motion.svg>
             </div>
-            <h2 className="text-3xl font-heading text-white mb-4">You&apos;re Subscribed!</h2>
-            <p className="text-white/70 mb-8">
-              Thanks for subscribing! Check your inbox for your 10% discount code.
+            <h2 className="text-3xl font-heading text-white mb-4">You&apos;re Subscribed! 🎉</h2>
+            <p className="text-white/70 mb-4">
+              Thanks for subscribing! Check your inbox for a welcome email.
             </p>
-            <a href="/store">
-              <Button variant="primary" size="lg">
-                Start Shopping
-              </Button>
-            </a>
-          </div>
+            <p className="text-white/60 mb-8">
+              Want to unlock <span className="text-[var(--color-main-1)]">100 bonus XP</span> and a{" "}
+              <span className="text-[var(--color-main-1)]">free spin</span>? Create an account now!
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/rewards">
+                <Button variant="primary" size="lg">
+                  🎡 Claim Rewards
+                </Button>
+              </Link>
+              <Link href="/store">
+                <Button variant="outline" size="lg">
+                  Start Shopping
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
         )}
       </div>
 
@@ -104,5 +191,3 @@ export default function NewsletterPage() {
     </div>
   );
 }
-
-

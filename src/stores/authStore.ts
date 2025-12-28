@@ -3,6 +3,27 @@ import { persist } from "zustand/middleware";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
+// Helper function to send welcome email
+async function sendWelcomeEmail(email: string, username?: string) {
+  try {
+    // Generate coupon code on the client side as fallback
+    const couponCode = `WELCOME-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+    
+    const response = await fetch("/api/email/welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, username, couponCode }),
+    });
+    
+    if (!response.ok) {
+      console.warn("Failed to send welcome email:", await response.text());
+    }
+  } catch (error) {
+    console.warn("Error sending welcome email:", error);
+    // Don't fail signup if email fails
+  }
+}
+
 interface AuthState {
   user: User | null;
   session: Session | null;
@@ -225,11 +246,19 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           // Check if email confirmation is required
           if (data.user && !data.session) {
+            // Send welcome email even if confirmation is needed
+            sendWelcomeEmail(email, metadata?.username || email.split("@")[0]);
+            
             set({ isLoading: false });
             return { 
               success: true, 
               error: "Please check your email to confirm your account" 
             };
+          }
+
+          // Send welcome email for immediate signup
+          if (data.user) {
+            sendWelcomeEmail(email, metadata?.username || email.split("@")[0]);
           }
 
           set({

@@ -41,8 +41,11 @@ export function DailyRewardModal() {
   }, [showDailyRewardModal]);
 
   const handleClaim = async () => {
-    const reward = await claimDailyReward();
-    if (reward) {
+    const success = await claimDailyReward();
+    if (success) {
+      const cycleDay = ((userProfile?.current_streak || 1) - 1) % 7;
+      const reward = DAILY_REWARDS[cycleDay] || DAILY_REWARDS[0];
+      
       setClaimed(true);
       setClaimedReward(reward);
       // Show bonus reveal animation after a delay if there's a bonus

@@ -503,47 +503,106 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
   // Spin the wheel
   spinWheel: async () => {
-    if (!isSupabaseConfigured()) return null;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
     const profile = get().userProfile;
     if (!profile || profile.available_spins <= 0) return null;
 
     set({ isSpinning: true });
 
-    try {
-      const { data, error } = await supabase
-        .rpc("spin_wheel", { p_user_id: user.id } as never);
+    // Try database first
+    if (isSupabaseConfigured()) {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .rpc("spin_wheel", { p_user_id: user.id } as never);
 
-      if (error) throw error;
+          if (!error) {
+            const result = data as unknown as SpinWheelResponse;
+            if (result?.success && result.prize) {
+              const prize = result.prize;
+              
+              set({ 
+                lastSpinResult: prize,
+                userProfile: {
+                  ...profile,
+                  available_spins: result.remaining_spins || 0,
+                },
+              });
 
-      const result = data as unknown as SpinWheelResponse;
-      if (result?.success && result.prize) {
-        const prize = result.prize;
-        
-        set({ 
-          lastSpinResult: prize,
-          userProfile: {
-            ...profile,
-            available_spins: result.remaining_spins || 0,
-          },
-        });
+              // Refresh profile to get updated XP/credits
+              setTimeout(() => get().fetchUserProfile(), 100);
+              
+              // Add notification for the prize
+              const prizeValueNum = typeof prize.prize_value === "string" ? parseInt(prize.prize_value) : prize.prize_value;
+              get().addNotification({
+                type: prize.prize_type === "xp" ? "xp_gain" : "reward",
+                title: `🎉 ${prize.name}!`,
+                message: prize.description || `You won: ${prize.prize_value}`,
+                xpAmount: prize.prize_type === "xp" ? prizeValueNum : undefined,
+              });
 
-        // Refresh profile to get updated XP/credits
-        setTimeout(() => get().fetchUserProfile(), 100);
-
-        return prize;
+              set({ isSpinning: false });
+              return prize;
+            }
+          } else {
+            console.warn("Spin wheel RPC error, using local fallback:", error);
+          }
+        } catch (error) {
+          console.warn("Spin wheel error, using local fallback:", error);
+        }
       }
-
-      return null;
-    } catch (error) {
-      console.error("Error spinning wheel:", error);
-      return null;
-    } finally {
-      set({ isSpinning: false });
     }
+
+    // Local fallback when database isn't available
+    const localPrizes: SpinPrize[] = [
+      { id: "1", name: "+10 XP", description: "Nice! You won 10 XP!", prize_type: "xp", prize_value: "10", probability: 30, color: "#4CAF50", is_active: true },
+      { id: "2", name: "+25 XP", description: "Great! You won 25 XP!", prize_type: "xp", prize_value: "25", probability: 25, color: "#8BC34A", is_active: true },
+      { id: "3", name: "+50 XP", description: "Awesome! You won 50 XP!", prize_type: "xp", prize_value: "50", probability: 15, color: "#CDDC39", is_active: true },
+      { id: "4", name: "+100 XP", description: "Amazing! You won 100 XP!", prize_type: "xp", prize_value: "100", probability: 8, color: "#FFEB3B", is_active: true },
+      { id: "5", name: "5% Off", description: "You won 5% off your next order!", prize_type: "discount", prize_value: "5", probability: 10, color: "#FF9800", is_active: true },
+      { id: "6", name: "10% Off", description: "You won 10% off your next order!", prize_type: "discount", prize_value: "10", probability: 5, color: "#FF5722", is_active: true },
+      { id: "7", name: "Free Spin!", description: "Lucky! You get another spin!", prize_type: "spin", prize_value: "1", probability: 5, color: "#E91E63", is_active: true },
+      { id: "8", name: "Mystery!", description: "Something special awaits!", prize_type: "mystery", prize_value: "0", probability: 2, color: "#9E9E9E", is_active: true },
+    ];
+
+    // Weighted random selection
+    const totalWeight = localPrizes.reduce((sum, p) => sum + p.probability, 0);
+    let random = Math.random() * totalWeight;
+    let selectedPrize = localPrizes[0];
+    
+    for (const prize of localPrizes) {
+      random -= prize.probability;
+      if (random <= 0) {
+        selectedPrize = prize;
+        break;
+      }
+    }
+
+    // Apply prize locally
+    const prizeValue = parseInt(selectedPrize.prize_value) || 0;
+    const newSpins = profile.available_spins - 1 + (selectedPrize.prize_type === "spin" ? prizeValue : 0);
+    const newXP = profile.total_xp + (selectedPrize.prize_type === "xp" ? prizeValue : 0);
+
+    set({
+      lastSpinResult: selectedPrize,
+      userProfile: {
+        ...profile,
+        available_spins: newSpins,
+        total_xp: newXP,
+      },
+    });
+
+    // Add notification
+    get().addNotification({
+      type: selectedPrize.prize_type === "xp" ? "xp_gain" : "reward",
+      title: `🎉 ${selectedPrize.name}!`,
+      message: selectedPrize.description || "",
+      xpAmount: selectedPrize.prize_type === "xp" ? prizeValue : undefined,
+    });
+
+    set({ isSpinning: false });
+    return selectedPrize;
   },
 
   setSpinning: (spinning) => set({ isSpinning: spinning }),
