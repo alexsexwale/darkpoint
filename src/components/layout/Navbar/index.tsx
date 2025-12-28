@@ -10,13 +10,14 @@ import { NavLinks } from "./NavLinks";
 import { NavIcons } from "./NavIcons";
 import { MobileNav } from "./MobileNav";
 import { XPBar, StreakIndicator, LevelBadge } from "@/components/gamification";
-import { useGamificationStore } from "@/stores";
+import { useGamificationStore, useAuthStore } from "@/stores";
 
 export function Navbar() {
   const [isHidden, setIsHidden] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { scrollY } = useScroll();
-  const { userProfile, isAuthenticated } = useGamificationStore();
+  const { userProfile } = useGamificationStore();
+  const { isAuthenticated } = useAuthStore();
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     const previous = scrollY.getPrevious() ?? 0;
