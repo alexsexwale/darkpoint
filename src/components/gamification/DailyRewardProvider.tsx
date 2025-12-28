@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useGamificationStore } from "@/stores";
+import { useGamificationStore, useAuthStore } from "@/stores";
 
 interface DailyRewardProviderProps {
   children: React.ReactNode;
@@ -18,7 +18,8 @@ interface DailyRewardProviderProps {
  * - Checks if user has already claimed today's reward
  */
 export function DailyRewardProvider({ children }: DailyRewardProviderProps) {
-  const { userProfile, isAuthenticated, setDailyRewardModal } = useGamificationStore();
+  const { userProfile, setDailyRewardModal } = useGamificationStore();
+  const { isAuthenticated } = useAuthStore();
   const hasCheckedRef = useRef(false);
 
   useEffect(() => {
