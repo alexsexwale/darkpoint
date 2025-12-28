@@ -206,6 +206,7 @@ interface GamificationActions {
 
   // XP
   addXP: (amount: number, action: string, description?: string) => Promise<boolean>;
+  addXPLocal: (amount: number, action: string, description?: string) => boolean;
 
   // Achievement check
   checkAchievements: () => Promise<string[]>;
@@ -590,10 +591,15 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
   // Add XP
   addXP: async (amount, action, description) => {
-    if (!isSupabaseConfigured()) return false;
+    if (!isSupabaseConfigured()) {
+      // Fallback: update local state only
+      return get().addXPLocal(amount, action, description);
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) {
+      return get().addXPLocal(amount, action, description);
+    }
 
     try {
       const { data, error } = await supabase
@@ -604,7 +610,11 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           p_description: description || null
         } as never);
 
-      if (error) throw error;
+      if (error) {
+        // If RPC function doesn't exist, fall back to local update
+        console.warn("RPC add_xp not available, using local fallback:", error);
+        return get().addXPLocal(amount, action, description);
+      }
 
       const result = data as unknown as AddXPResponse;
       if (result?.success) {
@@ -632,11 +642,80 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         return true;
       }
 
-      return false;
+      // RPC returned but was not successful - use local fallback
+      return get().addXPLocal(amount, action, description);
     } catch (error) {
-      console.error("Error adding XP:", error);
-      return false;
+      console.warn("Error adding XP via RPC, using local fallback:", error);
+      return get().addXPLocal(amount, action, description);
     }
+  },
+
+  // Local XP addition (fallback when RPC not available)
+  addXPLocal: (amount, action, description) => {
+    const { userProfile, levelInfo } = get();
+    
+    if (!userProfile) {
+      // Create a basic profile if none exists
+      set({
+        userProfile: {
+          id: "local",
+          username: null,
+          display_name: null,
+          avatar_url: null,
+          total_xp: amount,
+          current_level: 1,
+          available_spins: 0,
+          store_credit: 0,
+          total_spent: 0,
+          total_orders: 0,
+          total_reviews: 0,
+          referred_by: null,
+          current_streak: 0,
+          longest_streak: 0,
+          last_login_date: null,
+          referral_code: null,
+          referral_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      });
+    } else {
+      const newXP = userProfile.total_xp + amount;
+      const oldLevel = userProfile.current_level;
+      
+      // Calculate new level based on XP thresholds
+      const newLevel = Math.floor(newXP / 500) + 1; // Simple level calc: 500 XP per level
+      const leveledUp = newLevel > oldLevel;
+
+      set({
+        userProfile: {
+          ...userProfile,
+          total_xp: newXP,
+          current_level: newLevel,
+          updated_at: new Date().toISOString(),
+        },
+      });
+
+      // Check for level up
+      if (leveledUp) {
+        const tier = getLevelTier(newLevel);
+        get().setLevelUpModal(true, {
+          newLevel,
+          newTitle: tier.title,
+          perks: tier.perks,
+        });
+      }
+    }
+
+    // Add notification
+    get().addNotification({
+      type: "xp_gain",
+      title: `+${amount} XP`,
+      message: description || `Earned from ${action}`,
+      xpAmount: amount,
+    });
+
+    return true;
   },
 
   // Check achievements
