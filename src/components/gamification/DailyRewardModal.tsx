@@ -48,7 +48,6 @@ export function DailyRewardModal() {
       
       setClaimed(true);
       setClaimedReward(reward);
-      // Show bonus reveal animation after a delay if there's a bonus
       if (reward.reward) {
         setTimeout(() => setShowBonusReveal(true), 800);
       }

@@ -74,6 +74,7 @@ export function WishlistPageClient() {
       featured: false,
       tags: [],
       createdAt: item.added_at,
+      updatedAt: item.added_at,
     };
   };
 
