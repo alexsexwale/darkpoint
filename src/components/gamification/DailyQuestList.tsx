@@ -4,17 +4,20 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui";
 import { DailyQuestCard } from "./DailyQuestCard";
 import { getDailyQuests, type DailyQuest } from "@/types/gamification";
-import { useGamificationStore } from "@/stores";
+import { useGamificationStore, useUIStore } from "@/stores";
 
 interface DailyQuestListProps {
   className?: string;
   compact?: boolean;
+  showLoginPrompt?: boolean;
 }
 
-export function DailyQuestList({ className, compact = false }: DailyQuestListProps) {
+export function DailyQuestList({ className, compact = false, showLoginPrompt = false }: DailyQuestListProps) {
   const { dailyQuests } = useGamificationStore();
+  const { openSignIn } = useUIStore();
 
   // Get today's quests - either from store or generate fresh
   const quests = useMemo(() => {
@@ -30,11 +33,92 @@ export function DailyQuestList({ className, compact = false }: DailyQuestListPro
   const allCompleted = completedCount === quests.length;
 
   const handleQuestAction = (quest: DailyQuest) => {
-    if (quest.requirement.target) {
-      // Navigation is handled by Link wrapper
+    if (showLoginPrompt) {
+      openSignIn();
+      return;
     }
+    // Navigation is handled by Link wrapper for quests with targets
   };
 
+  // Guest view - show quests but with login prompts
+  if (showLoginPrompt) {
+    return (
+      <div className={cn("bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6", className)}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="font-heading text-xl">Today&apos;s Quests</h3>
+            <p className="text-sm text-white/60">Complete quests to earn XP</p>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-heading text-[var(--color-main-1)]">
+              0/{quests.length}
+            </div>
+            <span className="text-xs text-white/40">Completed</span>
+          </div>
+        </div>
+
+        {/* Progress Summary */}
+        <div className="mb-6 p-4 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-white/60">Quest Progress</span>
+            <span className="text-sm text-[var(--color-main-1)]">
+              0/{potentialXP} XP
+            </span>
+          </div>
+          <div className="w-full h-3 bg-[var(--color-dark-4)] rounded-full overflow-hidden">
+            <div className="h-full rounded-full w-0" />
+          </div>
+        </div>
+
+        {/* Quest List (Preview) */}
+        <div className={cn("space-y-4 relative", compact && "space-y-3")}>
+          {quests.map((quest, index) => (
+            <motion.div
+              key={quest.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="relative"
+            >
+              <div className="opacity-60 pointer-events-none">
+                <DailyQuestCard
+                  quest={{ ...quest, progress: 0, completed: false }}
+                  onAction={() => {}}
+                />
+              </div>
+            </motion.div>
+          ))}
+          
+          {/* Login Overlay */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="absolute inset-0 flex items-center justify-center bg-[var(--color-dark-2)]/80 backdrop-blur-sm"
+          >
+            <div className="text-center p-6">
+              <div className="text-4xl mb-3">🔐</div>
+              <h4 className="font-heading text-lg mb-2">Sign In to Track Progress</h4>
+              <p className="text-sm text-white/60 mb-4">
+                Your quest progress is saved to your account
+              </p>
+              <Button variant="primary" size="sm" onClick={() => openSignIn()}>
+                Sign In Now
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Reset Timer */}
+        <div className="mt-4 text-center">
+          <QuestResetTimer />
+        </div>
+      </div>
+    );
+  }
+
+  // Authenticated user view
   return (
     <div className={cn("bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6", className)}>
       {/* Header */}
@@ -145,4 +229,3 @@ function QuestResetTimer() {
     </p>
   );
 }
-

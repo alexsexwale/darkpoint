@@ -132,6 +132,9 @@ export const useWishlistStore = create<WishlistStore>()((set, get) => ({
 
       // Trigger quest progress for "Wishful Thinking" quest
       const gamificationStore = useGamificationStore.getState();
+      // Log activity to database for tracking
+      gamificationStore.logActivity("wishlist_add", product.id);
+      // Update quest progress
       gamificationStore.updateQuestProgress("add_wishlist", 1);
 
       return { success: true };

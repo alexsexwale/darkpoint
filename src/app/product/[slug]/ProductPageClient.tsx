@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useProduct } from "@/hooks";
 import { ProductGallery, ProductTabs, ProductDescription, VariantSelectors } from "@/components/store";
 import { Rating, ProductDetailSkeleton } from "@/components/ui";
 import { AddToCartButton } from "./AddToCartButton";
 import { AddToWishlistButton } from "./AddToWishlistButton";
+import { useGamificationStore, useAuthStore } from "@/stores";
 import type { ProductVariant } from "@/types";
 
 interface ProductPageClientProps {
@@ -26,6 +27,9 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
   const productId = extractProductId(slug);
   const { product, loading, error } = useProduct(productId);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const { updateQuestProgress, initDailyQuests, logActivity } = useGamificationStore();
+  const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
+  const trackedProductRef = useRef<string | null>(null);
   
   // Set default variant when product loads
   useEffect(() => {
@@ -34,6 +38,30 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
       setSelectedVariant(product.variants[0]);
     }
   }, [product, selectedVariant]);
+
+  // Track product view for "Window Shopper" quest (only for authenticated users)
+  useEffect(() => {
+    // Only track if:
+    // 1. Product is loaded
+    // 2. Auth is initialized
+    // 3. User is authenticated
+    // 4. We haven't tracked THIS specific product yet in this component instance
+    if (product && authInitialized && isAuthenticated && trackedProductRef.current !== productId) {
+      trackedProductRef.current = productId;
+      
+      // Ensure quests are initialized
+      initDailyQuests();
+      
+      // Log activity to database (handles deduplication server-side)
+      logActivity("product_view", productId).then((isNewActivity) => {
+        if (isNewActivity) {
+          // Update quest progress - add 1 for this new product view
+          console.log(`[Quest] Tracking product view: ${productId}`);
+          updateQuestProgress("browse_products", 1);
+        }
+      });
+    }
+  }, [product, productId, authInitialized, isAuthenticated, updateQuestProgress, initDailyQuests, logActivity]);
   
   // Compute effective price based on selected variant
   const effectivePrice = useMemo(() => {

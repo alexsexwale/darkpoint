@@ -211,9 +211,12 @@ interface GamificationActions {
   // Achievement check
   checkAchievements: () => Promise<string[]>;
 
-  // Daily quests (client-side)
+  // Daily quests
   initDailyQuests: () => void;
+  syncQuestProgressFromDB: () => Promise<void>;
   updateQuestProgress: (questId: string, progress: number) => void;
+  updateQuestProgressWithDB: (questId: string, progressToAdd: number, requirement: number, xpReward: number) => Promise<void>;
+  logActivity: (activityType: string, referenceId?: string) => Promise<boolean>;
   completeQuest: (questId: string) => void;
 
   // Notification actions
@@ -753,19 +756,62 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     }
   },
 
-  // Daily quests (client-side for now)
-      initDailyQuests: () => {
-        const today = new Date().toISOString().split("T")[0];
-        const { questsDate, dailyQuests } = get();
+  // Daily quests
+  initDailyQuests: () => {
+    const today = new Date().toISOString().split("T")[0];
+    const { questsDate, dailyQuests } = get();
 
-        if (questsDate === today && dailyQuests.length > 0) {
-          return;
-        }
+    if (questsDate === today && dailyQuests.length > 0) {
+      return;
+    }
 
-        const newQuests = getDailyQuests(today);
-        set({ dailyQuests: newQuests, questsDate: today });
-      },
+    const newQuests = getDailyQuests(today);
+    set({ dailyQuests: newQuests, questsDate: today });
+    
+    // Sync with database if user is logged in
+    get().syncQuestProgressFromDB();
+  },
 
+  // Sync quest progress from database
+  syncQuestProgressFromDB: async () => {
+    if (!isSupabaseConfigured()) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .rpc("get_daily_quest_progress", { p_user_id: user.id } as never);
+
+      if (error) {
+        console.warn("Could not sync quest progress:", error);
+        return;
+      }
+
+      const result = data as { success: boolean; quests: Array<{ quest_id: string; progress: number; completed: boolean; completed_at: string | null }> };
+      if (result?.success && result.quests) {
+        // Update local quests with database progress
+        const { dailyQuests } = get();
+        const updatedQuests = dailyQuests.map((quest) => {
+          const dbProgress = result.quests.find((q) => q.quest_id === quest.id);
+          if (dbProgress) {
+            return {
+              ...quest,
+              progress: dbProgress.progress,
+              completed: dbProgress.completed,
+              completedAt: dbProgress.completed_at || undefined,
+            };
+          }
+          return quest;
+        });
+        set({ dailyQuests: updatedQuests });
+      }
+    } catch (error) {
+      console.warn("Error syncing quest progress:", error);
+    }
+  },
+
+  // Update quest progress (local + database)
   updateQuestProgress: (questId, progressToAdd) => {
     // Initialize quests if they haven't been loaded yet
     let quests = get().dailyQuests;
@@ -774,43 +820,93 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       quests = get().dailyQuests;
     }
 
-        const quest = quests.find((q) => q.id === questId);
-        
+    const quest = quests.find((q) => q.id === questId);
+    
     // Quest might not be in today's rotation - that's OK
-        if (!quest || quest.completed) return;
+    if (!quest || quest.completed) return;
 
-        const updatedQuests = quests.map((q) => {
-          if (q.id === questId) {
-        // Add to existing progress (increment, not replace)
+    // Update local state immediately for responsiveness
+    const updatedQuests = quests.map((q) => {
+      if (q.id === questId) {
         const newProgress = Math.min(q.progress + progressToAdd, q.requirement.count);
-            const completed = newProgress >= q.requirement.count;
-            
-            if (completed && !q.completed) {
-          // Quest completed - add XP
+        const completed = newProgress >= q.requirement.count;
+        
+        if (completed && !q.completed) {
+          // Quest completed - add XP (will use local fallback if DB not available)
           setTimeout(async () => {
             await get().addXP(q.xpReward, "quest", `Quest: ${q.title}`);
-              }, 0);
-            }
+          }, 0);
+        }
 
-            return {
-              ...q,
-              progress: newProgress,
-              completed,
-              completedAt: completed ? new Date().toISOString() : undefined,
-            };
-          }
-          return q;
-        });
+        return {
+          ...q,
+          progress: newProgress,
+          completed,
+          completedAt: completed ? new Date().toISOString() : undefined,
+        };
+      }
+      return q;
+    });
 
-        set({ dailyQuests: updatedQuests });
-      },
+    set({ dailyQuests: updatedQuests });
 
-      completeQuest: (questId) => {
+    // Also update database if user is logged in
+    get().updateQuestProgressWithDB(questId, progressToAdd, quest.requirement.count, quest.xpReward);
+  },
+
+  // Update quest progress in database
+  updateQuestProgressWithDB: async (questId, progressToAdd, requirement, xpReward) => {
+    if (!isSupabaseConfigured()) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      await supabase.rpc("update_quest_progress", {
+        p_user_id: user.id,
+        p_quest_id: questId,
+        p_progress_to_add: progressToAdd,
+        p_quest_requirement: requirement,
+        p_xp_reward: xpReward,
+      } as never);
+    } catch (error) {
+      console.warn("Could not save quest progress to database:", error);
+    }
+  },
+
+  // Log user activity for quest tracking
+  logActivity: async (activityType, referenceId) => {
+    if (!isSupabaseConfigured()) return false;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    try {
+      const { data, error } = await supabase.rpc("log_user_activity", {
+        p_user_id: user.id,
+        p_activity_type: activityType,
+        p_reference_id: referenceId || null,
+      } as never);
+
+      if (error) {
+        console.warn("Could not log activity:", error);
+        return false;
+      }
+
+      const result = data as { success: boolean; duplicate: boolean };
+      return result?.success && !result?.duplicate;
+    } catch (error) {
+      console.warn("Error logging activity:", error);
+      return false;
+    }
+  },
+
+  completeQuest: (questId) => {
     const quest = get().dailyQuests.find((q) => q.id === questId);
     if (quest && !quest.completed) {
-        get().updateQuestProgress(questId, quest.requirement.count);
+      get().updateQuestProgress(questId, quest.requirement.count);
     }
-      },
+  },
 
       // Notification actions
       addNotification: (notification) => {

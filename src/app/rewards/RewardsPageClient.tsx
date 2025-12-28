@@ -2,9 +2,164 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
-import { DailyRewardCalendar, DailyQuestList, StreakIndicator } from "@/components/gamification";
-import { useGamificationStore } from "@/stores";
+import { DailyRewardCalendar, DailyQuestList, StreakIndicator, LevelBadge, XPBar } from "@/components/gamification";
+import { useGamificationStore, useAuthStore, useUIStore } from "@/stores";
+
+// Animated background particles for the hero section
+function FloatingRewards() {
+  const rewards = ["🎁", "⭐", "💎", "🏆", "🎮", "🔥", "✨", "🎯"];
+  
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {rewards.map((emoji, i) => (
+        <motion.div
+          key={i}
+          className="absolute text-4xl opacity-20"
+          initial={{ 
+            x: Math.random() * 100 + "%", 
+            y: "110%",
+            rotate: 0
+          }}
+          animate={{ 
+            y: "-10%",
+            rotate: 360
+          }}
+          transition={{
+            duration: 15 + Math.random() * 10,
+            repeat: Infinity,
+            delay: i * 2,
+            ease: "linear"
+          }}
+          style={{ left: `${10 + i * 12}%` }}
+        >
+          {emoji}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// Guest welcome component with attractive CTA
+function GuestWelcome() {
+  const { openSignIn } = useUIStore();
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative overflow-hidden bg-gradient-to-br from-[var(--color-main-1)]/30 via-purple-900/20 to-[var(--color-dark-1)] border-2 border-[var(--color-main-1)]/50 rounded-lg p-8 md:p-12 text-center mb-16"
+    >
+      <FloatingRewards />
+      
+      <div className="relative z-10">
+        <motion.div 
+          className="text-7xl mb-6"
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          🎮
+        </motion.div>
+        
+        <h2 className="text-3xl md:text-4xl font-heading uppercase tracking-wider mb-4">
+          <span className="text-[var(--color-main-1)]">Unlock</span> Your Rewards
+        </h2>
+        
+        <p className="text-white/70 max-w-xl mx-auto mb-8 text-lg">
+          Join the Dark Point community to earn XP, complete daily quests, 
+          unlock achievements, and get exclusive discounts on gaming gear!
+        </p>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 max-w-2xl mx-auto">
+          {[
+            { icon: "⭐", label: "Earn XP", desc: "Level up!" },
+            { icon: "🎁", label: "Daily Rewards", desc: "Free bonuses" },
+            { icon: "🏆", label: "Achievements", desc: "Get badges" },
+            { icon: "💰", label: "Discounts", desc: "Save money" },
+          ].map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + i * 0.1 }}
+              className="bg-[var(--color-dark-2)]/80 backdrop-blur p-4 rounded-lg border border-[var(--color-dark-3)]"
+            >
+              <div className="text-3xl mb-2">{item.icon}</div>
+              <div className="font-heading text-sm">{item.label}</div>
+              <div className="text-xs text-white/50">{item.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button 
+            variant="primary" 
+            size="lg"
+            onClick={() => openSignIn()}
+            className="px-8"
+          >
+            Sign In to Start Earning
+          </Button>
+          <Button 
+            variant="outline" 
+            size="lg"
+            onClick={() => openSignIn()}
+            className="px-8"
+          >
+            Create Free Account
+          </Button>
+        </div>
+
+        <p className="text-white/40 text-sm mt-6">
+          🎉 New members get <span className="text-[var(--color-main-1)]">100 bonus XP</span> and a free spin!
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+// User stats header for logged-in users
+function UserStatsHeader() {
+  const { userProfile } = useGamificationStore();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gradient-to-r from-[var(--color-dark-2)] to-[var(--color-dark-1)] border border-[var(--color-dark-3)] rounded-lg p-6 mb-8"
+    >
+      <div className="flex flex-col md:flex-row items-center gap-6">
+        <LevelBadge size="lg" showTitle />
+        
+        <div className="flex-1 w-full">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white/60 text-sm">Progress to next level</span>
+            <span className="text-[var(--color-main-1)] font-heading">
+              {userProfile?.total_xp.toLocaleString() || 0} XP
+            </span>
+          </div>
+          <XPBar showLevel={false} />
+        </div>
+
+        <div className="flex gap-6 text-center">
+          <div>
+            <div className="text-2xl font-heading text-[var(--color-main-1)]">
+              {userProfile?.current_streak || 0}
+            </div>
+            <div className="text-xs text-white/50">Day Streak</div>
+          </div>
+          <div>
+            <div className="text-2xl font-heading text-green-400">
+              {userProfile?.available_spins || 0}
+            </div>
+            <div className="text-xs text-white/50">Free Spins</div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 export function RewardsPageClient() {
   const { 
@@ -14,6 +169,8 @@ export function RewardsPageClient() {
     claimDailyReward,
     isLoading,
   } = useGamificationStore();
+  
+  const { isAuthenticated, isInitialized } = useAuthStore();
 
   // Initialize daily quests on mount
   useEffect(() => {
@@ -25,31 +182,84 @@ export function RewardsPageClient() {
     await claimDailyReward();
   };
 
+  // Show loading skeleton while auth initializes
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen">
+        <section className="py-16">
+          <div className="container">
+            <div className="animate-pulse">
+              <div className="h-12 bg-[var(--color-dark-2)] rounded w-1/3 mx-auto mb-4" />
+              <div className="h-6 bg-[var(--color-dark-2)] rounded w-1/2 mx-auto mb-16" />
+              <div className="h-64 bg-[var(--color-dark-2)] rounded mb-8" />
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <section className="py-16">
         <div className="container">
           {/* Header */}
-          <div className="text-center mb-16">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
             <h1 className="text-4xl md:text-5xl font-heading uppercase tracking-wider mb-4">
               <span className="text-[var(--color-main-1)]">Rewards</span> Center
             </h1>
             <p className="text-white/60 max-w-lg mx-auto">
-              Level up your gaming experience! Earn XP, complete achievements, and unlock exclusive rewards.
+              {isAuthenticated 
+                ? "Complete quests, earn XP, and unlock exclusive rewards!"
+                : "Level up your gaming experience! Earn XP, complete achievements, and unlock exclusive rewards."
+              }
             </p>
-          </div>
+          </motion.div>
+
+          {/* Guest Welcome or User Stats */}
+          {!isAuthenticated ? (
+            <GuestWelcome />
+          ) : (
+            <UserStatsHeader />
+          )}
 
           {/* Featured: Daily Rewards & Quests */}
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-16">
             {/* Daily Rewards */}
-            <div>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-heading uppercase tracking-wider">Daily Rewards</h2>
-                <StreakIndicator />
+                {isAuthenticated && <StreakIndicator />}
               </div>
-              {canClaimDailyReward ? (
-                <div className="bg-gradient-to-br from-[var(--color-main-1)]/20 to-[var(--color-dark-2)] border-2 border-[var(--color-main-1)] p-8 text-center h-full flex flex-col items-center justify-center">
-                  <div className="text-6xl mb-4 animate-bounce">🎁</div>
+              
+              {!isAuthenticated ? (
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center h-full flex flex-col items-center justify-center min-h-[300px]">
+                  <div className="text-5xl mb-4 opacity-50">🔒</div>
+                  <h3 className="text-lg font-heading mb-2">Sign In Required</h3>
+                  <p className="text-white/50 text-sm mb-4">
+                    Log in to claim daily rewards and build your streak!
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => useUIStore.getState().openSignIn()}>
+                    Sign In
+                  </Button>
+                </div>
+              ) : canClaimDailyReward ? (
+                <div className="bg-gradient-to-br from-[var(--color-main-1)]/20 to-[var(--color-dark-2)] border-2 border-[var(--color-main-1)] p-8 text-center h-full flex flex-col items-center justify-center min-h-[300px]">
+                  <motion.div 
+                    className="text-6xl mb-4"
+                    animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    🎁
+                  </motion.div>
                   <h3 className="text-2xl font-heading text-[var(--color-main-1)] mb-2">
                     Daily Reward Available!
                   </h3>
@@ -68,132 +278,205 @@ export function RewardsPageClient() {
               ) : (
                 <DailyRewardCalendar />
               )}
-            </div>
+            </motion.div>
 
             {/* Daily Quests */}
-            <DailyQuestList />
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <DailyQuestList showLoginPrompt={!isAuthenticated} />
+            </motion.div>
           </div>
 
           {/* Rewards Grid */}
-          <div className="text-center mb-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-center mb-8"
+          >
             <h2 className="text-2xl font-heading uppercase tracking-wider">More Ways to Earn</h2>
-          </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Spin Wheel */}
-            <Link href="/rewards/spin" className="group">
-              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full">
-                <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
-                  🎡
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Link href={isAuthenticated ? "/rewards/spin" : "#"} className="group block" onClick={(e) => !isAuthenticated && (e.preventDefault(), useUIStore.getState().openSignIn())}>
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
+                  {!isAuthenticated && (
+                    <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded">
+                      Login Required
+                    </div>
+                  )}
+                  <motion.div 
+                    className="text-6xl mb-4"
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    🎡
+                  </motion.div>
+                  <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
+                    Spin to Win
+                  </h3>
+                  <p className="text-sm text-white/60 mb-4">
+                    Try your luck for discounts, XP, and prizes!
+                  </p>
+                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                    {isAuthenticated ? "Spin Now →" : "Sign In to Spin"}
+                  </Button>
                 </div>
-                <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
-                  Spin to Win
-                </h3>
-                <p className="text-sm text-white/60 mb-4">
-                  Try your luck for discounts, XP, and prizes!
-                </p>
-                <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
-                  Spin Now →
-                </Button>
-              </div>
-            </Link>
+              </Link>
+            </motion.div>
 
             {/* Rewards Shop */}
-            <Link href="/rewards/shop" className="group">
-              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full">
-                <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
-                  🛒
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.55 }}
+            >
+              <Link href={isAuthenticated ? "/rewards/shop" : "#"} className="group block" onClick={(e) => !isAuthenticated && (e.preventDefault(), useUIStore.getState().openSignIn())}>
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
+                  {!isAuthenticated && (
+                    <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded">
+                      Login Required
+                    </div>
+                  )}
+                  <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
+                    🛒
+                  </div>
+                  <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
+                    Rewards Shop
+                  </h3>
+                  <p className="text-sm text-white/60 mb-4">
+                    Exchange XP for discounts and exclusive items
+                  </p>
+                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                    {isAuthenticated ? "Browse Shop →" : "Sign In to Shop"}
+                  </Button>
                 </div>
-                <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
-                  Rewards Shop
-                </h3>
-                <p className="text-sm text-white/60 mb-4">
-                  Exchange XP for discounts and exclusive items
-                </p>
-                <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
-                  Browse Shop →
-                </Button>
-              </div>
-            </Link>
+              </Link>
+            </motion.div>
 
             {/* Mystery Boxes */}
-            <Link href="/store/mystery-boxes" className="group">
-              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full">
-                <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
-                  📦
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <Link href="/store/mystery-boxes" className="group block">
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full">
+                  <motion.div 
+                    className="text-6xl mb-4"
+                    whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
+                  >
+                    📦
+                  </motion.div>
+                  <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
+                    Mystery Boxes
+                  </h3>
+                  <p className="text-sm text-white/60 mb-4">
+                    Unbox amazing gear at incredible prices!
+                  </p>
+                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                    Open Crates →
+                  </Button>
                 </div>
-                <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
-                  Mystery Boxes
-                </h3>
-                <p className="text-sm text-white/60 mb-4">
-                  Unbox amazing gear at incredible prices!
-                </p>
-                <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
-                  Open Crates →
-                </Button>
-              </div>
-            </Link>
+              </Link>
+            </motion.div>
 
             {/* Achievements */}
-            <Link href="/account/achievements" className="group">
-              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full">
-                <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
-                  🏆
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.65 }}
+            >
+              <Link href={isAuthenticated ? "/account/achievements" : "#"} className="group block" onClick={(e) => !isAuthenticated && (e.preventDefault(), useUIStore.getState().openSignIn())}>
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
+                  {!isAuthenticated && (
+                    <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded">
+                      Login Required
+                    </div>
+                  )}
+                  <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
+                    🏆
+                  </div>
+                  <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
+                    Achievements
+                  </h3>
+                  <p className="text-sm text-white/60 mb-4">
+                    Complete challenges and earn bonus XP
+                  </p>
+                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                    {isAuthenticated ? "View All →" : "Sign In"}
+                  </Button>
                 </div>
-                <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
-                  Achievements
-                </h3>
-                <p className="text-sm text-white/60 mb-4">
-                  Complete challenges and earn bonus XP
-                </p>
-                <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
-                  View All →
-                </Button>
-              </div>
-            </Link>
+              </Link>
+            </motion.div>
 
             {/* Referrals */}
-            <Link href="/account/referrals" className="group">
-              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full">
-                <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
-                  🤝
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+            >
+              <Link href={isAuthenticated ? "/account/referrals" : "#"} className="group block" onClick={(e) => !isAuthenticated && (e.preventDefault(), useUIStore.getState().openSignIn())}>
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
+                  {!isAuthenticated && (
+                    <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded">
+                      Login Required
+                    </div>
+                  )}
+                  <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
+                    🤝
+                  </div>
+                  <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
+                    Refer Friends
+                  </h3>
+                  <p className="text-sm text-white/60 mb-4">
+                    Earn store credit for every friend you refer
+                  </p>
+                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                    {isAuthenticated ? "Get Link →" : "Sign In"}
+                  </Button>
                 </div>
-                <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
-                  Refer Friends
-                </h3>
-                <p className="text-sm text-white/60 mb-4">
-                  Earn store credit for every friend you refer
-                </p>
-                <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
-                  Get Link →
-                </Button>
-              </div>
-            </Link>
+              </Link>
+            </motion.div>
 
             {/* Leaderboard - Coming Soon */}
-            <div className="group cursor-not-allowed opacity-60">
-              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center h-full relative overflow-hidden">
-                <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs">
-                  Coming Soon
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.75 }}
+            >
+              <div className="group cursor-not-allowed opacity-60">
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center h-full relative overflow-hidden">
+                  <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded">
+                    Coming Soon
+                  </div>
+                  <div className="text-6xl mb-4">
+                    📊
+                  </div>
+                  <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
+                    Leaderboard
+                  </h3>
+                  <p className="text-sm text-white/60 mb-4">
+                    Compete with other gamers for the top spot
+                  </p>
+                  <Button variant="outline" disabled>
+                    Coming Soon
+                  </Button>
                 </div>
-                <div className="text-6xl mb-4">
-                  📊
-                </div>
-                <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
-                  Leaderboard
-                </h3>
-                <p className="text-sm text-white/60 mb-4">
-                  Compete with other gamers for the top spot
-                </p>
-                <Button variant="outline" disabled>
-                  Coming Soon
-                </Button>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
     </div>
   );
 }
-
