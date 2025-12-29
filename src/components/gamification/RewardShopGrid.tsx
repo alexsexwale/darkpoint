@@ -137,10 +137,11 @@ const SAMPLE_REWARDS: Reward[] = [
 ];
 
 export function RewardShopGrid({ className }: RewardShopGridProps) {
-  const { userProfile, rewards: storeRewards } = useGamificationStore();
+  const { userProfile, rewards: storeRewards, addNotification } = useGamificationStore();
   const { purchaseReward } = useGamification();
   const [selectedCategory, setSelectedCategory] = useState<RewardCategory>("all");
   const [redeeming, setRedeeming] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Use store rewards or sample data
   const rewards = storeRewards.length > 0 ? storeRewards : SAMPLE_REWARDS;
@@ -153,14 +154,33 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
 
   const handleRedeem = async (reward: Reward) => {
     if (redeeming) return;
+    setErrorMessage(null);
+
+    // Check if user has enough XP
+    if (userXP < reward.xp_cost) {
+      setErrorMessage(`Not enough XP! You need ${reward.xp_cost - userXP} more XP.`);
+      addNotification({
+        type: "info",
+        title: "Not Enough XP",
+        message: `You need ${reward.xp_cost} XP but only have ${userXP} XP`,
+        icon: "⚡",
+      });
+      return;
+    }
 
     setRedeeming(reward.id);
-    const success = await purchaseReward(reward.id);
+    const result = await purchaseReward(reward.id);
     setRedeeming(null);
 
-    if (!success) {
-      // Could show error toast here
-      console.error("Failed to redeem reward");
+    if (!result.success) {
+      const message = result.error || "Failed to redeem reward";
+      setErrorMessage(message);
+      addNotification({
+        type: "info",
+        title: "Redemption Failed",
+        message: message,
+        icon: "❌",
+      });
     }
   };
 
@@ -184,6 +204,33 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
           </div>
         </div>
       </div>
+
+      {/* Error message */}
+      <AnimatePresence>
+        {errorMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div className="flex-1">
+                <p className="text-sm text-red-400">{errorMessage}</p>
+              </div>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="text-white/40 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Category filters */}
       <div className="flex flex-wrap gap-2">

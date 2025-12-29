@@ -64,6 +64,20 @@ export function NotificationStack({
           bg: "bg-pink-500/10",
           iconBg: "bg-pink-500/20",
         };
+      case "error":
+        return {
+          icon: "❌",
+          border: "border-red-500",
+          bg: "bg-red-500/10",
+          iconBg: "bg-red-500/20",
+        };
+      case "info":
+        return {
+          icon: "ℹ️",
+          border: "border-blue-500",
+          bg: "bg-blue-500/10",
+          iconBg: "bg-blue-500/20",
+        };
       default:
         return {
           icon: "💬",

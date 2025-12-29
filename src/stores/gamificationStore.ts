@@ -62,6 +62,8 @@ interface PurchaseRewardResponse {
   reward?: { id: string; name: string; category: string };
   xp_spent?: number;
   remaining_xp?: number;
+  required?: number;
+  current?: number;
 }
 
 interface AddXPResponse {
@@ -611,13 +613,17 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
   // Purchase reward
   purchaseReward: async (rewardId) => {
     if (!isSupabaseConfigured()) {
-      return { success: false, error: "Not configured" };
+      return { success: false, error: "Database not configured" };
     }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return { success: false, error: "Not authenticated" };
+      return { success: false, error: "Please sign in to purchase rewards" };
     }
+
+    // Get the reward details from local store for display
+    const reward = get().rewards.find(r => r.id === rewardId);
+    const rewardName = reward?.name || "Reward";
 
     try {
       const { data, error } = await supabase
@@ -626,7 +632,15 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           p_reward_id: rewardId 
         } as never);
 
-      if (error) throw error;
+      if (error) {
+        // Handle specific error cases
+        if (error.code === "PGRST202" || error.message?.includes("function") || error.message?.includes("does not exist")) {
+          console.warn("purchase_reward RPC not available. Feature requires database setup.");
+          return { success: false, error: "This feature is not yet available. Database setup required." };
+        }
+        console.error("Supabase RPC error:", error);
+        return { success: false, error: error.message || "Purchase failed" };
+      }
 
       const result = data as unknown as PurchaseRewardResponse;
       if (result?.success) {
@@ -637,17 +651,23 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         get().addNotification({
           type: "reward",
           title: "Reward Purchased!",
-          message: `You got: ${result.reward?.name || "Reward"}`,
+          message: `You got: ${result.reward?.name || rewardName}`,
           icon: "🎁",
         });
 
         return { success: true };
       }
 
-      return { success: false, error: result?.error || "Purchase failed" };
+      // Handle business logic errors from the function
+      const errorMessage = result?.error || "Purchase failed";
+      if (errorMessage.includes("Insufficient XP")) {
+        return { success: false, error: `Not enough XP. You need ${result?.required || "more"} XP.` };
+      }
+      return { success: false, error: errorMessage };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Purchase failed";
       console.error("Error purchasing reward:", error);
-      return { success: false, error: "Purchase failed" };
+      return { success: false, error: errorMessage };
     }
   },
 

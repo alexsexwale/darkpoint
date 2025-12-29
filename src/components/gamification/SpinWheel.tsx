@@ -1,10 +1,12 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
+import Confetti from "react-confetti";
 import { cn } from "@/lib/utils";
 import { useGamificationStore } from "@/stores";
+import { Button } from "@/components/ui";
 import type { SpinPrize } from "@/types/gamification";
 
 interface SpinWheelProps {
@@ -38,18 +40,31 @@ function useResponsiveSize(defaultSize: number) {
 
 export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelProps) {
   const wheelRef = useRef<SVGGElement>(null);
-  const { spinPrizes, isSpinning, userProfile, setSpinning, spinWheel, setLastSpinResult, addNotification } =
+  const { spinPrizes, isSpinning, userProfile, setSpinning, spinWheel, setLastSpinResult } =
     useGamificationStore();
   const [hasSpun, setHasSpun] = useState(false);
   const [selectedPrize, setSelectedPrize] = useState<SpinPrize | null>(null);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const responsiveSize = useResponsiveSize(size);
   
   const availableSpins = userProfile?.available_spins || 0;
+
+  // Track window size for confetti
+  useEffect(() => {
+    const updateSize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
 
   // Reset on mount
   useEffect(() => {
     setHasSpun(false);
     setSelectedPrize(null);
+    setShowResultModal(false);
   }, []);
 
   const handleSpin = async () => {
@@ -57,6 +72,7 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
 
     setSpinning(true);
     setHasSpun(true);
+    setShowResultModal(false);
 
     // Call the database to spin and get result
     const prize = await spinWheel();
@@ -89,19 +105,16 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
           setSpinning(false);
           setSelectedPrize(prize);
           setLastSpinResult(prize);
-          
-          // Add notification for prize
-          addNotification({
-            type: "reward",
-            title: "You Won!",
-            message: prize.name,
-            icon: "🎉",
-          });
+          setShowResultModal(true);
           
           onSpinComplete?.(prize);
         },
       });
     }
+  };
+
+  const closeResultModal = () => {
+    setShowResultModal(false);
   };
 
   const centerX = responsiveSize / 2;
@@ -267,6 +280,150 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
           <span className="text-[var(--color-main-1)] font-bold">{availableSpins}</span>
         </p>
       </div>
+
+      {/* Result Modal */}
+      <AnimatePresence>
+        {showResultModal && selectedPrize && (
+          <>
+            {/* Confetti */}
+            <Confetti
+              width={windowSize.width}
+              height={windowSize.height}
+              recycle={false}
+              numberOfPieces={200}
+              gravity={0.3}
+              style={{ position: "fixed", top: 0, left: 0, zIndex: 9999 }}
+            />
+
+            {/* Modal Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeResultModal}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            >
+              {/* Modal Content */}
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0, y: 50 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.5, opacity: 0, y: 50 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative bg-gradient-to-br from-[var(--color-dark-2)] to-[var(--color-dark-1)] border-2 rounded-xl p-6 sm:p-8 max-w-md w-full text-center overflow-hidden"
+                style={{ borderColor: selectedPrize.color }}
+              >
+                {/* Background glow */}
+                <div
+                  className="absolute inset-0 opacity-20"
+                  style={{
+                    background: `radial-gradient(circle at center, ${selectedPrize.color} 0%, transparent 70%)`,
+                  }}
+                />
+
+                {/* Content */}
+                <div className="relative">
+                  {/* Celebration icon */}
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                    className="text-6xl sm:text-7xl mb-4"
+                  >
+                    🎉
+                  </motion.div>
+
+                  {/* Title */}
+                  <motion.h2
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-2xl sm:text-3xl font-heading mb-2"
+                  >
+                    Congratulations!
+                  </motion.h2>
+
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-white/60 mb-6"
+                  >
+                    You won
+                  </motion.p>
+
+                  {/* Prize display */}
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.5, type: "spring" }}
+                    className="inline-block px-6 py-4 rounded-lg mb-6"
+                    style={{
+                      backgroundColor: `${selectedPrize.color}20`,
+                      borderColor: selectedPrize.color,
+                      borderWidth: 2,
+                    }}
+                  >
+                    <p
+                      className="text-2xl sm:text-3xl font-heading"
+                      style={{ color: selectedPrize.color }}
+                    >
+                      {selectedPrize.name}
+                    </p>
+                    {selectedPrize.description && (
+                      <p className="text-sm text-white/60 mt-1">
+                        {selectedPrize.description}
+                      </p>
+                    )}
+                  </motion.div>
+
+                  {/* Prize type indicator */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                    className="flex items-center justify-center gap-2 mb-6 text-sm text-white/50"
+                  >
+                    {selectedPrize.prize_type === "discount" && "🏷️ Discount added to your account"}
+                    {selectedPrize.prize_type === "xp" && "⚡ XP added to your balance"}
+                    {selectedPrize.prize_type === "spin" && "🎡 Bonus spin added"}
+                    {selectedPrize.prize_type === "credit" && "💰 Store credit added"}
+                    {selectedPrize.prize_type === "shipping" && "🚚 Free shipping unlocked"}
+                    {selectedPrize.prize_type === "mystery" && "🎁 Check your rewards!"}
+                  </motion.div>
+
+                  {/* Claim button */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7 }}
+                  >
+                    <Button
+                      onClick={closeResultModal}
+                      size="lg"
+                      className="min-w-[200px]"
+                    >
+                      Awesome! 🎊
+                    </Button>
+                  </motion.div>
+
+                  {/* Remaining spins hint */}
+                  {availableSpins > 0 && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.8 }}
+                      className="text-xs text-white/40 mt-4"
+                    >
+                      You have {availableSpins} more spin{availableSpins !== 1 ? "s" : ""} remaining!
+                    </motion.p>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

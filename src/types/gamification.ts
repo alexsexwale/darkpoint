@@ -294,7 +294,7 @@ export const REFERRAL_TIERS: ReferralTier[] = [
 // Notification Types
 export interface GamificationNotification {
   id: string;
-  type: "xp_gain" | "level_up" | "achievement" | "streak" | "reward" | "spin_result";
+  type: "xp_gain" | "level_up" | "achievement" | "streak" | "reward" | "spin_result" | "error" | "info";
   title: string;
   message: string;
   icon?: string;
