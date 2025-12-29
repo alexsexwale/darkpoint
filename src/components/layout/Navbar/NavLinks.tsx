@@ -49,10 +49,38 @@ interface NavLinksProps {
 export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
   const pathname = usePathname();
 
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href.split("?")[0]);
+  // Check if a child link is active (exact match or starts with for nested routes)
+  const isChildActive = (href: string) => {
+    const basePath = href.split("?")[0];
+    if (basePath === "/") return pathname === "/";
+    // Exact match for most cases, but allow startsWith for deeper nesting
+    return pathname === basePath || (pathname.startsWith(basePath + "/"));
   };
+
+  // Check if a parent link should be highlighted
+  // Only highlight parent if we're exactly on the parent page, not on a child page
+  const isParentActive = (link: NavLink) => {
+    const basePath = link.href.split("?")[0];
+    if (basePath === "/") return pathname === "/";
+    
+    // If the link has children, check if we're on a child page
+    if (link.children) {
+      const isOnChildPage = link.children.some(child => {
+        const childPath = child.href.split("?")[0];
+        return pathname === childPath || pathname.startsWith(childPath + "/");
+      });
+      // Only highlight parent if we're exactly on the parent page (e.g., /rewards exactly)
+      // and not on any child page
+      if (isOnChildPage && pathname !== basePath) {
+        return false;
+      }
+    }
+    
+    return pathname === basePath || pathname.startsWith(basePath + "/");
+  };
+
+  // Legacy function for backward compatibility
+  const isActive = (href: string) => isChildActive(href);
 
   if (mobile) {
     return (
@@ -64,7 +92,7 @@ export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
               onClick={onLinkClick}
               className={cn(
                 "block py-3 px-4 font-heading text-lg transition-colors",
-                isActive(link.href)
+                isParentActive(link)
                   ? "text-[var(--color-main-1)]"
                   : "text-white hover:text-[var(--color-main-1)]"
               )}
@@ -80,7 +108,7 @@ export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
                       onClick={onLinkClick}
                       className={cn(
                         "block py-2 px-4 text-sm transition-colors",
-                        isActive(child.href)
+                        isChildActive(child.href)
                           ? "text-[var(--color-main-1)]"
                           : "text-[var(--muted-foreground)] hover:text-white"
                       )}
@@ -103,7 +131,7 @@ export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
         <li key={link.href} className="relative group">
           <NavLinkEffect
             href={link.href}
-            isActive={isActive(link.href)}
+            isActive={isParentActive(link)}
             showDots={true}
           >
             {link.label}
@@ -117,7 +145,7 @@ export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
                       href={child.href}
                       className={cn(
                         "block px-4 py-2 text-sm transition-colors",
-                        isActive(child.href)
+                        isChildActive(child.href)
                           ? "text-[var(--color-main-1)] bg-[var(--color-dark-3)]"
                           : "text-[var(--muted-foreground)] hover:text-white hover:bg-[var(--color-dark-3)]"
                       )}
