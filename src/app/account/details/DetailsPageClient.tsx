@@ -243,9 +243,9 @@ export function DetailsPageClient() {
         </div>
       </form>
 
-      {/* Password Change Section */}
+        {/* Password Change Section */}
       <form onSubmit={handlePasswordSubmit} className="max-w-xl mt-8 pt-8 border-t border-white/10">
-        <h3 className="font-heading text-xl mb-6">Password Change</h3>
+          <h3 className="font-heading text-xl mb-6">Password Change</h3>
 
         {/* Password Success/Error Message */}
         {passwordMessage && (
@@ -260,45 +260,45 @@ export function DetailsPageClient() {
           </div>
         )}
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm text-white/70 mb-2">
-              Current password (leave blank to leave unchanged)
-            </label>
-            <input
-              type="password"
-              name="currentPassword"
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-white/70 mb-2">
+                Current password (leave blank to leave unchanged)
+              </label>
+              <input
+                type="password"
+                name="currentPassword"
               value={passwordData.currentPassword}
               onChange={handlePasswordChange}
-              className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
-            />
-          </div>
+                className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm text-white/70 mb-2">
-              New password (leave blank to leave unchanged)
-            </label>
-            <input
-              type="password"
-              name="newPassword"
+            <div>
+              <label className="block text-sm text-white/70 mb-2">
+                New password (leave blank to leave unchanged)
+              </label>
+              <input
+                type="password"
+                name="newPassword"
               value={passwordData.newPassword}
               onChange={handlePasswordChange}
               minLength={6}
-              className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
-            />
-          </div>
+                className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm text-white/70 mb-2">
-              Confirm new password
-            </label>
-            <input
-              type="password"
-              name="confirmPassword"
+            <div>
+              <label className="block text-sm text-white/70 mb-2">
+                Confirm new password
+              </label>
+              <input
+                type="password"
+                name="confirmPassword"
               value={passwordData.confirmPassword}
               onChange={handlePasswordChange}
-              className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
-            />
+                className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
+              />
           </div>
         </div>
 

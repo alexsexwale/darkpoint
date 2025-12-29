@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { ParallaxMouse } from "@/components/effects";
+import { useGamificationStore, useAuthStore } from "@/stores";
 
 interface Article {
   id: string;
@@ -45,6 +48,10 @@ interface ArticlePageClientProps {
   comments: Comment[];
 }
 
+// Reading requirements to earn XP
+const MIN_READ_TIME_SECONDS = 30; // Minimum 30 seconds on page
+const MIN_SCROLL_PERCENT = 60; // Must scroll at least 60% of article
+
 export function ArticlePageClient({
   article,
   recentPosts,
@@ -52,6 +59,110 @@ export function ArticlePageClient({
   tags,
   comments,
 }: ArticlePageClientProps) {
+  const { isAuthenticated } = useAuthStore();
+  const { updateQuestProgress, addNotification, addXP } = useGamificationStore();
+  
+  const [readTime, setReadTime] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [hasEarnedReward, setHasEarnedReward] = useState(false);
+  const [showReadingProgress, setShowReadingProgress] = useState(true);
+  const articleContentRef = useRef<HTMLDivElement>(null);
+  const hasAwardedRef = useRef(false);
+
+  // Check if article was already read in this session
+  useEffect(() => {
+    const readArticles = JSON.parse(sessionStorage.getItem("readArticles") || "[]");
+    if (readArticles.includes(article.id)) {
+      setHasEarnedReward(true);
+      hasAwardedRef.current = true;
+      setShowReadingProgress(false);
+    }
+  }, [article.id]);
+
+  // Track reading time
+  useEffect(() => {
+    if (hasAwardedRef.current) return;
+    
+    const interval = setInterval(() => {
+      setReadTime((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Track scroll progress
+  useEffect(() => {
+    if (hasAwardedRef.current) return;
+
+    const handleScroll = () => {
+      if (!articleContentRef.current) return;
+
+      const element = articleContentRef.current;
+      const rect = element.getBoundingClientRect();
+      const elementHeight = element.offsetHeight;
+      const windowHeight = window.innerHeight;
+      
+      // Calculate how much of the article has been scrolled past
+      const scrolledPast = Math.max(0, -rect.top + windowHeight);
+      const progress = Math.min(100, (scrolledPast / elementHeight) * 100);
+      
+      setScrollProgress(progress);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll(); // Check initial position
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Award XP when reading requirements are met
+  const awardReadingReward = useCallback(async () => {
+    if (hasAwardedRef.current || !isAuthenticated) return;
+    
+    hasAwardedRef.current = true;
+    setHasEarnedReward(true);
+
+    // Save to session storage
+    const readArticles = JSON.parse(sessionStorage.getItem("readArticles") || "[]");
+    if (!readArticles.includes(article.id)) {
+      readArticles.push(article.id);
+      sessionStorage.setItem("readArticles", JSON.stringify(readArticles));
+    }
+
+    // Update quest progress
+    updateQuestProgress("read_article", 1);
+
+    // Award XP
+    await addXP(20, "read_article", `Read article: ${article.title}`);
+
+    // Show notification
+    addNotification({
+      type: "xp_gain",
+      title: "+20 XP",
+      message: "Article read! Keep exploring.",
+      icon: "📰",
+    });
+
+    // Hide progress after a delay
+    setTimeout(() => setShowReadingProgress(false), 2000);
+  }, [isAuthenticated, article.id, article.title, updateQuestProgress, addXP, addNotification]);
+
+  // Check if requirements are met
+  useEffect(() => {
+    if (
+      !hasAwardedRef.current &&
+      isAuthenticated &&
+      readTime >= MIN_READ_TIME_SECONDS &&
+      scrollProgress >= MIN_SCROLL_PERCENT
+    ) {
+      awardReadingReward();
+    }
+  }, [readTime, scrollProgress, isAuthenticated, awardReadingReward]);
+
+  const readTimeProgress = Math.min(100, (readTime / MIN_READ_TIME_SECONDS) * 100);
+  const scrollRequirementMet = scrollProgress >= MIN_SCROLL_PERCENT;
+  const timeRequirementMet = readTime >= MIN_READ_TIME_SECONDS;
+
   return (
     <ParallaxMouse>
       {/* Hero Header with parallax background */}
@@ -164,7 +275,7 @@ export function ArticlePageClient({
                 </div>
 
                 {/* Post Text */}
-                <div className="nk-post-text p-8 lg:p-16 bg-[var(--color-dark-1)]">
+                <div ref={articleContentRef} className="nk-post-text p-8 lg:p-16 bg-[var(--color-dark-1)]">
                   <div
                     className="prose prose-invert prose-lg max-w-none
                       prose-p:text-gray-300 prose-p:leading-relaxed prose-p:mb-6
@@ -399,6 +510,103 @@ export function ArticlePageClient({
 
       <div className="nk-gap-4 h-20" />
       <div className="nk-gap-3 h-16" />
+
+      {/* Reading Progress Indicator */}
+      <AnimatePresence>
+        {isAuthenticated && showReadingProgress && !hasEarnedReward && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="fixed bottom-24 left-6 z-50 bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-lg p-4 shadow-xl max-w-xs"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-2xl">📖</span>
+              <div>
+                <p className="font-heading text-sm">Reading Progress</p>
+                <p className="text-xs text-white/50">Earn +20 XP</p>
+              </div>
+            </div>
+
+            {/* Time progress */}
+            <div className="mb-2">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-white/60">Time spent</span>
+                <span className={timeRequirementMet ? "text-green-500" : "text-white/60"}>
+                  {timeRequirementMet ? "✓" : `${readTime}/${MIN_READ_TIME_SECONDS}s`}
+                </span>
+              </div>
+              <div className="h-1.5 bg-[var(--color-dark-3)] rounded-full overflow-hidden">
+                <motion.div
+                  className={`h-full ${timeRequirementMet ? "bg-green-500" : "bg-[var(--color-main-1)]"}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${readTimeProgress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+            </div>
+
+            {/* Scroll progress */}
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-white/60">Article read</span>
+                <span className={scrollRequirementMet ? "text-green-500" : "text-white/60"}>
+                  {scrollRequirementMet ? "✓" : `${Math.round(scrollProgress)}%`}
+                </span>
+              </div>
+              <div className="h-1.5 bg-[var(--color-dark-3)] rounded-full overflow-hidden">
+                <motion.div
+                  className={`h-full ${scrollRequirementMet ? "bg-green-500" : "bg-blue-500"}`}
+                  style={{ width: `${Math.min(100, (scrollProgress / MIN_SCROLL_PERCENT) * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Close button */}
+            <button
+              onClick={() => setShowReadingProgress(false)}
+              className="absolute top-2 right-2 text-white/40 hover:text-white transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
+
+        {/* Reward Earned Toast */}
+        {hasEarnedReward && showReadingProgress && (
+          <motion.div
+            initial={{ opacity: 0, y: 100, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 100, scale: 0.8 }}
+            className="fixed bottom-24 left-6 z-50 bg-gradient-to-r from-green-500/20 to-[var(--color-dark-2)] border border-green-500/50 rounded-lg p-4 shadow-xl"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                <span className="text-2xl">🎉</span>
+              </div>
+              <div>
+                <p className="font-heading text-sm text-green-400">+20 XP Earned!</p>
+                <p className="text-xs text-white/60">Thanks for reading</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Login prompt for non-authenticated users */}
+      {!isAuthenticated && (
+        <div className="fixed bottom-24 left-6 z-50 bg-[var(--color-dark-2)] border border-[var(--color-main-1)]/30 rounded-lg p-4 shadow-xl max-w-xs">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">⚡</span>
+            <div>
+              <p className="font-heading text-sm">Earn XP for reading</p>
+              <p className="text-xs text-white/50">Sign in to track progress</p>
+            </div>
+          </div>
+        </div>
+      )}
     </ParallaxMouse>
   );
 }

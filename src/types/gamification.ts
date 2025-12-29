@@ -355,7 +355,7 @@ export function getXPProgress(currentXP: number, currentLevel: number): number {
 }
 
 // Daily Quest Types
-export type QuestRequirementType = "browse" | "wishlist" | "share" | "review" | "purchase" | "visit";
+export type QuestRequirementType = "browse" | "wishlist" | "share" | "review" | "purchase" | "visit" | "action";
 
 export interface DailyQuest {
   id: string;
@@ -432,12 +432,12 @@ export const QUEST_POOL: Omit<DailyQuest, "progress" | "completed" | "completedA
     requirement: { type: "visit", count: 1, target: "/rewards/shop" },
   },
   {
-    id: "check_news",
+    id: "read_article",
     title: "News Enthusiast",
     description: "Read a news article",
     icon: "📰",
     xpReward: 20,
-    requirement: { type: "visit", count: 1, target: "/news" },
+    requirement: { type: "action", count: 1, target: "/news" },
   },
 ];
 

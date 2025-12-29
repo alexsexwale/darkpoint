@@ -22,9 +22,9 @@ export function NotificationStack({
 
   const positionClasses = {
     "top-right": "top-24 right-6",
-    "bottom-right": "bottom-6 right-6",
+    "bottom-right": "bottom-24 right-6",
     "top-left": "top-24 left-6",
-    "bottom-left": "bottom-6 left-6",
+    "bottom-left": "bottom-24 left-6",
   };
 
   const getNotificationStyle = (type: string) => {

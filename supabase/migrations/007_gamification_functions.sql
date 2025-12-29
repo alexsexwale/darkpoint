@@ -247,7 +247,7 @@ BEGIN
       VALUES (
         p_user_id,
         'REWARD-' || UPPER(SUBSTRING(MD5(random()::text) FROM 1 FOR 8)),
-        CASE WHEN v_reward.category = 'shipping' THEN 'shipping' ELSE 'percent' END,
+        (CASE WHEN v_reward.category = 'shipping' THEN 'shipping' ELSE 'percent' END)::discount_type,
         CASE WHEN v_reward.category = 'shipping' THEN 0 ELSE v_reward.value::DECIMAL END,
         'reward',
         NOW() + INTERVAL '90 days'
