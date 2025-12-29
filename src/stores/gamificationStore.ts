@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import type { Tables } from "@/types/database";
 import type {
   Achievement,
   SpinPrize,
@@ -363,6 +364,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     if (!user) return;
 
     try {
+      // Try RPC call first
       const { data, error } = await supabase
         .rpc("get_user_achievements", { 
           p_user_id: user.id,
@@ -374,9 +376,55 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       const result = data as unknown as AchievementsResponse;
       if (result?.success && result.achievements) {
         set({ achievements: result.achievements });
+        return;
       }
-    } catch (error) {
-      console.error("Error fetching achievements:", error);
+    } catch (rpcError) {
+      console.warn("RPC get_user_achievements failed, falling back to direct query:", rpcError);
+    }
+
+    // Fallback: Query achievements directly if RPC fails
+    try {
+      // Get all achievements
+      const { data: achievementsData, error: achievementsError } = await supabase
+        .from("achievements")
+        .select("*")
+        .eq("is_active", true)
+        .order("category")
+        .order("requirement_value");
+
+      if (achievementsError) throw achievementsError;
+
+      // Get user's unlocked achievements
+      const { data: userAchievements, error: userAchievementsError } = await supabase
+        .from("user_achievements")
+        .select("achievement_id, unlocked_at, progress")
+        .eq("user_id", user.id);
+
+      if (userAchievementsError) throw userAchievementsError;
+
+      // Map unlocked achievements
+      type UserAchievementRow = { achievement_id: string; unlocked_at: string | null; progress: number };
+      const unlockedMap = new Map(
+        ((userAchievements || []) as UserAchievementRow[]).map(ua => [ua.achievement_id, ua])
+      );
+
+      // Combine data - cast to Achievement type from database
+      const achievements = ((achievementsData || []) as Tables<"achievements">[])
+        .filter(a => !a.is_hidden || unlockedMap.has(a.id))
+        .filter(a => !category || a.category === category)
+        .map(a => {
+          const unlocked = unlockedMap.get(a.id);
+          return {
+            ...a,
+            is_unlocked: !!unlocked,
+            unlocked_at: unlocked?.unlocked_at || null,
+            progress: unlocked?.progress || 0,
+          } as AchievementWithProgress;
+        });
+
+      set({ achievements });
+    } catch (fallbackError) {
+      console.error("Error fetching achievements (fallback):", fallbackError);
     }
   },
 
