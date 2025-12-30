@@ -170,7 +170,9 @@ export function AccountLayout({ children, title }: AccountLayoutProps) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 lg:gap-12">
         {/* Sidebar */}
         <div className="lg:col-span-1">
-          <AccountSidebar onLogout={handleLogout} />
+          <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:scrollbar-thin lg:scrollbar-thumb-[var(--color-dark-3)] lg:scrollbar-track-transparent">
+            <AccountSidebar onLogout={handleLogout} />
+          </div>
         </div>
 
         {/* Content */}
