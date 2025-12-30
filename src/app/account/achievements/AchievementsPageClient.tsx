@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { AccountLayout } from "@/components/account";
@@ -8,17 +8,52 @@ import { AchievementGrid, LevelBadge, XPBar } from "@/components/gamification";
 import { Button } from "@/components/ui";
 import { useGamificationStore, useAuthStore, useUIStore } from "@/stores";
 
+// Skeleton component for loading states
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div 
+      className={`animate-pulse bg-[var(--color-dark-3)] ${className}`}
+    />
+  );
+}
+
+// Achievement card skeleton
+function AchievementCardSkeleton() {
+  return (
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-3">
+      <div className="flex items-start gap-3">
+        {/* Icon skeleton */}
+        <Skeleton className="w-12 h-12 flex-shrink-0" />
+        
+        {/* Content skeleton */}
+        <div className="flex-1 min-w-0 space-y-2">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-1.5 w-full rounded-full" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AchievementsPageClient() {
-  const { userProfile, achievements, achievementStats, fetchAchievements, isInitialized } = useGamificationStore();
+  const { userProfile, achievements, achievementStats, fetchAchievements, isInitialized, isLoading } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { toggleSignIn } = useUIStore();
+  const [isFetching, setIsFetching] = useState(false);
 
   // Fetch achievements when component mounts
   useEffect(() => {
-    if (isInitialized && achievements.length === 0) {
-      fetchAchievements();
+    if (isInitialized && isAuthenticated && achievements.length === 0 && !isFetching) {
+      setIsFetching(true);
+      fetchAchievements().finally(() => setIsFetching(false));
     }
-  }, [isInitialized, achievements.length, fetchAchievements]);
+  }, [isInitialized, isAuthenticated, achievements.length, fetchAchievements, isFetching]);
+
+  // Determine if we're in a loading state
+  const showSkeleton = !isInitialized || isLoading || isFetching || (isAuthenticated && achievements.length === 0);
 
   // Calculate stats from achievements array (fallback if achievementStats not loaded)
   const unlockedCount = achievements.filter((a) => a.is_unlocked).length;
@@ -171,17 +206,39 @@ export function AchievementsPageClient() {
         <div className="bg-[var(--color-dark-2)] p-6 border border-[var(--color-dark-3)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading text-lg">Your Level</h3>
-            {userProfile && (
+            {showSkeleton ? (
+              <Skeleton className="h-4 w-24" />
+            ) : userProfile ? (
               <span className="text-sm text-white/40">
                 {userProfile.total_xp.toLocaleString()} Total XP
               </span>
-            )}
+            ) : null}
           </div>
-          <div className="flex items-center gap-6">
-            <LevelBadge size="lg" showTitle />
-          </div>
+          {showSkeleton ? (
+            <div className="flex items-center gap-6">
+              <Skeleton className="w-16 h-16" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-6">
+              <LevelBadge size="lg" showTitle />
+            </div>
+          )}
           <div className="mt-4">
-            <XPBar showLevel={false} />
+            {showSkeleton ? (
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+                <Skeleton className="h-2 w-full rounded-full" />
+              </div>
+            ) : (
+              <XPBar showLevel={false} />
+            )}
           </div>
         </div>
 
@@ -190,27 +247,43 @@ export function AchievementsPageClient() {
           <h3 className="font-heading text-lg mb-4">Achievement Stats</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-3xl font-heading text-[var(--color-main-1)]">
-                {achievementStats.unlocked || unlockedCount}
-              </p>
+              {showSkeleton ? (
+                <Skeleton className="h-9 w-12 mb-1" />
+              ) : (
+                <p className="text-3xl font-heading text-[var(--color-main-1)]">
+                  {achievementStats.unlocked || unlockedCount}
+                </p>
+              )}
               <p className="text-sm text-white/60">Unlocked</p>
             </div>
             <div>
-              <p className="text-3xl font-heading text-white/80">
-                {achievementStats.total || totalCount}
-              </p>
+              {showSkeleton ? (
+                <Skeleton className="h-9 w-12 mb-1" />
+              ) : (
+                <p className="text-3xl font-heading text-white/80">
+                  {achievementStats.total || totalCount}
+                </p>
+              )}
               <p className="text-sm text-white/60">Total</p>
             </div>
             <div>
-              <p className="text-3xl font-heading text-green-500">
-                {(achievementStats.xpEarned || xpEarned).toLocaleString()}
-              </p>
+              {showSkeleton ? (
+                <Skeleton className="h-9 w-16 mb-1" />
+              ) : (
+                <p className="text-3xl font-heading text-green-500">
+                  {(achievementStats.xpEarned || xpEarned).toLocaleString()}
+                </p>
+              )}
               <p className="text-sm text-white/60">XP Earned</p>
             </div>
             <div>
-              <p className="text-3xl font-heading text-yellow-500">
-                {achievementStats.legendary || legendaryCount}
-              </p>
+              {showSkeleton ? (
+                <Skeleton className="h-9 w-8 mb-1" />
+              ) : (
+                <p className="text-3xl font-heading text-yellow-500">
+                  {achievementStats.legendary || legendaryCount}
+                </p>
+              )}
               <p className="text-sm text-white/60">Legendary</p>
             </div>
           </div>
@@ -218,7 +291,47 @@ export function AchievementsPageClient() {
       </div>
 
       {/* Achievements grid */}
-      <AchievementGrid />
+      {showSkeleton ? (
+        <div className="space-y-6">
+          {/* Stats bar skeleton */}
+          <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="space-y-1">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              <div className="text-right space-y-1">
+                <Skeleton className="h-7 w-12 ml-auto" />
+                <Skeleton className="h-3 w-16 ml-auto" />
+              </div>
+            </div>
+            <Skeleton className="h-2 w-full" />
+          </div>
+
+          {/* Filter skeleton */}
+          <div className="flex flex-wrap items-center gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-8 w-20" />
+            ))}
+          </div>
+
+          {/* Achievement cards skeleton */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <AchievementCardSkeleton />
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <AchievementGrid />
+      )}
     </AccountLayout>
   );
 }
