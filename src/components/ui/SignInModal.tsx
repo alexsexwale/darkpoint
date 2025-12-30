@@ -129,9 +129,15 @@ export function SignInModal() {
       return;
     }
 
-    const result = await signUp(email, password, { firstName, lastName, username });
+    // Get referral code from session storage if available
+    const referralCode = sessionStorage.getItem("referralCode");
+    
+    const result = await signUp(email, password, { firstName, lastName, username, referralCode: referralCode || undefined });
     
     if (result.success) {
+      // Clear referral code from session storage
+      sessionStorage.removeItem("referralCode");
+      
       if (result.error) {
         // This means email confirmation is required
         setSuccessMessage(result.error);

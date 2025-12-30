@@ -42,7 +42,7 @@ interface AuthActions {
   
   // Auth actions
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (email: string, password: string, metadata?: { firstName?: string; lastName?: string; username?: string }) => Promise<{ success: boolean; error?: string }>;
+  signUp: (email: string, password: string, metadata?: { firstName?: string; lastName?: string; username?: string; referralCode?: string }) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
@@ -221,6 +221,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                   : undefined,
                 first_name: metadata?.firstName,
                 last_name: metadata?.lastName,
+                referral_code: metadata?.referralCode || null,
               },
               emailRedirectTo: `${window.location.origin}/auth/callback`,
             },
