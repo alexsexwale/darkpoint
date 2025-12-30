@@ -20,7 +20,7 @@ export type ReferralStatus = "pending" | "signed_up" | "converted";
 export type RewardCategory = "discount" | "shipping" | "xp_booster" | "cosmetic" | "exclusive" | "spin";
 export type DiscountType = "percent" | "fixed" | "shipping";
 export type CouponSource = "spin" | "reward" | "referral" | "achievement" | "promotion" | "manual";
-export type XPAction = "signup" | "daily_login" | "first_purchase" | "purchase" | "review" | "photo_review" | "share" | "referral" | "quest" | "achievement" | "spin_reward" | "bonus" | "admin";
+export type XPAction = "signup" | "daily_login" | "first_purchase" | "purchase" | "review" | "photo_review" | "share" | "referral" | "quest" | "achievement" | "spin_reward" | "bonus" | "admin" | "read_article";
 
 // E-commerce Enums
 export type AddressType = "billing" | "shipping";

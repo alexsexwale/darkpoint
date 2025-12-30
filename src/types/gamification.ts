@@ -43,6 +43,7 @@ export const XP_REWARDS: Record<XPAction, number | ((value?: number) => number)>
   spin_reward: 0, // Variable based on spin result
   bonus: 0, // Variable
   admin: 0, // Admin-granted XP (variable)
+  read_article: 20, // XP for reading a news article
 };
 
 // Level Tier Configuration

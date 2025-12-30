@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { SpinWheel, XPBar, LevelBadge } from "@/components/gamification";
@@ -14,9 +14,13 @@ export function SpinPageClient() {
     isSpinning,
     fetchSpinPrizes,
     isInitialized,
+    updateQuestProgress,
+    initDailyQuests,
+    logActivity,
   } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { toggleSignIn } = useUIStore();
+  const hasTrackedVisit = useRef(false);
   
   const availableSpins = userProfile?.available_spins || 0;
 
@@ -26,6 +30,22 @@ export function SpinPageClient() {
       fetchSpinPrizes();
     }
   }, [isInitialized, fetchSpinPrizes]);
+
+  // Track page visit for "Lucky Explorer" quest
+  useEffect(() => {
+    if (authInitialized && isAuthenticated && !hasTrackedVisit.current) {
+      hasTrackedVisit.current = true;
+      initDailyQuests();
+      
+      // Log activity to prevent duplicate tracking
+      logActivity("visit_spin_wheel").then((isNewActivity) => {
+        if (isNewActivity) {
+          console.log("[Quest] Tracking Spin Wheel visit");
+          updateQuestProgress("visit_spin", 1);
+        }
+      });
+    }
+  }, [authInitialized, isAuthenticated, initDailyQuests, logActivity, updateQuestProgress]);
 
   // Show login prompt for unauthenticated users
   if (authInitialized && !isAuthenticated) {

@@ -7,6 +7,7 @@ import { ProductGallery, ProductTabs, ProductDescription, VariantSelectors } fro
 import { Rating, ProductDetailSkeleton } from "@/components/ui";
 import { AddToCartButton } from "./AddToCartButton";
 import { AddToWishlistButton } from "./AddToWishlistButton";
+import { ShareProductButton } from "./ShareProductButton";
 import { useGamificationStore, useAuthStore } from "@/stores";
 import type { ProductVariant } from "@/types";
 
@@ -190,8 +191,11 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
             />
           </div>
 
-          {/* Wishlist Button */}
-          <AddToWishlistButton product={product} />
+          {/* Wishlist & Share Buttons */}
+          <div className="flex gap-3">
+            <AddToWishlistButton product={product} className="flex-1" />
+            <ShareProductButton product={product} className="flex-1" />
+          </div>
 
           {/* Tags */}
           {product.tags.length > 0 && (

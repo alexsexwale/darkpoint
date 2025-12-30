@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { MysteryBoxCard, MysteryBoxOpening } from "@/components/gamification";
 import { Button } from "@/components/ui";
+import { useGamificationStore, useAuthStore } from "@/stores";
 import type { MysteryBox, Rarity } from "@/types/gamification";
 
 // Sample mystery box data (would come from Supabase in production)
@@ -68,6 +69,26 @@ export function MysteryBoxesPageClient() {
     rarity: Rarity;
     imageUrl?: string;
   } | null>(null);
+
+  const { updateQuestProgress, initDailyQuests, logActivity } = useGamificationStore();
+  const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
+  const hasTrackedVisit = useRef(false);
+
+  // Track page visit for "Treasure Hunter" quest
+  useEffect(() => {
+    if (authInitialized && isAuthenticated && !hasTrackedVisit.current) {
+      hasTrackedVisit.current = true;
+      initDailyQuests();
+      
+      // Log activity to prevent duplicate tracking
+      logActivity("visit_mystery_boxes").then((isNewActivity) => {
+        if (isNewActivity) {
+          console.log("[Quest] Tracking Mystery Boxes visit");
+          updateQuestProgress("visit_mystery", 1);
+        }
+      });
+    }
+  }, [authInitialized, isAuthenticated, initDailyQuests, logActivity, updateQuestProgress]);
 
   // Use sample data for now (mystery boxes will be fetched from DB when fully integrated)
   const boxes = SAMPLE_BOXES;

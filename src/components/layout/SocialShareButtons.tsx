@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useGamificationStore, useAuthStore } from "@/stores";
 
 const socialLinks = [
   {
@@ -35,10 +37,54 @@ const socialLinks = [
 
 export function SocialShareButtons() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const pathname = usePathname();
+  const { updateQuestProgress, initDailyQuests, logActivity, addNotification, addXP } = useGamificationStore();
+  const { isAuthenticated } = useAuthStore();
+  const hasSharedRef = useRef(false);
 
-  const handleShare = (shareUrl: (url: string) => string) => {
+  // Check if we're on a product page
+  const isProductPage = pathname.startsWith("/product/");
+
+  const awardShareXP = async (socialName: string) => {
+    if (!isProductPage || !isAuthenticated || hasSharedRef.current) return;
+    
+    hasSharedRef.current = true;
+    initDailyQuests();
+    
+    // Log activity to prevent duplicate tracking across sessions
+    const isNewActivity = await logActivity("share_product", pathname);
+    if (isNewActivity) {
+      console.log(`[Quest] Tracking product share on ${socialName}`);
+      updateQuestProgress("share_product", 1);
+      
+      // Award bonus XP for sharing
+      await addXP(10, "share", `Shared product on ${socialName}`);
+      
+      addNotification({
+        type: "xp_gain",
+        title: "+10 XP",
+        message: `Thanks for sharing on ${socialName}!`,
+        icon: "🦋",
+      });
+    }
+  };
+
+  const handleShare = (shareUrl: (url: string) => string, socialName: string) => {
     const url = typeof window !== "undefined" ? window.location.href : "";
-    window.open(shareUrl(url), "_blank", "width=600,height=400");
+    const shareWindow = window.open(shareUrl(url), "_blank", "width=600,height=400");
+
+    // Award XP when share popup closes (assumes share was completed)
+    if (shareWindow && isProductPage && isAuthenticated) {
+      const checkClosed = setInterval(() => {
+        if (shareWindow.closed) {
+          clearInterval(checkClosed);
+          awardShareXP(socialName);
+        }
+      }, 500);
+
+      // Clear interval after 2 minutes max
+      setTimeout(() => clearInterval(checkClosed), 120000);
+    }
   };
 
   return (
@@ -47,7 +93,7 @@ export function SocialShareButtons() {
         {socialLinks.map((social, index) => (
           <li key={social.name} className="relative">
             <button
-              onClick={() => handleShare(social.shareUrl)}
+              onClick={() => handleShare(social.shareUrl, social.name)}
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
               className="flex items-center justify-center w-[60px] py-4 text-white/70 hover:text-white transition-opacity cursor-pointer"
