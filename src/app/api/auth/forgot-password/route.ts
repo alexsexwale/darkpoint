@@ -175,7 +175,9 @@ export async function POST(request: Request) {
     // Generate a secure reset token
     const resetToken = generateResetToken();
 
-    // Store token in database and get user info
+    let userId: string | null = null;
+
+    // Try RPC first
     const { data: tokenResult, error: tokenError } = await supabaseAdmin.rpc(
       "create_password_reset_token",
       {
@@ -186,16 +188,71 @@ export async function POST(request: Request) {
     );
 
     if (tokenError) {
-      console.error("Error creating reset token:", tokenError);
-      // Don't reveal the error to the user
-      return NextResponse.json({
-        success: true,
-        message: "If an account with that email exists, a password reset link has been sent.",
-      });
+      console.error("RPC error (trying direct method):", tokenError);
+      
+      // Fallback: Find user by email and create token directly
+      const { data: userData } = await supabaseAdmin
+        .from("user_profiles")
+        .select("id")
+        .eq("email", normalizedEmail)
+        .single();
+
+      if (!userData) {
+        // Also try auth.users table
+        const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+        const authUser = authUsers?.users?.find(u => u.email?.toLowerCase() === normalizedEmail);
+        
+        if (!authUser) {
+          // Don't reveal if email exists
+          return NextResponse.json({
+            success: true,
+            message: "If an account with that email exists, a password reset link has been sent.",
+          });
+        }
+        userId = authUser.id;
+      } else {
+        userId = userData.id;
+      }
+
+      // Invalidate existing tokens for this user
+      await supabaseAdmin
+        .from("password_reset_tokens")
+        .update({ used_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .is("used_at", null);
+
+      // Create new token directly
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 1);
+
+      const { error: insertError } = await supabaseAdmin
+        .from("password_reset_tokens")
+        .insert({
+          user_id: userId,
+          email: normalizedEmail,
+          token: resetToken,
+          expires_at: expiresAt.toISOString(),
+        });
+
+      if (insertError) {
+        console.error("Error inserting token:", insertError);
+        return NextResponse.json({
+          success: true,
+          message: "If an account with that email exists, a password reset link has been sent.",
+        });
+      }
+    } else {
+      // If no user found via RPC, still return success (don't reveal if email exists)
+      if (!tokenResult?.user_id) {
+        return NextResponse.json({
+          success: true,
+          message: "If an account with that email exists, a password reset link has been sent.",
+        });
+      }
+      userId = tokenResult.user_id;
     }
 
-    // If no user found, still return success (don't reveal if email exists)
-    if (!tokenResult?.user_id) {
+    if (!userId) {
       return NextResponse.json({
         success: true,
         message: "If an account with that email exists, a password reset link has been sent.",
@@ -206,7 +263,7 @@ export async function POST(request: Request) {
     const { data: profileData } = await supabaseAdmin
       .from("user_profiles")
       .select("display_name, username")
-      .eq("id", tokenResult.user_id)
+      .eq("id", userId)
       .single();
 
     const displayName = profileData?.display_name || profileData?.username || normalizedEmail.split("@")[0];

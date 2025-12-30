@@ -30,18 +30,44 @@ export async function GET(request: Request) {
       );
     }
 
-    // Validate token
+    // Try RPC first
     const { data: result, error } = await supabaseAdmin.rpc(
       "validate_password_reset_token",
       { p_token: token }
     );
 
     if (error) {
-      console.error("Error validating token:", error);
-      return NextResponse.json(
-        { success: false, error: "Invalid or expired reset link" },
-        { status: 400 }
-      );
+      console.error("RPC error (trying direct query):", error);
+      
+      // Fallback: Direct query to password_reset_tokens table
+      const { data: tokenData, error: queryError } = await supabaseAdmin
+        .from("password_reset_tokens")
+        .select("user_id, email, expires_at, used_at")
+        .eq("token", token)
+        .single();
+
+      if (queryError || !tokenData) {
+        return NextResponse.json(
+          { success: false, error: "Invalid or expired reset link" },
+          { status: 400 }
+        );
+      }
+
+      // Check if token is expired or already used
+      const now = new Date();
+      const expiresAt = new Date(tokenData.expires_at);
+      
+      if (tokenData.used_at || expiresAt < now) {
+        return NextResponse.json(
+          { success: false, error: "This reset link has expired. Please request a new one." },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        email: tokenData.email,
+      });
     }
 
     if (!result?.success) {
@@ -92,20 +118,64 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate token and get user info
+    // First, try to find the token in the database directly (fallback if RPC doesn't exist)
+    let userId: string | null = null;
+    let tokenEmail: string | null = null;
+
+    // Try RPC first
     const { data: tokenResult, error: tokenError } = await supabaseAdmin.rpc(
       "validate_password_reset_token",
       { p_token: token }
     );
 
-    if (tokenError || !tokenResult?.success) {
+    if (tokenError) {
+      console.error("RPC error (trying direct query):", tokenError);
+      
+      // Fallback: Direct query to password_reset_tokens table
+      const { data: tokenData, error: queryError } = await supabaseAdmin
+        .from("password_reset_tokens")
+        .select("user_id, email, expires_at, used_at")
+        .eq("token", token)
+        .single();
+
+      if (queryError || !tokenData) {
+        console.error("Token query error:", queryError);
+        return NextResponse.json(
+          { success: false, error: "Invalid or expired reset link. Please request a new one." },
+          { status: 400 }
+        );
+      }
+
+      // Check if token is expired or already used
+      const now = new Date();
+      const expiresAt = new Date(tokenData.expires_at);
+      
+      if (tokenData.used_at || expiresAt < now) {
+        return NextResponse.json(
+          { success: false, error: "This reset link has expired. Please request a new one." },
+          { status: 400 }
+        );
+      }
+
+      userId = tokenData.user_id;
+      tokenEmail = tokenData.email;
+    } else {
+      if (!tokenResult?.success) {
+        return NextResponse.json(
+          { success: false, error: tokenResult?.error || "Invalid or expired reset link. Please request a new one." },
+          { status: 400 }
+        );
+      }
+      userId = tokenResult.user_id;
+      tokenEmail = tokenResult.email;
+    }
+
+    if (!userId) {
       return NextResponse.json(
-        { success: false, error: tokenResult?.error || "Invalid or expired reset link. Please request a new one." },
+        { success: false, error: "Invalid reset token." },
         { status: 400 }
       );
     }
-
-    const userId = tokenResult.user_id;
 
     // Update the user's password using admin API
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
@@ -121,8 +191,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // Consume the token (mark as used)
-    await supabaseAdmin.rpc("consume_password_reset_token", { p_token: token });
+    // Mark token as used (try RPC first, then fallback to direct update)
+    const { error: consumeError } = await supabaseAdmin.rpc("consume_password_reset_token", { p_token: token });
+    
+    if (consumeError) {
+      // Fallback: Direct update
+      await supabaseAdmin
+        .from("password_reset_tokens")
+        .update({ used_at: new Date().toISOString() })
+        .eq("token", token);
+    }
 
     return NextResponse.json({
       success: true,
