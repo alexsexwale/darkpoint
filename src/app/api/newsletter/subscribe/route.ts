@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import * as postmark from "postmark";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const postmarkApiKey = process.env.POSTMARK_API_KEY!;
+const POSTMARK_API_TOKEN = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN;
+const FROM_EMAIL = process.env.POSTMARK_FROM_EMAIL || "noreply@darkpoint.co.za";
 
 export async function POST(request: Request) {
   try {
@@ -53,18 +53,29 @@ export async function POST(request: Request) {
     // Send welcome email if it's a new subscription
     const isNew = data?.is_new ?? true;
     
-    if (isNew && postmarkApiKey) {
+    if (isNew && POSTMARK_API_TOKEN) {
       try {
-        const client = new postmark.ServerClient(postmarkApiKey);
-        
-        await client.sendEmail({
-          From: process.env.EMAIL_FROM || "noreply@darkpoint.co.za",
-          To: email,
-          Subject: "🎮 Welcome to Dark Point! Your Gaming Journey Starts Here",
-          HtmlBody: generateNewsletterWelcomeEmail(email),
-          TextBody: generateNewsletterWelcomeText(email),
-          MessageStream: "outbound",
+        const emailResponse = await fetch("https://api.postmarkapp.com/email", {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Postmark-Server-Token": POSTMARK_API_TOKEN,
+          },
+          body: JSON.stringify({
+            From: FROM_EMAIL,
+            To: email,
+            Subject: "🎮 Welcome to Dark Point! Your Gaming Journey Starts Here",
+            HtmlBody: generateNewsletterWelcomeEmail(email),
+            TextBody: generateNewsletterWelcomeText(email),
+            MessageStream: "outbound",
+          }),
         });
+
+        if (!emailResponse.ok) {
+          const errorData = await emailResponse.text();
+          console.error("Postmark error:", errorData);
+        }
       } catch (emailError) {
         console.error("Error sending newsletter welcome email:", emailError);
         // Don't fail the subscription if email fails

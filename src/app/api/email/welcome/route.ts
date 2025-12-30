@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-const POSTMARK_API_TOKEN = process.env.POSTMARK_API_TOKEN;
-const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@darkpoint.co.za";
+const POSTMARK_API_TOKEN = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN;
+const FROM_EMAIL = process.env.POSTMARK_FROM_EMAIL || "noreply@darkpoint.co.za";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://darkpoint.co.za";
 
 interface WelcomeEmailRequest {
