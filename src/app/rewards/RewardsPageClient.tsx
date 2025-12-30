@@ -327,9 +327,9 @@ export function RewardsPageClient() {
                   <p className="text-sm text-white/60 mb-4">
                     Try your luck for discounts, XP, and prizes!
                   </p>
-                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     {isAuthenticated ? "Spin Now →" : "Sign In to Spin"}
-                  </Button>
+                  </span>
                 </div>
               </Link>
             </motion.div>
@@ -356,9 +356,9 @@ export function RewardsPageClient() {
                   <p className="text-sm text-white/60 mb-4">
                     Exchange XP for discounts and exclusive items
                   </p>
-                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     {isAuthenticated ? "Browse Shop →" : "Sign In to Shop"}
-                  </Button>
+                  </span>
                 </div>
               </Link>
             </motion.div>
@@ -383,9 +383,9 @@ export function RewardsPageClient() {
                   <p className="text-sm text-white/60 mb-4">
                     Unbox amazing gear at incredible prices!
                   </p>
-                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     Open Crates →
-                  </Button>
+                  </span>
                 </div>
               </Link>
             </motion.div>
@@ -412,9 +412,9 @@ export function RewardsPageClient() {
                   <p className="text-sm text-white/60 mb-4">
                     Complete challenges and earn bonus XP
                   </p>
-                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     {isAuthenticated ? "View All →" : "Sign In"}
-                  </Button>
+                  </span>
                 </div>
               </Link>
             </motion.div>
@@ -441,9 +441,9 @@ export function RewardsPageClient() {
                   <p className="text-sm text-white/60 mb-4">
                     Earn store credit for every friend you refer
                   </p>
-                  <Button variant="outline" className="group-hover:bg-[var(--color-main-1)] group-hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     {isAuthenticated ? "Get Link →" : "Sign In"}
-                  </Button>
+                  </span>
                 </div>
               </Link>
             </motion.div>
