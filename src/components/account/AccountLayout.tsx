@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { AccountSidebar } from "./AccountSidebar";
@@ -13,12 +14,13 @@ interface AccountLayoutProps {
 }
 
 export function AccountLayout({ children, title }: AccountLayoutProps) {
-  const { isAuthenticated, isInitialized } = useAuthStore();
+  const router = useRouter();
+  const { isAuthenticated, isInitialized, signOut } = useAuthStore();
   const { toggleSignIn } = useUIStore();
 
-  const handleLogout = () => {
-    // TODO: Implement logout logic
-    console.log("Logout clicked");
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/");
   };
 
   // Show login prompt for unauthenticated users

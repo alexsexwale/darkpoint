@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUIStore, useAuthStore, useWishlistStore } from "@/stores";
 import { Button } from "./Button";
 
 export function SignInModal() {
-  const { isSignInOpen, closeSignIn, openForgotPassword } = useUIStore();
+  const router = useRouter();
+  const { isSignInOpen, closeSignIn } = useUIStore();
   const { signIn, signUp, signInWithGoogle, signInWithGithub, isLoading, user } = useAuthStore();
   const { fetchWishlist, processPendingProduct, pendingProduct } = useWishlistStore();
   
@@ -306,7 +308,7 @@ export function SignInModal() {
                         type="button" 
                         onClick={() => {
                           closeSignIn();
-                          openForgotPassword();
+                          router.push("/forgot-password");
                         }}
                         className="text-[var(--muted-foreground)] hover:text-[var(--color-main-1)] transition-colors cursor-pointer"
                       >
