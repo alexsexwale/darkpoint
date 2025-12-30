@@ -183,6 +183,9 @@ interface GamificationState {
   // Spin wheel state
   isSpinning: boolean;
   lastSpinResult: SpinPrize | null;
+
+  // Track which action types have given XP today (to avoid double XP for achievements)
+  questRewardedActions: Set<string>;
 }
 
 // Actions interface
@@ -212,7 +215,9 @@ interface GamificationActions {
   addXPLocal: (amount: number, action: string, description?: string) => boolean;
 
   // Achievement check
-  checkAchievements: () => Promise<string[]>;
+  checkAchievements: (skipXPTypes?: string[]) => Promise<string[]>;
+  trackQuestRewardedAction: (actionType: string) => void;
+  clearQuestRewardedActions: () => void;
 
   // Daily quests
   initDailyQuests: () => void;
@@ -265,6 +270,7 @@ const initialState: GamificationState = {
   questsDate: null,
   isSpinning: false,
   lastSpinResult: null,
+  questRewardedActions: new Set<string>(),
 };
 
 export const useGamificationStore = create<GamificationStore>()((set, get) => ({
@@ -553,7 +559,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
   // Spin the wheel
   spinWheel: async () => {
-    const profile = get().userProfile;
+        const profile = get().userProfile;
     if (!profile || profile.available_spins <= 0) return null;
 
     set({ isSpinning: true });
@@ -571,8 +577,8 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             const result = data as unknown as SpinWheelResponse;
             if (result?.success && result.prize) {
               const prize = result.prize;
-              
-              set({ 
+
+        set({
                 lastSpinResult: prize,
                 userProfile: {
                   ...profile,
@@ -616,14 +622,14 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       { id: "8", name: "Mystery!", description: "Something special awaits!", prize_type: "mystery", prize_value: "0", probability: 2, color: "#9E9E9E", is_active: true },
     ];
 
-    // Weighted random selection
+        // Weighted random selection
     const totalWeight = localPrizes.reduce((sum, p) => sum + p.probability, 0);
-    let random = Math.random() * totalWeight;
+        let random = Math.random() * totalWeight;
     let selectedPrize = localPrizes[0];
-    
+
     for (const prize of localPrizes) {
-      random -= prize.probability;
-      if (random <= 0) {
+          random -= prize.probability;
+          if (random <= 0) {
         selectedPrize = prize;
         break;
       }
@@ -653,10 +659,10 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
     set({ isSpinning: false });
     return selectedPrize;
-  },
+      },
 
-  setSpinning: (spinning) => set({ isSpinning: spinning }),
-  setLastSpinResult: (result) => set({ lastSpinResult: result }),
+      setSpinning: (spinning) => set({ isSpinning: spinning }),
+      setLastSpinResult: (result) => set({ lastSpinResult: result }),
 
   // Purchase reward
   purchaseReward: async (rewardId) => {
@@ -817,14 +823,14 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       const newLevel = Math.floor(newXP / 500) + 1; // Simple level calc: 500 XP per level
       const leveledUp = newLevel > oldLevel;
 
-      set({
-        userProfile: {
+        set({
+          userProfile: {
           ...userProfile,
           total_xp: newXP,
           current_level: newLevel,
           updated_at: new Date().toISOString(),
-        },
-      });
+          },
+        });
 
       // Check for level up
       if (leveledUp) {
@@ -848,16 +854,50 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     return true;
   },
 
-  // Check achievements
-  checkAchievements: async () => {
+  // Track which action types have been rewarded by quests today
+  trackQuestRewardedAction: (actionType: string) => {
+    const { questRewardedActions } = get();
+    const newSet = new Set(questRewardedActions);
+    newSet.add(actionType);
+    set({ questRewardedActions: newSet });
+  },
+
+  // Clear quest rewarded actions (called at midnight or on new day)
+  clearQuestRewardedActions: () => {
+    set({ questRewardedActions: new Set<string>() });
+  },
+
+  // Check achievements (with optional XP skip for certain action types)
+  checkAchievements: async (skipXPTypes?: string[]) => {
     if (!isSupabaseConfigured()) return [];
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
     try {
-      const { data, error } = await supabase
-        .rpc("check_achievements", { p_user_id: user.id } as never);
+      // Use quest-rewarded actions from state if no explicit skip types provided
+      const { questRewardedActions } = get();
+      const typesToSkip = skipXPTypes || Array.from(questRewardedActions);
+
+      // Try v2 function first (with XP deduplication)
+      let data, error;
+      if (typesToSkip.length > 0) {
+        const result = await supabase
+          .rpc("check_achievements_v2", { 
+            p_user_id: user.id,
+            p_skip_xp_types: typesToSkip
+          } as never);
+        data = result.data;
+        error = result.error;
+      }
+
+      // Fallback to original function if v2 not available
+      if (error || !data) {
+        const result = await supabase
+          .rpc("check_achievements", { p_user_id: user.id } as never);
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) throw error;
 
@@ -871,6 +911,24 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         const firstUnlocked = achievements.find(a => a.id === result.unlocked![0]);
         if (firstUnlocked) {
           get().setAchievementModal(true, firstUnlocked);
+          
+          // Show notification for achievements that received XP
+          const unlockedWithXP = (result as { unlocked_with_xp?: string[] }).unlocked_with_xp || [];
+          if (unlockedWithXP.includes(firstUnlocked.id)) {
+            get().addNotification({
+              type: "achievement",
+              title: "Achievement Unlocked!",
+              message: `${firstUnlocked.name} (+${firstUnlocked.xp_reward} XP)`,
+              icon: "🏆",
+            });
+          } else {
+            get().addNotification({
+              type: "achievement",
+              title: "Achievement Unlocked!",
+              message: firstUnlocked.name,
+              icon: "🏆",
+            });
+          }
         }
 
         return result.unlocked;
@@ -890,6 +948,11 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
     if (questsDate === today && dailyQuests.length > 0) {
       return;
+    }
+
+    // Clear quest rewarded actions for new day
+    if (questsDate !== today) {
+      get().clearQuestRewardedActions();
     }
 
     const newQuests = getDailyQuests(today);
@@ -948,20 +1011,37 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     }
 
     const quest = quests.find((q) => q.id === questId);
-    
+        
     // Quest might not be in today's rotation - that's OK
     if (!quest || quest.completed) return;
+
+    // Map quest IDs to achievement requirement types
+    const questToAchievementType: Record<string, string> = {
+      add_wishlist: "wishlist",
+      browse_products: "categories",
+      share_product: "share",
+      write_review: "reviews",
+    };
 
     // Update local state immediately for responsiveness
     const updatedQuests = quests.map((q) => {
       if (q.id === questId) {
         const newProgress = Math.min(q.progress + progressToAdd, q.requirement.count);
         const completed = newProgress >= q.requirement.count;
-        
+            
         if (completed && !q.completed) {
+          // Quest completed - track the action type to avoid double XP for achievements
+          const achievementType = questToAchievementType[questId];
+          if (achievementType) {
+            get().trackQuestRewardedAction(achievementType);
+          }
+          
           // Quest completed - add XP (will use local fallback if DB not available)
           setTimeout(async () => {
             await get().addXP(q.xpReward, "quest", `Quest: ${q.title}`);
+            
+            // Check achievements after quest completion (with XP dedup)
+            await get().checkAchievements();
           }, 0);
         }
 
@@ -1026,14 +1106,14 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       console.warn("Error logging activity:", error);
       return false;
     }
-  },
+      },
 
-  completeQuest: (questId) => {
+      completeQuest: (questId) => {
     const quest = get().dailyQuests.find((q) => q.id === questId);
     if (quest && !quest.completed) {
-      get().updateQuestProgress(questId, quest.requirement.count);
+        get().updateQuestProgress(questId, quest.requirement.count);
     }
-  },
+      },
 
       // Notification actions
       addNotification: (notification) => {
