@@ -131,22 +131,17 @@ export const useWishlistStore = create<WishlistStore>()((set, get) => ({
         items: [data, ...state.items],
       }));
 
-      // Trigger gamification rewards
+      // Trigger gamification tracking (XP is earned via quests/achievements only)
       const gamificationStore = useGamificationStore.getState();
       
       // Log activity to database for tracking
       await gamificationStore.logActivity("wishlist_add", product.id);
       
-      // Give direct XP for adding to wishlist (5 XP)
-      await gamificationStore.addXP(5, "add_wishlist", `Added ${product.name} to wishlist`);
-      
       // Update quest progress (if "add_wishlist" quest is in today's rotation)
-      // This will track the action type to avoid double XP for achievements
       gamificationStore.updateQuestProgress("add_wishlist", 1);
       
       // Check achievements after wishlist action
       // This ensures achievements like "Window Shopper" are checked
-      // The checkAchievements function will skip XP if already given by quest
       setTimeout(async () => {
         await gamificationStore.checkAchievements();
       }, 500);
