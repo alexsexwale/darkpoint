@@ -20,6 +20,7 @@ const accountNavItems: AccountNavItem[] = [
 ];
 
 const gamificationNavItems: AccountNavItem[] = [
+  { label: "⚡ XP History", href: "/account/xp-history" },
   { label: "🏆 Achievements", href: "/account/achievements" },
   { label: "🎁 Referrals", href: "/account/referrals" },
   { label: "🎡 Spin Wheel", href: "/rewards/spin" },
