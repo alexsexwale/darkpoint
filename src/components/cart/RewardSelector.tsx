@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRewardsStore, getRewardDisplayInfo, getSourceDisplay, type UserReward } from "@/stores/rewardsStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
+import { useGamificationStore } from "@/stores/gamificationStore";
 import { cn } from "@/lib/utils";
+import { FREE_SHIPPING_THRESHOLD } from "@/lib/constants";
 
 interface RewardSelectorProps {
   subtotal: number;
@@ -31,11 +33,18 @@ export function RewardSelector({
     canApplyReward,
     getDiscountAmount,
     getShippingDiscount,
+    isShippingRewardRedundant,
   } = useRewardsStore();
   
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { toggleSignIn } = useUIStore();
+  const { addNotification } = useGamificationStore();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [removedRewardMessage, setRemovedRewardMessage] = useState<string | null>(null);
+  const prevSubtotalRef = useRef(subtotal);
+
+  // Check if order already qualifies for free shipping
+  const alreadyQualifiesForFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
 
   // Fetch rewards when component mounts
   useEffect(() => {
@@ -44,10 +53,40 @@ export function RewardSelector({
     }
   }, [isAuthenticated, isInitialized, fetchRewards]);
 
-  // Filter available rewards
+  // Auto-remove free shipping reward if cart goes over R500 threshold
+  useEffect(() => {
+    if (appliedReward && appliedReward.discount_type === "shipping") {
+      // Check if we just crossed the threshold (subtotal increased past R500)
+      if (subtotal >= FREE_SHIPPING_THRESHOLD && prevSubtotalRef.current < FREE_SHIPPING_THRESHOLD) {
+        removeAppliedReward();
+        setRemovedRewardMessage("Free Shipping reward removed - your order now qualifies for free delivery!");
+        addNotification({
+          type: "info",
+          title: "Reward Removed",
+          message: "Your order now qualifies for free delivery! Free Shipping reward has been removed.",
+          icon: "🚚",
+        });
+      }
+    }
+    prevSubtotalRef.current = subtotal;
+  }, [subtotal, appliedReward, removeAppliedReward, addNotification]);
+
+  // Clear the removed message after 5 seconds
+  useEffect(() => {
+    if (removedRewardMessage) {
+      const timer = setTimeout(() => setRemovedRewardMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [removedRewardMessage]);
+
+  // Filter available rewards (pass alreadyQualifiesForFreeShipping)
   const availableRewards = rewards.filter((r) => {
-    const { canApply } = canApplyReward(r, subtotal);
-    return canApply || r.min_order_value > subtotal; // Show even if min not met
+    const { canApply } = canApplyReward(r, subtotal, alreadyQualifiesForFreeShipping);
+    // Show rewards even if min not met, but hide redundant shipping rewards
+    if (r.discount_type === "shipping" && alreadyQualifiesForFreeShipping) {
+      return false; // Don't show shipping rewards if already qualify
+    }
+    return canApply || r.min_order_value > subtotal;
   });
 
   // Calculate current discount
@@ -88,6 +127,31 @@ export function RewardSelector({
             <div className="h-4 bg-[var(--color-dark-3)] rounded w-32" />
             <div className="h-3 bg-[var(--color-dark-3)] rounded w-24" />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show removed reward message
+  if (removedRewardMessage) {
+    return (
+      <div className={cn("bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-lg p-4", className)}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+            <span className="text-xl">🚚</span>
+          </div>
+          <div className="flex-1">
+            <p className="font-medium text-sm text-blue-400">Good news!</p>
+            <p className="text-xs text-white/60">{removedRewardMessage}</p>
+          </div>
+          <button
+            onClick={() => setRemovedRewardMessage(null)}
+            className="p-2 text-white/60 hover:text-white rounded-lg transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
     );
@@ -190,6 +254,7 @@ export function RewardSelector({
                       setIsExpanded(false);
                     }}
                     compact
+                    alreadyQualifiesForFreeShipping={alreadyQualifiesForFreeShipping}
                   />
                 ))}
               </div>
@@ -250,6 +315,7 @@ export function RewardSelector({
                     applyReward(reward);
                     setIsExpanded(false);
                   }}
+                  alreadyQualifiesForFreeShipping={alreadyQualifiesForFreeShipping}
                 />
               ))}
             </div>
@@ -266,11 +332,12 @@ interface RewardCardProps {
   subtotal: number;
   onApply: () => void;
   compact?: boolean;
+  alreadyQualifiesForFreeShipping?: boolean;
 }
 
-function RewardCard({ reward, subtotal, onApply, compact }: RewardCardProps) {
+function RewardCard({ reward, subtotal, onApply, compact, alreadyQualifiesForFreeShipping = false }: RewardCardProps) {
   const { canApplyReward } = useRewardsStore();
-  const { canApply, reason } = canApplyReward(reward, subtotal);
+  const { canApply, reason } = canApplyReward(reward, subtotal, alreadyQualifiesForFreeShipping);
   const info = getRewardDisplayInfo(reward);
   const source = getSourceDisplay(reward.source);
 

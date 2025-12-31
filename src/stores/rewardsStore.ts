@@ -44,7 +44,8 @@ interface RewardsGetters {
   availableRewards: () => UserReward[];
   getDiscountAmount: (subtotal: number) => number;
   getShippingDiscount: (shippingCost: number) => number;
-  canApplyReward: (reward: UserReward, subtotal: number) => { canApply: boolean; reason?: string };
+  canApplyReward: (reward: UserReward, subtotal: number, alreadyQualifiesForFreeShipping?: boolean) => { canApply: boolean; reason?: string };
+  isShippingRewardRedundant: (subtotal: number) => boolean;
 }
 
 type RewardsStore = RewardsState & RewardsActions & RewardsGetters;
@@ -230,7 +231,7 @@ export const useRewardsStore = create<RewardsStore>()(
       },
 
       // Check if a reward can be applied
-      canApplyReward: (reward, subtotal) => {
+      canApplyReward: (reward, subtotal, alreadyQualifiesForFreeShipping = false) => {
         const now = new Date();
 
         // Check if already used
@@ -251,7 +252,22 @@ export const useRewardsStore = create<RewardsStore>()(
           };
         }
 
+        // Check if free shipping reward is redundant (cart already qualifies)
+        if (reward.discount_type === "shipping" && alreadyQualifiesForFreeShipping) {
+          return {
+            canApply: false,
+            reason: "Your order already qualifies for free delivery!"
+          };
+        }
+
         return { canApply: true };
+      },
+
+      // Check if a shipping reward would be redundant
+      isShippingRewardRedundant: (subtotal) => {
+        // Import threshold from constants (500)
+        const FREE_SHIPPING_THRESHOLD = 500;
+        return subtotal >= FREE_SHIPPING_THRESHOLD;
       },
     }),
     {
