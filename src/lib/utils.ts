@@ -6,9 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatPrice(price: number, currency: string = "ZAR"): string {
   // Use consistent formatting to avoid hydration mismatch
-  // Format as "R X,XXX.XX" manually to ensure server/client consistency
+  // Format as "RX,XXX.XX" manually to ensure server/client consistency
   const formatted = price.toFixed(2);
-  return `R ${formatted}`;
+  return `R${formatted}`;
 }
 
 export function slugify(text: string): string {

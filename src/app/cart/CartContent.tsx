@@ -4,17 +4,26 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/stores";
+import { useRewardsStore } from "@/stores/rewardsStore";
 import { Button, FreeDeliveryIndicator } from "@/components/ui";
+import { RewardSelector } from "@/components/cart/RewardSelector";
 import { formatPrice } from "@/lib/utils";
 import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from "@/lib/constants";
 
 export function CartContent() {
   const { items, removeItem, updateQuantity, subtotal, clearCart } = useCartStore();
+  const { appliedReward, getDiscountAmount, getShippingDiscount } = useRewardsStore();
 
   const total = subtotal();
-  const isFreeShipping = total >= FREE_SHIPPING_THRESHOLD;
-  const shippingCost = isFreeShipping ? 0 : STANDARD_SHIPPING_FEE;
-  const finalTotal = total + shippingCost;
+  const baseShippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+  
+  // Calculate reward discounts
+  const discountAmount = getDiscountAmount(total);
+  const shippingDiscount = getShippingDiscount(baseShippingCost);
+  const shippingCost = baseShippingCost - shippingDiscount;
+  const isFreeShipping = shippingCost === 0;
+  
+  const finalTotal = total - discountAmount + shippingCost;
 
   if (items.length === 0) {
     return (
@@ -316,21 +325,52 @@ export function CartContent() {
         <div className="bg-[var(--color-dark-2)] p-6 sticky top-32 rounded-lg">
           <h2 className="text-xl font-heading mb-6 text-center">Cart Totals</h2>
 
+          {/* Reward Selector */}
+          <div className="mb-6">
+            <RewardSelector subtotal={total} shippingCost={baseShippingCost} />
+          </div>
+
           <div className="space-y-4">
             <div className="flex justify-between items-center py-3 border-b border-[var(--color-dark-3)]">
               <span className="text-[var(--muted-foreground)]">Subtotal</span>
               <span className="font-medium">{formatPrice(total)}</span>
             </div>
+            
+            {/* Show discount if applied */}
+            {discountAmount > 0 && (
+              <div className="flex justify-between items-center py-3 border-b border-[var(--color-dark-3)]">
+                <span className="text-green-500 flex items-center gap-2">
+                  <span>🎁</span>
+                  Reward Discount
+                </span>
+                <span className="font-medium text-green-500">-{formatPrice(discountAmount)}</span>
+              </div>
+            )}
+            
             <div className="flex justify-between items-center py-3 border-b border-[var(--color-dark-3)]">
               <span className="text-[var(--muted-foreground)]">Delivery</span>
               <span className="font-medium">
                 {isFreeShipping ? (
-                  <span className="text-green-500">FREE</span>
+                  <span className="text-green-500 flex items-center gap-1">
+                    {shippingDiscount > 0 && <span>🎁</span>}
+                    FREE
+                  </span>
                 ) : (
                   formatPrice(shippingCost)
                 )}
               </span>
             </div>
+            
+            {/* Show total savings */}
+            {(discountAmount > 0 || shippingDiscount > 0) && (
+              <div className="flex justify-between items-center py-2 bg-green-500/10 px-3 rounded-lg -mx-3">
+                <span className="text-green-400 text-sm font-medium">You save</span>
+                <span className="font-bold text-green-400">
+                  {formatPrice(discountAmount + shippingDiscount)}
+                </span>
+              </div>
+            )}
+            
             <div className="flex justify-between items-center py-4">
               <span className="text-lg font-bold">Total</span>
               <span className="text-xl font-bold text-[var(--color-main-1)]">
@@ -339,7 +379,7 @@ export function CartContent() {
             </div>
           </div>
 
-          {!isFreeShipping && (
+          {!isFreeShipping && total < FREE_SHIPPING_THRESHOLD && !appliedReward && (
             <div className="mb-6 p-4 bg-[var(--color-main-1)]/10 border border-[var(--color-main-1)]/30 rounded-lg">
               <p className="text-sm text-center">
                 Add{" "}

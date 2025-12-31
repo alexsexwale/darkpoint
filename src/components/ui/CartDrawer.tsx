@@ -5,14 +5,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/stores";
+import { useRewardsStore, getRewardDisplayInfo } from "@/stores/rewardsStore";
 import { formatPrice } from "@/lib/utils";
 import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from "@/lib/constants";
 import { Button } from "./Button";
 import { FreeDeliveryIndicator } from "./FreeDeliveryIndicator";
+import { RewardSelector } from "@/components/cart/RewardSelector";
 
 export function CartDrawer() {
   const { isOpen, closeCart, items, removeItem, updateQuantity, subtotal } =
     useCartStore();
+  const { appliedReward, getDiscountAmount, getShippingDiscount } = useRewardsStore();
 
   // Lock body scroll when open
   useEffect(() => {
@@ -38,6 +41,15 @@ export function CartDrawer() {
   }, [isOpen, closeCart]);
 
   const total = subtotal();
+  const baseShippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+  
+  // Calculate reward discounts
+  const discountAmount = getDiscountAmount(total);
+  const shippingDiscount = getShippingDiscount(baseShippingCost);
+  const shippingCost = baseShippingCost - shippingDiscount;
+  const isFreeShipping = shippingCost === 0;
+  
+  const finalTotal = total - discountAmount + shippingCost;
 
   return (
     <AnimatePresence>
@@ -179,24 +191,51 @@ export function CartDrawer() {
                 {/* Free Delivery Indicator */}
                 <FreeDeliveryIndicator subtotal={total} variant="compact" />
 
+                {/* Reward Selector - Compact */}
+                <RewardSelector subtotal={total} shippingCost={baseShippingCost} variant="compact" />
+
                 {/* Totals */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[var(--muted-foreground)]">Subtotal</span>
                     <span>{formatPrice(total)}</span>
                   </div>
+                  
+                  {/* Show discount if applied */}
+                  {discountAmount > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-green-500 flex items-center gap-1">
+                        <span className="text-xs">🎁</span>
+                        Discount
+                      </span>
+                      <span className="text-green-500">-{formatPrice(discountAmount)}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[var(--muted-foreground)]">Delivery</span>
-                    {total >= FREE_SHIPPING_THRESHOLD ? (
-                      <span className="text-[var(--color-main-2)] font-medium">FREE</span>
+                    {isFreeShipping ? (
+                      <span className="text-green-500 font-medium flex items-center gap-1">
+                        {shippingDiscount > 0 && <span className="text-xs">🎁</span>}
+                        FREE
+                      </span>
                     ) : (
-                      <span>{formatPrice(STANDARD_SHIPPING_FEE)}</span>
+                      <span>{formatPrice(shippingCost)}</span>
                     )}
                   </div>
+                  
+                  {/* Show savings */}
+                  {(discountAmount > 0 || shippingDiscount > 0) && (
+                    <div className="flex items-center justify-between text-sm bg-green-500/10 -mx-2 px-2 py-1 rounded">
+                      <span className="text-green-400">You save</span>
+                      <span className="text-green-400 font-medium">{formatPrice(discountAmount + shippingDiscount)}</span>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center justify-between pt-2 border-t border-[var(--color-dark-3)]">
                     <span className="text-lg font-medium">Total</span>
-                    <span className="text-xl font-bold">
-                      {formatPrice(total >= FREE_SHIPPING_THRESHOLD ? total : total + STANDARD_SHIPPING_FEE)}
+                    <span className="text-xl font-bold text-[var(--color-main-1)]">
+                      {formatPrice(finalTotal)}
                     </span>
                   </div>
                 </div>

@@ -543,7 +543,7 @@ export function ReturnRequestClient() {
                                 <p className="font-medium">{item.name}</p>
                                 <p className="text-sm text-[var(--muted-foreground)]">Qty: {item.quantity}</p>
                               </div>
-                              <p className="font-medium text-[var(--color-main-1)]">R {item.price.toFixed(2)}</p>
+                              <p className="font-medium text-[var(--color-main-1)]">R{item.price.toFixed(2)}</p>
                             </div>
 
                             {!item.eligible && (
@@ -623,7 +623,7 @@ export function ReturnRequestClient() {
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-[var(--muted-foreground)]">Reason: {returnReasons[item.id]}</p>
                           </div>
-                          <p className="font-medium text-[var(--color-main-1)]">R {item.price.toFixed(2)}</p>
+                          <p className="font-medium text-[var(--color-main-1)]">R{item.price.toFixed(2)}</p>
                         </div>
                       ))}
                   </div>

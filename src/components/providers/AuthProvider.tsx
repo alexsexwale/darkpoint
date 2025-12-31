@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAuthStore, useWishlistStore, useGamificationStore } from "@/stores";
+import { useAuthStore, useWishlistStore, useGamificationStore, useRewardsStore } from "@/stores";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 interface AuthProviderProps {
@@ -12,6 +12,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { initialize, isInitialized, isAuthenticated } = useAuthStore();
   const { fetchWishlist, clearLocalState, processPendingProduct, pendingProduct } = useWishlistStore();
   const { initialize: initGamification, reset: resetGamification } = useGamificationStore();
+  const { fetchRewards, clearLocalState: clearRewardsState } = useRewardsStore();
 
   // Initialize auth
   useEffect(() => {
@@ -33,12 +34,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Initialize gamification system
       initGamification();
+      
+      // Fetch user rewards
+      fetchRewards();
     } else if (isInitialized && !isAuthenticated) {
       // Clear state when user logs out
       clearLocalState();
       resetGamification();
+      clearRewardsState();
     }
-  }, [isInitialized, isAuthenticated, fetchWishlist, clearLocalState, processPendingProduct, pendingProduct, initGamification, resetGamification]);
+  }, [isInitialized, isAuthenticated, fetchWishlist, clearLocalState, processPendingProduct, pendingProduct, initGamification, resetGamification, fetchRewards, clearRewardsState]);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -49,6 +54,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Clear state on sign out
         clearLocalState();
         resetGamification();
+        clearRewardsState();
       } else if (event === "SIGNED_IN") {
         // Fetch user data on sign in
         fetchWishlist().then(() => {
@@ -57,13 +63,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         });
         initGamification();
+        fetchRewards();
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [fetchWishlist, clearLocalState, processPendingProduct, pendingProduct, initGamification, resetGamification]);
+  }, [fetchWishlist, clearLocalState, processPendingProduct, pendingProduct, initGamification, resetGamification, fetchRewards, clearRewardsState]);
 
   return <>{children}</>;
 }

@@ -123,7 +123,7 @@ export function PaymentSuccessClient() {
               </div>
               <div className="text-right">
                 <p className="text-sm text-white/50 mb-1">Total Paid</p>
-                <p className="text-2xl font-bold">R {mockOrderData.total.toFixed(2)}</p>
+                <p className="text-2xl font-bold">R{mockOrderData.total.toFixed(2)}</p>
               </div>
             </div>
 

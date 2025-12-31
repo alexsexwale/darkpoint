@@ -34,7 +34,7 @@ function formatDate(dateString: string): string {
 }
 
 function formatCurrency(amount: number): string {
-  return `R ${amount.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `R${amount.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function OrdersPageClient() {

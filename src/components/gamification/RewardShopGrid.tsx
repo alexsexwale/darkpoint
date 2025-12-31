@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useGamificationStore } from "@/stores";
+import { useGamificationStore, useRewardsStore } from "@/stores";
 import { useGamification } from "@/hooks";
 import { RewardShopCard } from "./RewardShopCard";
 import type { Reward } from "@/types/gamification";
@@ -138,6 +138,7 @@ const SAMPLE_REWARDS: Reward[] = [
 
 export function RewardShopGrid({ className }: RewardShopGridProps) {
   const { userProfile, rewards: storeRewards, addNotification } = useGamificationStore();
+  const { fetchRewards } = useRewardsStore();
   const { purchaseReward } = useGamification();
   const [selectedCategory, setSelectedCategory] = useState<RewardCategory>("all");
   const [redeeming, setRedeeming] = useState<string | null>(null);
@@ -172,7 +173,10 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
     const result = await purchaseReward(reward.id);
     setRedeeming(null);
 
-    if (!result.success) {
+    if (result.success) {
+      // Refresh the user's available rewards after successful purchase
+      await fetchRewards();
+    } else {
       const message = result.error || "Failed to redeem reward";
       setErrorMessage(message);
       addNotification({

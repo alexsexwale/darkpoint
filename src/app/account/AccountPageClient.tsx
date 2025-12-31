@@ -5,13 +5,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui";
 import { AccountLayout } from "@/components/account";
 import { DailyRewardCalendar, DailyQuestList, StreakIndicator } from "@/components/gamification";
-import { useUIStore, useGamificationStore, useAuthStore, useAccountStore } from "@/stores";
+import { MyRewardsList } from "@/components/cart/RewardSelector";
+import { useUIStore, useGamificationStore, useAuthStore, useAccountStore, useRewardsStore } from "@/stores";
 
 export function AccountPageClient() {
   const { openSignIn } = useUIStore();
   const { isAuthenticated, isInitialized, user, signOut } = useAuthStore();
   const { userProfile, setDailyRewardModal, initDailyQuests } = useGamificationStore();
   const { orders, stats, isLoadingStats, fetchOrders, fetchStats } = useAccountStore();
+  const { rewards, fetchRewards } = useRewardsStore();
 
   const [mounted, setMounted] = useState(false);
 
@@ -24,13 +26,14 @@ export function AccountPageClient() {
     initDailyQuests();
   }, [initDailyQuests]);
 
-  // Fetch stats and orders when authenticated
+  // Fetch stats, orders, and rewards when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       fetchStats();
       fetchOrders();
+      fetchRewards();
     }
-  }, [isAuthenticated, fetchStats, fetchOrders]);
+  }, [isAuthenticated, fetchStats, fetchOrders, fetchRewards]);
 
   // Check if daily reward has been claimed
   const today = new Date().toISOString().split("T")[0];
@@ -224,7 +227,7 @@ export function AccountPageClient() {
               </svg>
             </div>
             <span className="text-2xl font-bold">
-              {isLoadingStats ? "..." : `R ${(stats?.total_spent || 0).toLocaleString()}`}
+              {isLoadingStats ? "..." : `R${(stats?.total_spent || 0).toLocaleString()}`}
             </span>
           </div>
           <p className="text-sm text-white/60">Total Spent</p>
@@ -259,6 +262,42 @@ export function AccountPageClient() {
 
         {/* Daily Quests */}
         <DailyQuestList />
+      </div>
+
+      {/* My Rewards Section */}
+      <div className="mb-8 bg-[var(--color-dark-2)] p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🎁</span>
+            <h3 className="font-heading text-xl">My Rewards</h3>
+            {rewards.length > 0 && (
+              <span className="px-2 py-0.5 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded-full font-semibold">
+                {rewards.length} available
+              </span>
+            )}
+          </div>
+          <Link href="/rewards/shop" className="text-sm text-[var(--color-main-1)] hover:underline">
+            Get More →
+          </Link>
+        </div>
+        
+        <p className="text-white/60 text-sm mb-4">
+          Use your rewards at checkout for discounts and free shipping!
+        </p>
+        
+        <MyRewardsList />
+        
+        {rewards.length === 0 && (
+          <div className="mt-4 p-4 bg-[var(--color-dark-3)] rounded-lg text-center">
+            <p className="text-sm text-white/60">
+              Earn XP to unlock rewards in the{" "}
+              <Link href="/rewards/shop" className="text-[var(--color-main-1)] hover:underline">
+                Rewards Shop
+              </Link>
+              !
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Recent Orders & Quick Actions */}
@@ -301,7 +340,7 @@ export function AccountPageClient() {
                     <span className={`text-xs px-2 py-1 rounded capitalize ${statusColors[order.status] || "text-white/60 bg-white/10"}`}>
                       {order.status}
                     </span>
-                    <p className="mt-1 font-semibold">R {order.total.toFixed(2)}</p>
+                    <p className="mt-1 font-semibold">R{order.total.toFixed(2)}</p>
                   </div>
                 </Link>
               ))}

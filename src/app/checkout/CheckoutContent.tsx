@@ -3,18 +3,27 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/stores";
+import { useRewardsStore, getRewardDisplayInfo } from "@/stores/rewardsStore";
 import { Button, Input, TextArea, FreeDeliveryIndicator } from "@/components/ui";
+import { RewardSelector } from "@/components/cart/RewardSelector";
 import { formatPrice } from "@/lib/utils";
 import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from "@/lib/constants";
 
 export function CheckoutContent() {
   const { items, subtotal } = useCartStore();
+  const { appliedReward, getDiscountAmount, getShippingDiscount } = useRewardsStore();
   const [sameAsBilling, setSameAsBilling] = useState(true);
 
   const total = subtotal();
-  const isFreeShipping = total >= FREE_SHIPPING_THRESHOLD;
-  const shippingCost = isFreeShipping ? 0 : STANDARD_SHIPPING_FEE;
-  const finalTotal = total + shippingCost;
+  const baseShippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+  
+  // Calculate reward discounts
+  const discountAmount = getDiscountAmount(total);
+  const shippingDiscount = getShippingDiscount(baseShippingCost);
+  const shippingCost = baseShippingCost - shippingDiscount;
+  const isFreeShipping = shippingCost === 0;
+  
+  const finalTotal = total - discountAmount + shippingCost;
 
   if (items.length === 0) {
     return (
@@ -171,10 +180,15 @@ export function CheckoutContent() {
 
       {/* Order Summary */}
       <div className="space-y-8">
-        <div className="bg-[var(--color-dark-2)] p-8 sticky top-32">
-          <h2 className="text-xl font-heading mb-8 text-center">Your Order</h2>
+        <div className="bg-[var(--color-dark-2)] p-6 md:p-8 sticky top-32">
+          <h2 className="text-xl font-heading mb-6 md:mb-8 text-center">Your Order</h2>
 
-          <table className="w-full">
+          {/* Reward Selector */}
+          <div className="mb-6">
+            <RewardSelector subtotal={total} shippingCost={baseShippingCost} />
+          </div>
+
+          <table className="w-full text-sm md:text-base">
             <thead>
               <tr className="border-b border-[var(--color-dark-3)]">
                 <th className="text-left pb-4 font-heading text-sm">Product</th>
@@ -186,10 +200,11 @@ export function CheckoutContent() {
                 const price = item.variant?.price ?? item.product.price;
                 return (
                   <tr key={item.id} className="border-b border-[var(--color-dark-3)]">
-                    <td className="py-4">
-                      {item.product.name} × {item.quantity}
+                    <td className="py-4 pr-2">
+                      <span className="line-clamp-2">{item.product.name}</span>
+                      <span className="text-white/60"> × {item.quantity}</span>
                     </td>
-                    <td className="py-4 text-right">
+                    <td className="py-4 text-right whitespace-nowrap">
                       {formatPrice(price * item.quantity)}
                     </td>
                   </tr>
@@ -199,19 +214,47 @@ export function CheckoutContent() {
                 <td className="py-4">Subtotal</td>
                 <td className="py-4 text-right">{formatPrice(total)}</td>
               </tr>
+              
+              {/* Show discount if applied */}
+              {discountAmount > 0 && (
+                <tr className="border-b border-[var(--color-dark-3)]">
+                  <td className="py-4 text-green-500 flex items-center gap-2">
+                    <span>🎁</span>
+                    {appliedReward && getRewardDisplayInfo(appliedReward).name}
+                  </td>
+                  <td className="py-4 text-right text-green-500">
+                    -{formatPrice(discountAmount)}
+                  </td>
+                </tr>
+              )}
+              
               <tr className="border-b border-[var(--color-dark-3)]">
                 <td className="py-4">Delivery</td>
                 <td className="py-4 text-right">
                   {isFreeShipping ? (
-                    <span className="text-[var(--color-main-2)] font-medium">FREE</span>
+                    <span className="text-green-500 font-medium flex items-center justify-end gap-1">
+                      {shippingDiscount > 0 && <span>🎁</span>}
+                      FREE
+                    </span>
                   ) : (
                     formatPrice(shippingCost)
                   )}
                 </td>
               </tr>
+              
+              {/* Show total savings */}
+              {(discountAmount > 0 || shippingDiscount > 0) && (
+                <tr className="bg-green-500/10">
+                  <td className="py-3 px-2 text-green-400 font-medium">You save</td>
+                  <td className="py-3 px-2 text-right text-green-400 font-medium">
+                    {formatPrice(discountAmount + shippingDiscount)}
+                  </td>
+                </tr>
+              )}
+              
               <tr>
                 <td className="py-6 text-lg font-bold">Total</td>
-                <td className="py-6 text-right text-lg font-bold">
+                <td className="py-6 text-right text-lg font-bold text-[var(--color-main-1)]">
                   {formatPrice(finalTotal)}
                 </td>
               </tr>
@@ -219,7 +262,7 @@ export function CheckoutContent() {
           </table>
 
           {/* Free Delivery Indicator */}
-          {!isFreeShipping && (
+          {!isFreeShipping && total < FREE_SHIPPING_THRESHOLD && !appliedReward && (
             <div className="mt-6 pt-6 border-t border-[var(--color-dark-3)]">
               <FreeDeliveryIndicator subtotal={total} variant="compact" />
             </div>
@@ -233,7 +276,9 @@ export function CheckoutContent() {
               </svg>
               <p>
                 {isFreeShipping ? (
-                  <>Your order qualifies for <span className="text-[var(--color-main-2)] font-medium">FREE delivery</span>!</>
+                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!</>
+                ) : total >= FREE_SHIPPING_THRESHOLD ? (
+                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!</>
                 ) : (
                   <>Standard delivery fee of <span className="text-white font-medium">{formatPrice(STANDARD_SHIPPING_FEE)}</span> applies. Spend <span className="text-[var(--color-main-1)] font-medium">{formatPrice(FREE_SHIPPING_THRESHOLD - total)}</span> more for free delivery!</>
                 )}
