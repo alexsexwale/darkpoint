@@ -18,6 +18,11 @@ import {
   getDailyQuests,
 } from "@/types/gamification";
 
+// Module-level lock to prevent concurrent achievement checks
+let isCheckingAchievements = false;
+let pendingAchievementCheck: { resolve: (value: string[]) => void; skipTypes?: string[] }[] = [];
+let achievementCheckDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 // RPC Response types
 interface GamificationStatsResponse {
   success: boolean;
@@ -868,11 +873,28 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
   },
 
   // Check achievements (with optional XP skip for certain action types)
+  // Uses debounce and lock to prevent duplicate calls
   checkAchievements: async (skipXPTypes?: string[]) => {
     if (!isSupabaseConfigured()) return [];
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
+
+    // If already checking, queue this request and return a promise
+    if (isCheckingAchievements) {
+      return new Promise<string[]>((resolve) => {
+        pendingAchievementCheck.push({ resolve, skipTypes: skipXPTypes });
+      });
+    }
+
+    // Clear any pending debounce timer
+    if (achievementCheckDebounceTimer) {
+      clearTimeout(achievementCheckDebounceTimer);
+      achievementCheckDebounceTimer = null;
+    }
+
+    // Set lock
+    isCheckingAchievements = true;
 
     try {
       // Use quest-rewarded actions from state if no explicit skip types provided
@@ -931,13 +953,28 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           }
         }
 
-        return result.unlocked;
+        // Resolve any pending requests with the same result
+        const unlocked = result.unlocked;
+        pendingAchievementCheck.forEach(p => p.resolve(unlocked));
+        pendingAchievementCheck = [];
+        
+        return unlocked;
       }
+
+      // Resolve any pending requests with empty result
+      pendingAchievementCheck.forEach(p => p.resolve([]));
+      pendingAchievementCheck = [];
 
       return [];
     } catch (error) {
       console.error("Error checking achievements:", error);
+      // Resolve any pending requests with empty result on error
+      pendingAchievementCheck.forEach(p => p.resolve([]));
+      pendingAchievementCheck = [];
       return [];
+    } finally {
+      // Release the lock
+      isCheckingAchievements = false;
     }
   },
 

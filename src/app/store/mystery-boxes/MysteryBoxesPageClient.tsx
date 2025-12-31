@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { MysteryBoxCard, MysteryBoxOpening } from "@/components/gamification";
-import { Button } from "@/components/ui";
 import { useGamificationStore, useAuthStore } from "@/stores";
 import type { MysteryBox, Rarity } from "@/types/gamification";
 
@@ -134,8 +133,8 @@ export function MysteryBoxesPageClient() {
       {/* Hero Section */}
       <section className="relative py-16 overflow-hidden">
         {/* Background effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-main-1)]/10 to-transparent" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--color-main-1)]/5 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-main-1)]/10 to-transparent pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--color-main-1)]/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="container relative">
           {/* Header */}
@@ -222,14 +221,18 @@ export function MysteryBoxesPageClient() {
               </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-[var(--color-dark-3)] text-center">
+            <div className="mt-8 pt-6 border-t border-[var(--color-dark-3)] text-center relative z-10">
               <p className="text-sm text-white/60 mb-4">
                 ✓ Every box guaranteed worth more than purchase price • 
                 ✓ Free shipping on all items • 
                 ✓ Real gaming products
               </p>
-              <Link href="/store">
-                <Button variant="outline">Browse Regular Products →</Button>
+              <Link 
+                href="/store" 
+                className="nk-btn nk-btn-outline nk-btn-md inline-flex"
+              >
+                <span className="nk-btn-inner" />
+                <span className="nk-btn-content">Browse Regular Products →</span>
               </Link>
             </div>
           </motion.div>
