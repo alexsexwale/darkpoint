@@ -13,24 +13,29 @@ interface ReportOption {
 
 const reportOptions: ReportOption[] = [
   {
-    id: "off-topic",
-    label: "Off Topic",
-    description: "Not about the product",
+    id: "spam",
+    label: "Spam or Advertising",
+    description: "Contains promotional content or spam",
   },
   {
     id: "inappropriate",
-    label: "Inappropriate",
+    label: "Inappropriate Content",
     description: "Disrespectful, hateful, or obscene content",
   },
   {
     id: "fake",
-    label: "Fake",
-    description: "Paid for or inauthentic review",
+    label: "Fake or Misleading",
+    description: "Paid for, inauthentic, or misleading review",
+  },
+  {
+    id: "offensive",
+    label: "Offensive Language",
+    description: "Contains profanity or offensive language",
   },
   {
     id: "other",
     label: "Other",
-    description: "Something else",
+    description: "Something else not listed above",
   },
 ];
 

@@ -307,6 +307,7 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => ({
     }
 
     try {
+      // First, save the report to the database
       const { data, error } = await supabase.rpc("report_review", {
         p_review_id: reviewId,
         p_reason: reason,
@@ -316,6 +317,33 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => ({
       if (error) throw error;
 
       const result = data as { success: boolean; error?: string };
+
+      if (result?.success) {
+        // Find the review details to include in the email
+        const review = get().reviews.find((r) => r.id === reviewId);
+        
+        // Get the current user's email
+        const { data: userData } = await supabase.auth.getUser();
+        
+        // Send email notification to admin (fire and forget)
+        fetch("/api/reviews/report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reviewId,
+            reason,
+            details: details || null,
+            reviewTitle: review?.title || null,
+            reviewContent: review?.content || null,
+            reviewAuthor: review?.author_name || null,
+            reporterEmail: userData?.user?.email || null,
+          }),
+        }).catch((emailError) => {
+          // Log but don't fail the report
+          console.warn("Failed to send report notification email:", emailError);
+        });
+      }
+
       return result;
     } catch (error) {
       console.error("Error reporting review:", error);
