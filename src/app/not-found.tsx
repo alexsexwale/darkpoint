@@ -1,10 +1,41 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
 
+// Pre-defined particle positions to avoid hydration mismatch
+const PARTICLES = [
+  { x: 5, duration: 7, delay: 0.5 },
+  { x: 15, duration: 8, delay: 1 },
+  { x: 25, duration: 6, delay: 2 },
+  { x: 35, duration: 9, delay: 0 },
+  { x: 45, duration: 7, delay: 3 },
+  { x: 55, duration: 8, delay: 1.5 },
+  { x: 65, duration: 6, delay: 4 },
+  { x: 75, duration: 9, delay: 2.5 },
+  { x: 85, duration: 7, delay: 0.8 },
+  { x: 95, duration: 8, delay: 3.5 },
+  { x: 10, duration: 6, delay: 1.2 },
+  { x: 20, duration: 9, delay: 4.5 },
+  { x: 30, duration: 7, delay: 2.8 },
+  { x: 40, duration: 8, delay: 0.3 },
+  { x: 50, duration: 6, delay: 3.8 },
+  { x: 60, duration: 9, delay: 1.8 },
+  { x: 70, duration: 7, delay: 4.2 },
+  { x: 80, duration: 8, delay: 2.2 },
+  { x: 90, duration: 6, delay: 0.7 },
+  { x: 98, duration: 9, delay: 3.2 },
+];
+
 export default function NotFound() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
       {/* Background effects */}
@@ -13,30 +44,32 @@ export default function NotFound() {
         <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-red-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
       </div>
 
-      {/* Floating particles effect */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-[var(--color-main-1)]/30 rounded-full"
-            initial={{
-              x: Math.random() * 100 + "%",
-              y: "110%",
-              opacity: 0,
-            }}
-            animate={{
-              y: "-10%",
-              opacity: [0, 1, 0],
-            }}
-            transition={{
-              duration: Math.random() * 5 + 5,
-              repeat: Infinity,
-              delay: Math.random() * 5,
-              ease: "linear",
-            }}
-          />
-        ))}
-      </div>
+      {/* Floating particles effect - only render after mount to avoid hydration issues */}
+      {mounted && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {PARTICLES.map((particle, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-[var(--color-main-1)]/30 rounded-full"
+              style={{ left: `${particle.x}%` }}
+              initial={{
+                y: "110%",
+                opacity: 0,
+              }}
+              animate={{
+                y: "-10%",
+                opacity: [0, 1, 0],
+              }}
+              transition={{
+                duration: particle.duration,
+                repeat: Infinity,
+                delay: particle.delay,
+                ease: "linear",
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="relative text-center max-w-2xl mx-auto">
         {/* 404 Number */}
