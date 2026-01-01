@@ -1,23 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Confetti from "react-confetti";
+import { formatPrice } from "@/lib/utils";
 
-// Mock order data - in real app, this would come from the order confirmation
-const mockOrderData = {
-  orderNumber: "#QL-2024-0847",
-  email: "john@example.com",
-  total: 1849.99,
-  items: 3,
-  estimatedDelivery: "Dec 28 - Jan 2",
-  shippingAddress: "123 Gaming Street, Cape Town, 8001",
-};
+interface OrderData {
+  orderNumber: string;
+  email: string;
+  total: number;
+  items: number;
+  estimatedDelivery: string;
+  shippingAddress: string;
+}
 
 export function PaymentSuccessClient() {
+  const searchParams = useSearchParams();
+  const orderNumber = searchParams.get("order") || "Unknown";
+  
   const [showConfetti, setShowConfetti] = useState(true);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+  const [orderData, setOrderData] = useState<OrderData>({
+    orderNumber: orderNumber,
+    email: "",
+    total: 0,
+    items: 0,
+    estimatedDelivery: "5-7 business days",
+    shippingAddress: "",
+  });
 
   useEffect(() => {
     // Set window size for confetti
@@ -27,6 +39,15 @@ export function PaymentSuccessClient() {
     const timer = setTimeout(() => setShowConfetti(false), 5000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Fetch order details (optional - order details will be in the confirmation email)
+  useEffect(() => {
+    if (orderNumber && orderNumber !== "Unknown") {
+      // Order details can be fetched from API if needed
+      // For now we just display the order number
+      setOrderData(prev => ({ ...prev, orderNumber }));
+    }
+  }, [orderNumber]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -118,66 +139,51 @@ export function PaymentSuccessClient() {
               <div>
                 <p className="text-sm text-white/50 mb-1">Order Number</p>
                 <p className="text-2xl font-heading text-[var(--color-main-1)]">
-                  {mockOrderData.orderNumber}
+                  {orderData.orderNumber}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-white/50 mb-1">Total Paid</p>
-                <p className="text-2xl font-bold">R{mockOrderData.total.toFixed(2)}</p>
-              </div>
+              {orderData.total > 0 && (
+                <div className="text-right">
+                  <p className="text-sm text-white/50 mb-1">Total Paid</p>
+                  <p className="text-2xl font-bold">{formatPrice(orderData.total)}</p>
+                </div>
+              )}
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-white/50">Confirmation sent to</p>
-                    <p className="font-medium">{mockOrderData.email}</p>
-                  </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-white/50">Items ordered</p>
-                    <p className="font-medium">{mockOrderData.items} items</p>
-                  </div>
+                <div>
+                  <p className="text-sm text-white/50">Confirmation Email</p>
+                  <p className="font-medium">Check your inbox for order details</p>
                 </div>
               </div>
 
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-white/50">Estimated delivery</p>
-                    <p className="font-medium">{mockOrderData.estimatedDelivery}</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                 </div>
+                <div>
+                  <p className="text-sm text-white/50">Estimated Delivery</p>
+                  <p className="font-medium">{orderData.estimatedDelivery}</p>
+                </div>
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[var(--color-main-1)]/10 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-[var(--color-main-1)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-white/50">Shipping to</p>
-                    <p className="font-medium text-sm">{mockOrderData.shippingAddress}</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-white/50">Payment Status</p>
+                  <p className="font-medium text-green-400">✓ Confirmed</p>
                 </div>
               </div>
             </div>

@@ -1,48 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
 // Common payment failure reasons
-const failureReasons = [
-  {
-    code: "insufficient_funds",
-    title: "Insufficient Funds",
-    description: "Your card doesn't have enough funds to complete this purchase.",
-    icon: "💳",
-    suggestion: "Try using a different payment method or contact your bank.",
+const failureReasons: Record<string, { title: string; description: string; icon: string; suggestion: string }> = {
+  cancelled: {
+    title: "Payment Cancelled",
+    description: "You cancelled the payment before it was completed.",
+    icon: "🚫",
+    suggestion: "Your cart items are still saved. Return to checkout when you're ready to complete your purchase.",
   },
-  {
-    code: "card_declined",
+  failed: {
+    title: "Payment Failed",
+    description: "We were unable to process your payment. This could be due to insufficient funds, incorrect card details, or a temporary issue.",
+    icon: "💳",
+    suggestion: "Please check your payment details and try again, or use a different payment method.",
+  },
+  expired: {
+    title: "Session Expired",
+    description: "Your payment session has expired.",
+    icon: "⏰",
+    suggestion: "Please return to checkout to start a new payment session.",
+  },
+  declined: {
     title: "Card Declined",
     description: "Your card was declined by the issuing bank.",
     icon: "🚫",
     suggestion: "Please check your card details or try a different card.",
   },
-  {
-    code: "expired_card",
-    title: "Card Expired",
-    description: "The card you're using has expired.",
-    icon: "📅",
-    suggestion: "Please use a card with a valid expiration date.",
-  },
-  {
-    code: "network_error",
-    title: "Network Error",
-    description: "We couldn't connect to the payment processor.",
-    icon: "🌐",
-    suggestion: "Please check your internet connection and try again.",
-  },
-];
-
-// Generic error for display - in real app this would come from payment processor
-const mockError = {
-  code: "payment_failed",
-  title: "Payment Could Not Be Processed",
-  description: "We were unable to process your payment at this time. This could be due to a temporary issue with your card or our payment system.",
-  icon: "💳",
-  suggestion: "Please check your payment details and try again, or use a different payment method.",
 };
 
 const troubleshootingTips = [
@@ -54,7 +42,15 @@ const troubleshootingTips = [
 ];
 
 export function PaymentFailedClient() {
+  const searchParams = useSearchParams();
+  const reason = searchParams.get("reason") || "failed";
+  const orderNumber = searchParams.get("order");
+  
   const [showTips, setShowTips] = useState(false);
+
+  const errorInfo = useMemo(() => {
+    return failureReasons[reason] || failureReasons.failed;
+  }, [reason]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -139,17 +135,25 @@ export function PaymentFailedClient() {
             className="bg-[var(--color-dark-2)] border border-red-500/20 p-8 mb-6"
           >
             <div className="flex items-start gap-4 mb-6">
-              <div className="text-4xl">{mockError.icon}</div>
+              <div className="text-4xl">{errorInfo.icon}</div>
               <div>
-                <h2 className="text-xl font-heading mb-2">{mockError.title}</h2>
-                <p className="text-white/70">{mockError.description}</p>
+                <h2 className="text-xl font-heading mb-2">{errorInfo.title}</h2>
+                <p className="text-white/70">{errorInfo.description}</p>
               </div>
             </div>
+
+            {orderNumber && (
+              <div className="mb-4 p-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)]">
+                <p className="text-sm text-white/60">
+                  Order Reference: <span className="text-white font-mono">{orderNumber}</span>
+                </p>
+              </div>
+            )}
 
             <div className="bg-[var(--color-dark-3)] p-4 border-l-4 border-[var(--color-main-1)]">
               <p className="text-sm">
                 <span className="text-[var(--color-main-1)] font-medium">Suggestion: </span>
-                {mockError.suggestion}
+                {errorInfo.suggestion}
               </p>
             </div>
           </motion.div>
