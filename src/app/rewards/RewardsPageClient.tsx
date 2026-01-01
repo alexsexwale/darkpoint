@@ -312,28 +312,25 @@ export function RewardsPageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
+              className="relative z-10"
             >
               <Link href={isAuthenticated ? "/rewards/spin" : "#"} className="group block cursor-pointer" onClick={(e) => !isAuthenticated && (e.preventDefault(), useUIStore.getState().openSignIn())}>
-                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all group-hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
                   {!isAuthenticated && (
                     <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded">
                       Login Required
                     </div>
                   )}
-                  <motion.div 
-                    className="text-6xl mb-4"
-                    whileHover={{ rotate: 360 }}
-                    transition={{ duration: 0.5 }}
-                  >
+                  <div className="text-6xl mb-4 group-hover:rotate-180 transition-transform duration-500">
                     🎡
-                  </motion.div>
+                  </div>
                   <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
                     Spin to Win
                   </h3>
                   <p className="text-sm text-white/60 mb-4">
                     Try your luck for discounts, XP, and prizes!
                   </p>
-                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider cursor-pointer hover:bg-[var(--color-main-1)] hover:border-[var(--color-main-1)] hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     {isAuthenticated ? "Spin Now →" : "Sign In to Spin"}
                   </span>
                 </div>
@@ -345,9 +342,10 @@ export function RewardsPageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.55 }}
+              className="relative z-10"
             >
               <Link href={isAuthenticated ? "/rewards/shop" : "#"} className="group block cursor-pointer" onClick={(e) => !isAuthenticated && (e.preventDefault(), useUIStore.getState().openSignIn())}>
-                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all group-hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
                   {!isAuthenticated && (
                     <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded">
                       Login Required
@@ -362,7 +360,7 @@ export function RewardsPageClient() {
                   <p className="text-sm text-white/60 mb-4">
                     Exchange XP for discounts and exclusive items
                   </p>
-                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider cursor-pointer hover:bg-[var(--color-main-1)] hover:border-[var(--color-main-1)] hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     {isAuthenticated ? "Browse Shop →" : "Sign In to Shop"}
                   </span>
                 </div>
@@ -374,22 +372,20 @@ export function RewardsPageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
+              className="relative z-10"
             >
               <Link href="/store/mystery-boxes" className="group block cursor-pointer">
-                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full">
-                  <motion.div 
-                    className="text-6xl mb-4"
-                    whileHover={{ scale: 1.1, rotate: [0, -5, 5, 0] }}
-                  >
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all group-hover:border-[var(--color-main-1)] h-full">
+                  <div className="text-6xl mb-4 group-hover:scale-110 transition-transform">
                     📦
-                  </motion.div>
+                  </div>
                   <h3 className="text-xl font-heading uppercase tracking-wider mb-2">
                     Mystery Boxes
                   </h3>
                   <p className="text-sm text-white/60 mb-4">
                     Unbox amazing gear at incredible prices!
                   </p>
-                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider cursor-pointer hover:bg-[var(--color-main-1)] hover:border-[var(--color-main-1)] hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     Open Crates →
                   </span>
                 </div>
@@ -401,9 +397,10 @@ export function RewardsPageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.65 }}
+              className="relative z-10"
             >
               <Link href={isAuthenticated ? "/account/achievements" : "#"} className="group block cursor-pointer" onClick={(e) => !isAuthenticated && (e.preventDefault(), useUIStore.getState().openSignIn())}>
-                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all group-hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
                   {!isAuthenticated && (
                     <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded">
                       Login Required
@@ -418,7 +415,7 @@ export function RewardsPageClient() {
                   <p className="text-sm text-white/60 mb-4">
                     Complete challenges and earn bonus XP
                   </p>
-                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider cursor-pointer hover:bg-[var(--color-main-1)] hover:border-[var(--color-main-1)] hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     {isAuthenticated ? "View All →" : "Sign In"}
                   </span>
                 </div>
@@ -430,9 +427,10 @@ export function RewardsPageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
+              className="relative z-10"
             >
               <Link href={isAuthenticated ? "/account/referrals" : "#"} className="group block cursor-pointer" onClick={(e) => !isAuthenticated && (e.preventDefault(), useUIStore.getState().openSignIn())}>
-                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center transition-all group-hover:border-[var(--color-main-1)] h-full relative overflow-hidden">
                   {!isAuthenticated && (
                     <div className="absolute top-2 right-2 px-2 py-1 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-xs rounded">
                       Login Required
@@ -445,9 +443,9 @@ export function RewardsPageClient() {
                     Refer Friends
                   </h3>
                   <p className="text-sm text-white/60 mb-4">
-                    Earn store credit for every friend you refer
+                    Earn XP for every friend you refer
                   </p>
-                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider cursor-pointer hover:bg-[var(--color-main-1)] hover:border-[var(--color-main-1)] hover:text-white transition-colors">
+                  <span className="inline-block px-6 py-2.5 border border-white/60 text-sm font-heading tracking-wider group-hover:bg-[var(--color-main-1)] group-hover:border-[var(--color-main-1)] group-hover:text-white transition-colors">
                     {isAuthenticated ? "Get Link →" : "Sign In"}
                   </span>
                 </div>
@@ -459,6 +457,7 @@ export function RewardsPageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.75 }}
+              className="relative z-10"
             >
               <div className="group cursor-not-allowed opacity-60">
                 <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center h-full relative overflow-hidden">
@@ -474,9 +473,9 @@ export function RewardsPageClient() {
                   <p className="text-sm text-white/60 mb-4">
                     Compete with other gamers for the top spot
                   </p>
-                  <Button variant="outline" disabled>
+                  <span className="inline-block px-6 py-2.5 border border-white/40 text-sm font-heading tracking-wider text-white/60">
                     Coming Soon
-                  </Button>
+                  </span>
                 </div>
               </div>
             </motion.div>
