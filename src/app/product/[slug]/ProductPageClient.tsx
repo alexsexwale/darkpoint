@@ -8,7 +8,7 @@ import { Rating, ProductDetailSkeleton } from "@/components/ui";
 import { AddToCartButton } from "./AddToCartButton";
 import { AddToWishlistButton } from "./AddToWishlistButton";
 import { ShareProductButton } from "./ShareProductButton";
-import { useGamificationStore, useAuthStore } from "@/stores";
+import { useGamificationStore, useAuthStore, useReviewsStore } from "@/stores";
 import type { ProductVariant } from "@/types";
 
 interface ProductPageClientProps {
@@ -30,7 +30,15 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const { updateQuestProgress, initDailyQuests, logActivity } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
+  const { stats, totalReviews, fetchProductReviews } = useReviewsStore();
   const trackedProductRef = useRef<string | null>(null);
+  
+  // Fetch reviews stats for rating display
+  useEffect(() => {
+    if (product) {
+      fetchProductReviews(product.id, { limit: 1, offset: 0 });
+    }
+  }, [product, fetchProductReviews]);
   
   // Set default variant when product loads
   useEffect(() => {
@@ -149,9 +157,9 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
 
           {/* Rating */}
           <div className="nk-product-rating-wrapper flex items-center gap-4">
-            <Rating value={product.rating} size="lg" showValue />
+            <Rating value={stats?.average || 0} size="lg" showValue />
             <span className="text-sm text-[var(--muted-foreground)]">
-              ({product.reviewCount} reviews)
+              ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
             </span>
           </div>
 
