@@ -92,6 +92,9 @@ interface AuthState {
   isInitialized: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  isEmailVerified: boolean;
+  isResendingVerification: boolean;
+  verificationResendCooldown: number; // seconds remaining
 }
 
 interface AuthActions {
@@ -115,6 +118,10 @@ interface AuthActions {
   // Session management
   initialize: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  
+  // Email verification
+  resendVerificationEmail: () => Promise<{ success: boolean; error?: string }>;
+  checkEmailVerification: () => Promise<boolean>;
 }
 
 const initialState: AuthState = {
@@ -124,6 +131,9 @@ const initialState: AuthState = {
   isInitialized: false,
   error: null,
   isAuthenticated: false,
+  isEmailVerified: false,
+  isResendingVerification: false,
+  verificationResendCooldown: 0,
 };
 
 export const useAuthStore = create<AuthState & AuthActions>()(
@@ -152,10 +162,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             return;
           }
 
+          // Check if email is verified (from user metadata or email_confirmed_at)
+          const isEmailVerified = session?.user?.email_confirmed_at != null;
+
           set({
             session,
             user: session?.user ?? null,
             isAuthenticated: !!session,
+            isEmailVerified,
             isLoading: false,
             isInitialized: true,
             error: null,
@@ -163,10 +177,12 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           // Listen for auth changes
           supabase.auth.onAuthStateChange((_event, session) => {
+            const verified = session?.user?.email_confirmed_at != null;
             set({
               session,
               user: session?.user ?? null,
               isAuthenticated: !!session,
+              isEmailVerified: verified,
             });
           });
         } catch (error) {
@@ -465,6 +481,80 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         } catch (error) {
           const message = error instanceof Error ? error.message : "GitHub sign in failed";
           return { success: false, error: message };
+        }
+      },
+
+      // Email verification
+      resendVerificationEmail: async () => {
+        if (!isSupabaseConfigured()) {
+          return { success: false, error: "Authentication is not configured" };
+        }
+
+        const { user } = get();
+        if (!user?.email) {
+          return { success: false, error: "No user email found" };
+        }
+
+        if (get().isEmailVerified) {
+          return { success: false, error: "Email is already verified" };
+        }
+
+        set({ isResendingVerification: true });
+
+        try {
+          const { error } = await supabase.auth.resend({
+            type: "signup",
+            email: user.email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+          });
+
+          if (error) {
+            set({ isResendingVerification: false });
+            return { success: false, error: error.message };
+          }
+
+          // Start cooldown (60 seconds)
+          set({ isResendingVerification: false, verificationResendCooldown: 60 });
+          
+          // Countdown timer
+          const interval = setInterval(() => {
+            const current = get().verificationResendCooldown;
+            if (current <= 1) {
+              clearInterval(interval);
+              set({ verificationResendCooldown: 0 });
+            } else {
+              set({ verificationResendCooldown: current - 1 });
+            }
+          }, 1000);
+
+          return { success: true };
+        } catch (error) {
+          set({ isResendingVerification: false });
+          const message = error instanceof Error ? error.message : "Failed to resend verification email";
+          return { success: false, error: message };
+        }
+      },
+
+      checkEmailVerification: async () => {
+        if (!isSupabaseConfigured()) return false;
+
+        const { user } = get();
+        if (!user) return false;
+
+        try {
+          // Refresh the session to get latest user data
+          const { data: { user: freshUser } } = await supabase.auth.getUser();
+          
+          if (freshUser?.email_confirmed_at) {
+            set({ isEmailVerified: true });
+            return true;
+          }
+          
+          return false;
+        } catch {
+          return false;
         }
       },
     }),

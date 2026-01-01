@@ -145,18 +145,18 @@ export interface DailyReward {
 export const DAILY_REWARDS: DailyReward[] = [
   { 
     day: 1, 
-    xp: 0,  // Day 1 = No XP, just starting the streak
-    reward: { type: "streak_start", value: "0", description: "Streak started! Come back tomorrow!", icon: "🔥" }
+    xp: 5,  // Day 1 = 5 XP to start the streak
+    reward: { type: "streak_start", value: "5", description: "Streak started! Come back tomorrow!", icon: "🔥" }
   },
   { 
     day: 2, 
-    xp: 20, 
-    reward: { type: "xp_bonus", value: "25", description: "+25 Bonus XP!", icon: "✨" } 
+    xp: 15, 
+    reward: { type: "xp_bonus", value: "15", description: "+15 Bonus XP!", icon: "✨" } 
   },
-  { day: 3, xp: 30 },
+  { day: 3, xp: 25 },
   { 
     day: 4, 
-    xp: 40, 
+    xp: 35, 
     reward: { type: "xp_multiplier", value: "1.5x", description: "1.5x XP for 24 hours", icon: "⚡" } 
   },
   { 

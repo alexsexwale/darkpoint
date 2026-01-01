@@ -3,6 +3,7 @@ import { Marcellus_SC, Roboto_Condensed } from "next/font/google";
 import { Header, Footer, PageBorder, SideNav, SocialShareButtons, SideButtons } from "@/components/layout";
 import { Preloader, BackgroundAudio, BackgroundVideo, PageTransition } from "@/components/effects";
 import { CartDrawer, SearchModal, SignInModal, ForgotPasswordModal } from "@/components/ui";
+import { EmailVerificationBanner } from "@/components/auth";
 import {
   LevelUpModal,
   AchievementUnlockModal,
@@ -91,6 +92,9 @@ export default function RootLayout({
 
           {/* Header */}
           <Header />
+
+          {/* Email Verification Banner (shows for unverified logged-in users) */}
+          <EmailVerificationBanner />
 
           {/* Side Navigation */}
           <SideNav />

@@ -565,8 +565,17 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     if (!user) return false;
 
     try {
-      const { data, error } = await supabase
-        .rpc("claim_daily_reward", { p_user_id: user.id } as never);
+      // Try claim_daily_reward_v2 first, fall back to claim_daily_reward
+      let data, error;
+      const result1 = await supabase.rpc("claim_daily_reward_v2", { p_user_id: user.id } as never);
+      if (result1.error?.message?.includes("does not exist")) {
+        const result2 = await supabase.rpc("claim_daily_reward", { p_user_id: user.id } as never);
+        data = result2.data;
+        error = result2.error;
+      } else {
+        data = result1.data;
+        error = result1.error;
+      }
 
       if (error) throw error;
 

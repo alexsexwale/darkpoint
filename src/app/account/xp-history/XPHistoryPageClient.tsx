@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AccountLayout } from "@/components/account";
 import { XPMultiplierIndicator } from "@/components/gamification";
+import { VerificationRequired } from "@/components/auth";
 import { useAuthStore, useGamificationStore } from "@/stores";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,7 @@ type FilterType = "all" | "earned" | "spent";
 type TimeFilter = "all" | "today" | "week" | "month";
 
 export function XPHistoryPageClient() {
-  const { isAuthenticated, isInitialized } = useAuthStore();
+  const { isAuthenticated, isInitialized, isEmailVerified } = useAuthStore();
   const { userProfile } = useGamificationStore();
   
   const [transactions, setTransactions] = useState<XPTransaction[]>([]);
@@ -151,6 +152,17 @@ export function XPHistoryPageClient() {
     if (txDate.getTime() === yesterday.getTime()) return "Yesterday";
     return dateStr;
   };
+
+  // Show verification required for unverified users
+  if (isAuthenticated && !isEmailVerified) {
+    return (
+      <AccountLayout title="XP History">
+        <VerificationRequired feature="view your XP history">
+          <div />
+        </VerificationRequired>
+      </AccountLayout>
+    );
+  }
 
   return (
     <AccountLayout title="XP History">

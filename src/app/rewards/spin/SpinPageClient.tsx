@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { SpinWheel, XPBar, LevelBadge } from "@/components/gamification";
 import { Button } from "@/components/ui";
+import { VerificationRequired } from "@/components/auth";
 import { useGamificationStore, useAuthStore, useUIStore } from "@/stores";
 
 // Skeleton components
@@ -116,7 +117,7 @@ export function SpinPageClient() {
     initDailyQuests,
     logActivity,
   } = useGamificationStore();
-  const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
+  const { isAuthenticated, isInitialized: authInitialized, isEmailVerified } = useAuthStore();
   const { openSignIn } = useUIStore();
   const hasTrackedVisit = useRef(false);
   
@@ -289,6 +290,28 @@ export function SpinPageClient() {
                 ))}
               </div>
             </motion.div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // Show verification required for unverified users
+  if (isAuthenticated && !isEmailVerified) {
+    return (
+      <div className="min-h-screen">
+        <section className="relative py-8 md:py-16 overflow-hidden px-4">
+          <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-main-1)]/10 to-transparent" />
+          <div className="container relative max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="text-6xl md:text-8xl mb-4">🎡</div>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading uppercase tracking-wider mb-3 md:mb-4">
+                <span className="text-[var(--color-main-1)]">Spin</span> to Win!
+              </h1>
+            </div>
+            <VerificationRequired feature="spin the wheel and win prizes">
+              <div />
+            </VerificationRequired>
           </div>
         </section>
       </div>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCartStore, useAuthStore } from "@/stores";
 import { useRewardsStore, getRewardDisplayInfo } from "@/stores/rewardsStore";
 import { Button, Input, TextArea, FreeDeliveryIndicator } from "@/components/ui";
+import { VerificationRequired } from "@/components/auth";
 import { RewardSelector } from "@/components/cart/RewardSelector";
 import { formatPrice } from "@/lib/utils";
 import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from "@/lib/constants";
@@ -35,8 +36,38 @@ interface ShippingDetails {
 export function CheckoutContent() {
   const router = useRouter();
   const { items, subtotal, clearCart } = useCartStore();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, isEmailVerified } = useAuthStore();
   const { appliedReward, getDiscountAmount, getShippingDiscount, removeAppliedReward } = useRewardsStore();
+  
+  // If user is logged in but not verified, show verification required
+  // (Guest checkout is allowed - only logged-in unverified users are blocked)
+  if (isAuthenticated && !isEmailVerified) {
+    return (
+      <div className="py-12">
+        <div className="container max-w-4xl mx-auto px-4">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-4xl font-heading uppercase tracking-wider mb-4">
+              Checkout
+            </h1>
+          </div>
+          <VerificationRequired feature="place orders while logged in">
+            <div />
+          </VerificationRequired>
+          <div className="mt-8 text-center">
+            <p className="text-white/60 mb-4">
+              Or you can checkout as a guest without logging in
+            </p>
+            <Link
+              href="/checkout?guest=true"
+              className="text-[var(--color-main-1)] hover:underline"
+            >
+              Continue as Guest →
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);

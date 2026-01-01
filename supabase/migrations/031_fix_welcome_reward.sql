@@ -427,10 +427,9 @@ BEGIN
   -- Calculate cycle day (1-7)
   v_cycle_day := ((v_new_streak - 1) % 7) + 1;
   
-  -- Day 1 = 0 XP (just starting streak)
-  -- Days 2-7 get escalating XP
+  -- Daily XP rewards (escalating)
   CASE v_cycle_day
-    WHEN 1 THEN v_xp_earned := 0;
+    WHEN 1 THEN v_xp_earned := 5;   -- Day 1 start
     WHEN 2 THEN v_xp_earned := 15;
     WHEN 3 THEN v_xp_earned := 25;
     WHEN 4 THEN v_xp_earned := 35;
