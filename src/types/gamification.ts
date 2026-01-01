@@ -127,7 +127,7 @@ export const RARITY_CONFIG: Record<RarityType, { color: string; glow: string; na
 };
 
 // Daily Login Reward Types (XP-focused, no real money cost)
-export type DailyRewardType = "spin" | "badge" | "xp_multiplier" | "xp_bonus";
+export type DailyRewardType = "spin" | "badge" | "xp_multiplier" | "xp_bonus" | "streak_start";
 
 export interface DailyRewardBonus {
   type: DailyRewardType;
@@ -143,7 +143,11 @@ export interface DailyReward {
 }
 
 export const DAILY_REWARDS: DailyReward[] = [
-  { day: 1, xp: 10 },
+  { 
+    day: 1, 
+    xp: 0,  // Day 1 = No XP, just starting the streak
+    reward: { type: "streak_start", value: "0", description: "Streak started! Come back tomorrow!", icon: "🔥" }
+  },
   { 
     day: 2, 
     xp: 20, 

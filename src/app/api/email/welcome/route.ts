@@ -7,13 +7,12 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://darkpoint.co.za";
 interface WelcomeEmailRequest {
   email: string;
   username?: string;
-  couponCode?: string;
 }
 
 export async function POST(request: Request) {
   try {
     const body: WelcomeEmailRequest = await request.json();
-    const { email, username, couponCode } = body;
+    const { email, username } = body;
 
     if (!email) {
       return NextResponse.json(
@@ -97,16 +96,14 @@ export async function POST(request: Request) {
                 </tr>
               </table>
 
-              ${couponCode ? `
-              <!-- Coupon Code -->
-              <div style="text-align: center; margin: 20px 0;">
-                <p style="color: #888; margin: 0 0 10px; font-size: 14px;">Your discount code:</p>
-                <div style="display: inline-block; background: #1a1a1a; border: 2px dashed #c9a227; padding: 15px 30px; border-radius: 8px;">
-                  <span style="color: #c9a227; font-size: 24px; font-weight: bold; letter-spacing: 3px;">${couponCode}</span>
-                </div>
-                <p style="color: #666; margin: 10px 0 0; font-size: 12px;">Valid for 30 days</p>
+              <!-- Reward Info -->
+              <div style="text-align: center; margin: 20px 0; padding: 15px; background: #111; border-radius: 8px; border-left: 3px solid #c9a227;">
+                <p style="color: #c9a227; margin: 0 0 5px; font-size: 14px; font-weight: bold;">💡 HOW TO USE YOUR 10% DISCOUNT</p>
+                <p style="color: #888; margin: 0; font-size: 13px;">
+                  Your discount is automatically added to your <strong style="color: #fff;">My Rewards</strong> section!<br>
+                  Just select it at checkout. Valid for 30 days.
+                </p>
               </div>
-              ` : ''}
 
               <!-- CTA Button -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -190,11 +187,14 @@ You've just joined the most epic gaming community! We're thrilled to have you.
 YOUR WELCOME REWARDS:
 ⭐ 100 XP - Bonus Points to get you started
 🎡 1 FREE SPIN - Try your luck on the wheel!
-💰 10% OFF - Your first order${couponCode ? ` (Code: ${couponCode})` : ''}
+💰 10% OFF - Your first order (automatically added to My Rewards - valid 30 days)
 
 🎡 SPIN THE WHEEL NOW: ${spinWheelUrl}
 
 Use your free spin to win discounts, XP, and more!
+
+HOW TO USE YOUR 10% DISCOUNT:
+Your discount is automatically added to your "My Rewards" section! Just select it at checkout.
 
 Ready to gear up? Visit our store: ${storeUrl}
 

@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import { AccountLayout } from "@/components/account";
 import { Button } from "@/components/ui";
 import { useAuthStore, useGamificationStore, useAccountStore } from "@/stores";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export function DetailsPageClient() {
-  const { user } = useAuthStore();
+  const router = useRouter();
+  const { user, signOut } = useAuthStore();
   const { userProfile, fetchUserProfile } = useGamificationStore();
   const { updateProfile, updatePassword } = useAccountStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,6 +37,13 @@ export function DetailsPageClient() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [avatarMessage, setAvatarMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  
+  // Account deletion state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Load user data on mount
   useEffect(() => {
@@ -551,6 +561,214 @@ export function DetailsPageClient() {
           </Button>
         </div>
       </form>
+
+      {/* Delete Account Section */}
+      <div className="max-w-xl mt-12 pt-8 border-t border-red-500/30">
+        <h3 className="font-heading text-xl mb-4 text-red-400">⚠️ Danger Zone</h3>
+        
+        <div className="bg-red-500/5 border border-red-500/20 p-6 rounded">
+          <h4 className="font-heading text-lg mb-2">Delete Account</h4>
+          <p className="text-white/60 text-sm mb-4">
+            Once you delete your account, there is no going back. Please be certain.
+          </p>
+          
+          <div className="space-y-2 text-sm text-white/50 mb-6">
+            <p className="flex items-start gap-2">
+              <span className="text-red-400">•</span>
+              All your XP ({userProfile?.total_xp || 0} XP) will be permanently lost
+            </p>
+            <p className="flex items-start gap-2">
+              <span className="text-red-400">•</span>
+              All achievements and progress will be deleted
+            </p>
+            <p className="flex items-start gap-2">
+              <span className="text-red-400">•</span>
+              All rewards, discounts, and free deliveries will be removed
+            </p>
+            <p className="flex items-start gap-2">
+              <span className="text-red-400">•</span>
+              Your referral code will become invalid
+            </p>
+            <p className="flex items-start gap-2">
+              <span className="text-red-400">•</span>
+              If you have existing orders, they will be anonymized for our records
+            </p>
+            <p className="flex items-start gap-2">
+              <span className="text-yellow-400">•</span>
+              <span className="text-yellow-400/80">If you create a new account with the same email, you will NOT receive welcome bonuses</span>
+            </p>
+          </div>
+          
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="px-4 py-2 bg-transparent border border-red-500/50 text-red-400 hover:bg-red-500/10 hover:border-red-500 transition-colors cursor-pointer"
+          >
+            Delete My Account
+          </button>
+        </div>
+      </div>
+
+      {/* Delete Account Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+            onClick={() => !isDeleting && setShowDeleteModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-[var(--color-dark-2)] border border-red-500/30 p-6 rounded-lg"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-heading text-xl text-red-400">Delete Account</h3>
+                  <p className="text-sm text-white/50">This action cannot be undone</p>
+                </div>
+              </div>
+
+              {deleteError && (
+                <div className="p-3 mb-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-white/70 mb-2">
+                    Why are you leaving? (optional)
+                  </label>
+                  <select
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                    disabled={isDeleting}
+                    className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white focus:border-red-500/50 focus:outline-none transition-colors"
+                  >
+                    <option value="">Select a reason...</option>
+                    <option value="no_longer_needed">No longer need the service</option>
+                    <option value="privacy_concerns">Privacy concerns</option>
+                    <option value="too_many_emails">Too many emails</option>
+                    <option value="found_alternative">Found an alternative</option>
+                    <option value="difficult_to_use">Too difficult to use</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-white/70 mb-2">
+                    Type your email to confirm: <span className="text-white font-mono">{user?.email}</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={confirmEmail}
+                    onChange={(e) => {
+                      setConfirmEmail(e.target.value);
+                      setDeleteError(null);
+                    }}
+                    disabled={isDeleting}
+                    placeholder="Enter your email"
+                    className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-white/30 focus:border-red-500/50 focus:outline-none transition-colors"
+                  />
+                </div>
+
+                <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded text-sm">
+                  <p className="text-yellow-400 font-medium mb-2">⚠️ Final Warning</p>
+                  <p className="text-yellow-400/70">
+                    You will lose <strong>{userProfile?.total_xp || 0} XP</strong>, all your achievements, 
+                    rewards, and progress. If you sign up again with the same email, you will 
+                    NOT receive any welcome bonuses.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setConfirmEmail("");
+                    setDeleteReason("");
+                    setDeleteError(null);
+                  }}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-3 bg-[var(--color-dark-3)] hover:bg-[var(--color-dark-4)] text-white transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirmEmail.toLowerCase() !== user?.email?.toLowerCase()) {
+                      setDeleteError("Email does not match. Please type your email correctly.");
+                      return;
+                    }
+
+                    setIsDeleting(true);
+                    setDeleteError(null);
+
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (!session?.access_token) {
+                        throw new Error("Not authenticated");
+                      }
+
+                      const response = await fetch("/api/account/delete", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${session.access_token}`,
+                        },
+                        body: JSON.stringify({
+                          reason: deleteReason,
+                          confirmEmail: confirmEmail,
+                        }),
+                      });
+
+                      const result = await response.json();
+
+                      if (!response.ok || !result.success) {
+                        throw new Error(result.error || "Failed to delete account");
+                      }
+
+                      // Sign out and redirect
+                      await signOut();
+                      router.push("/?deleted=true");
+                    } catch (err) {
+                      setDeleteError(err instanceof Error ? err.message : "Failed to delete account");
+                      setIsDeleting(false);
+                    }
+                  }}
+                  disabled={isDeleting || !confirmEmail}
+                  className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Deleting...
+                    </span>
+                  ) : (
+                    "Delete My Account"
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AccountLayout>
   );
 }

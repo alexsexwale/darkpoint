@@ -8,11 +8,11 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 export interface UserReward {
   id: string;
   user_id: string;
-  code: string;
+  code: string | null;
   discount_type: "percent" | "fixed" | "shipping";
   discount_value: number;
   min_order_value: number;
-  source: "spin" | "reward" | "referral" | "achievement" | "promotion" | "manual";
+  source: "spin" | "spin_wheel" | "reward" | "referral" | "achievement" | "promotion" | "manual" | "welcome" | "levelup";
   used: boolean;
   used_at: string | null;
   expires_at: string | null;
@@ -52,18 +52,21 @@ type RewardsStore = RewardsState & RewardsActions & RewardsGetters;
 
 // Helper to format reward display
 export function getRewardDisplayInfo(reward: UserReward): { name: string; description: string; icon: string } {
+  // Use custom description from database if available
+  const customDesc = reward.description;
+  
   switch (reward.discount_type) {
     case "percent":
       return {
-        name: `${reward.discount_value}% Discount`,
+        name: customDesc || `${reward.discount_value}% Discount`,
         description: reward.min_order_value > 0 
           ? `${reward.discount_value}% off orders over R${reward.min_order_value}`
           : `${reward.discount_value}% off your order`,
-        icon: "🏷️",
+        icon: customDesc?.includes("Welcome") ? "🎁" : "🏷️",
       };
     case "fixed":
       return {
-        name: `R${reward.discount_value} Off`,
+        name: customDesc || `R${reward.discount_value} Off`,
         description: reward.min_order_value > 0
           ? `R${reward.discount_value} off orders over R${reward.min_order_value}`
           : `R${reward.discount_value} off your order`,
@@ -71,7 +74,7 @@ export function getRewardDisplayInfo(reward: UserReward): { name: string; descri
       };
     case "shipping":
       return {
-        name: "Free Shipping",
+        name: customDesc || "Free Shipping",
         description: reward.min_order_value > 0
           ? `Free shipping on orders over R${reward.min_order_value}`
           : "Free shipping on any order",
@@ -79,7 +82,7 @@ export function getRewardDisplayInfo(reward: UserReward): { name: string; descri
       };
     default:
       return {
-        name: "Reward",
+        name: customDesc || "Reward",
         description: "Special reward",
         icon: "🎁",
       };
@@ -90,11 +93,14 @@ export function getRewardDisplayInfo(reward: UserReward): { name: string; descri
 export function getSourceDisplay(source: UserReward["source"]): string {
   switch (source) {
     case "spin": return "Spin Wheel";
+    case "spin_wheel": return "Spin Wheel";
     case "reward": return "Rewards Shop";
     case "referral": return "Referral Bonus";
     case "achievement": return "Achievement";
     case "promotion": return "Promotion";
     case "manual": return "Special Gift";
+    case "welcome": return "Welcome Bonus";
+    case "levelup": return "Level Up Reward";
     default: return "Reward";
   }
 }

@@ -3,20 +3,50 @@ import { persist } from "zustand/middleware";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
-// Helper function to send welcome email
-async function sendWelcomeEmail(email: string, username?: string) {
+// Helper function to check if user is returning (previously deleted)
+async function checkIfReturningUser(email: string): Promise<boolean> {
   try {
-    // Generate coupon code on the client side as fallback
-    const couponCode = `WELCOME-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+    const { data, error } = await supabase.rpc("is_returning_user", { p_email: email } as never);
+    if (error) {
+      console.warn("Error checking returning user:", error);
+      return false;
+    }
+    return Boolean(data);
+  } catch {
+    return false;
+  }
+}
+
+// Helper function to send welcome email (or welcome back for returning users)
+async function sendWelcomeEmail(email: string, username?: string, isReturning?: boolean) {
+  try {
+    // Check if returning user (if not explicitly passed)
+    const isReturningUser = isReturning ?? await checkIfReturningUser(email);
     
-    const response = await fetch("/api/email/welcome", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, username, couponCode }),
-    });
-    
-    if (!response.ok) {
-      console.warn("Failed to send welcome email:", await response.text());
+    if (isReturningUser) {
+      // Send welcome back email for returning users (no bonuses)
+      const response = await fetch("/api/auth/welcome-back", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, displayName: username }),
+      });
+      
+      if (!response.ok) {
+        console.warn("Failed to send welcome back email:", await response.text());
+      }
+    } else {
+      // Send full welcome email with bonuses for new users
+      // Note: The 10% welcome discount is automatically created in the database
+      // and appears in "My Rewards" - no code needed
+      const response = await fetch("/api/email/welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, username }),
+      });
+      
+      if (!response.ok) {
+        console.warn("Failed to send welcome email:", await response.text());
+      }
     }
   } catch (error) {
     console.warn("Error sending welcome email:", error);
@@ -241,6 +271,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true, error: null });
 
         try {
+          // Check if this is a returning user BEFORE signup
+          const isReturning = await checkIfReturningUser(email);
+          
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -276,10 +309,12 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             return { success: false, error: errorMessage };
           }
 
+          const displayName = metadata?.username || email.split("@")[0];
+
           // Check if email confirmation is required
           if (data.user && !data.session) {
-            // Send welcome email even if confirmation is needed
-            sendWelcomeEmail(email, metadata?.username || email.split("@")[0]);
+            // Send appropriate email based on returning status
+            sendWelcomeEmail(email, displayName, isReturning);
             // Subscribe to newsletter (doesn't send newsletter email)
             subscribeToNewsletter(data.user.id, email);
             
@@ -290,9 +325,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             };
           }
 
-          // Send welcome email and subscribe to newsletter for immediate signup
+          // Send appropriate email and subscribe to newsletter for immediate signup
           if (data.user) {
-            sendWelcomeEmail(email, metadata?.username || email.split("@")[0]);
+            sendWelcomeEmail(email, displayName, isReturning);
             // Subscribe to newsletter (doesn't send newsletter email)
             subscribeToNewsletter(data.user.id, email);
           }
