@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { RewardShopGrid, XPBar, LevelBadge, XPMultiplierIndicator } from "@/components/gamification";
@@ -7,9 +8,30 @@ import { Button } from "@/components/ui";
 import { useGamificationStore, useAuthStore, useUIStore } from "@/stores";
 
 export function RewardsShopPageClient() {
-  const { userProfile } = useGamificationStore();
+  const { 
+    userProfile, 
+    updateQuestProgress, 
+    initDailyQuests, 
+    logActivity 
+  } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { toggleSignIn } = useUIStore();
+  const hasTrackedVisit = useRef(false);
+
+  // Track page visit for "Reward Seeker" quest
+  useEffect(() => {
+    if (authInitialized && isAuthenticated && !hasTrackedVisit.current) {
+      hasTrackedVisit.current = true;
+      initDailyQuests();
+      
+      // Log activity to prevent duplicate tracking
+      logActivity("visit_rewards_shop").then((isNewActivity) => {
+        if (isNewActivity) {
+          updateQuestProgress("visit_rewards", 1);
+        }
+      });
+    }
+  }, [authInitialized, isAuthenticated, initDailyQuests, logActivity, updateQuestProgress]);
 
   // Show login prompt for unauthenticated users
   if (authInitialized && !isAuthenticated) {

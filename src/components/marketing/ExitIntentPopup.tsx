@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
@@ -11,15 +12,27 @@ interface ExitIntentPopupProps {
   className?: string;
 }
 
+// Pages where the exit intent popup should NOT show
+const EXCLUDED_PATHS = [
+  "/unsubscribe",
+  "/reset-password",
+  "/forgot-password",
+  "/checkout",
+];
+
 export function ExitIntentPopup({
   discount = 10,
   onSubscribe,
   className,
 }: ExitIntentPopupProps) {
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
   const [hasShown, setHasShown] = useState(false);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+
+  // Check if on excluded page
+  const isExcludedPage = EXCLUDED_PATHS.some(path => pathname?.startsWith(path));
 
   // Check if already shown in this session
   useEffect(() => {
@@ -32,6 +45,9 @@ export function ExitIntentPopup({
   // Exit intent detection
   const handleMouseLeave = useCallback(
     (e: MouseEvent) => {
+      // Don't show on excluded pages
+      if (isExcludedPage) return;
+      
       // Only trigger when mouse leaves from the top of the page
       if (e.clientY < 10 && !hasShown && !isVisible) {
         setIsVisible(true);
@@ -39,7 +55,7 @@ export function ExitIntentPopup({
         sessionStorage.setItem("exitIntentShown", "true");
       }
     },
-    [hasShown, isVisible]
+    [hasShown, isVisible, isExcludedPage]
   );
 
   useEffect(() => {

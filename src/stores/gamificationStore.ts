@@ -1010,7 +1010,21 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         error = result.error;
       }
 
-      if (error) throw error;
+      // If still failing, try v3 function
+      if (error || !data) {
+        const result = await supabase
+          .rpc("check_achievements_v3", { p_user_id: user.id } as never);
+        data = result.data;
+        error = result.error;
+      }
+
+      // Silently fail if no achievement functions are available
+      if (error || !data) {
+        console.warn("Achievement check skipped - functions not available");
+        pendingAchievementCheck.forEach(p => p.resolve([]));
+        pendingAchievementCheck = [];
+        return [];
+      }
 
       const result = data as unknown as CheckAchievementsResponse;
       if (result?.success && result.unlocked && result.unlocked.length > 0) {
