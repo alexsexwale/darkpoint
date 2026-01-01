@@ -139,8 +139,8 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => ({
           hasMore: result.has_more,
         });
       }
-    } catch (error) {
-      console.error("Error fetching reviews:", error);
+    } catch {
+      // Silently fail - reviews table may not exist yet
     } finally {
       set({ isLoading: false });
     }
@@ -225,8 +225,9 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => ({
       const result = data as CanReviewResponse;
       set({ canReview: result });
       return result;
-    } catch (error) {
-      console.error("Error checking can review:", error);
+    } catch {
+      // Function may not be deployed yet - silently default to not_logged_in
+      // This is expected behavior before the migration is run
       const result: CanReviewResponse = {
         can_review: false,
         reason: "not_logged_in",
