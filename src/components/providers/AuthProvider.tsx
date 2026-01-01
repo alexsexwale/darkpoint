@@ -72,5 +72,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [fetchWishlist, clearLocalState, processPendingProduct, pendingProduct, initGamification, resetGamification, fetchRewards, clearRewardsState]);
 
+  // Listen for custom events to refresh rewards (e.g., after level up)
+  useEffect(() => {
+    const handleRefreshRewards = () => {
+      if (isAuthenticated) {
+        fetchRewards();
+      }
+    };
+
+    window.addEventListener("refresh-rewards", handleRefreshRewards);
+    return () => window.removeEventListener("refresh-rewards", handleRefreshRewards);
+  }, [isAuthenticated, fetchRewards]);
+
   return <>{children}</>;
 }

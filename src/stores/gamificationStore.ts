@@ -84,6 +84,13 @@ interface AddXPResponse {
   bonus_xp?: number;
   total_xp_earned?: number;
   multiplier_applied?: number;
+  levelup_reward?: {
+    success: boolean;
+    reward_granted: boolean;
+    discount_percent?: number;
+    coupon_code?: string;
+    new_tier?: string;
+  };
 }
 
 interface XPMultiplier {
@@ -837,6 +844,21 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             newTitle: tier.title,
             perks: tier.perks,
           });
+          
+          // If a reward was granted, show notification and refresh rewards
+          if (result.levelup_reward?.reward_granted && result.levelup_reward?.discount_percent) {
+            setTimeout(() => {
+              get().addNotification({
+                type: "reward",
+                title: "🎁 Level Up Reward!",
+                message: `You received a ${result.levelup_reward!.discount_percent}% discount coupon! Check your cart to use it.`,
+                icon: "🏷️",
+              });
+              
+              // Trigger rewards refresh (will be picked up by rewardsStore listener)
+              window.dispatchEvent(new CustomEvent("refresh-rewards"));
+            }, 2000);
+          }
         }
 
         return true;
