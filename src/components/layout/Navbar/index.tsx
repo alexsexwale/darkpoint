@@ -70,8 +70,8 @@ export function Navbar() {
                     </div>
                   </div>
                 )}
-                <a href="/contact" className="hover:text-white transition-colors">
-                  Support
+                <a href="/track-order" className="hover:text-white transition-colors">
+                  Track Order
                 </a>
                 <a href="/contact" className="hover:text-white transition-colors">
                   Contact

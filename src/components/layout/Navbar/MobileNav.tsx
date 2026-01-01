@@ -492,8 +492,8 @@ export function MobileNav() {
             <div className="p-4 border-t border-[var(--color-dark-3)]/50 space-y-3">
               {/* Quick Links */}
               <div className="flex items-center justify-center gap-4 text-white/40">
-                <Link href="/support" onClick={handleLinkClick} className="text-xs hover:text-white transition-colors">
-                  Support
+                <Link href="/track-order" onClick={handleLinkClick} className="text-xs hover:text-white transition-colors">
+                  Track Order
                 </Link>
                 <span>•</span>
                 <Link href="/contact" onClick={handleLinkClick} className="text-xs hover:text-white transition-colors">
