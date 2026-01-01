@@ -162,11 +162,6 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="https://twitch.tv" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
-                  Twitch
-                </a>
-              </li>
-              <li>
                 <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
                   Instagram
                 </a>

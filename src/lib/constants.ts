@@ -18,7 +18,6 @@ export const SOCIAL_LINKS = {
   instagram: "https://instagram.com/darkpointza",
   facebook: "https://facebook.com/darkpointza",
   discord: "https://discord.gg/darkpoint",
-  twitch: "https://twitch.tv/darkpointza",
 } as const;
 
 // Audio settings
