@@ -384,9 +384,10 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
                     transition={{ delay: 0.6 }}
                     className="flex items-center justify-center gap-2 mb-6 text-sm text-white/50"
                   >
-                    {selectedPrize.prize_type === "discount" && "🏷️ Discount added to your account"}
+                    {selectedPrize.prize_type === "discount" && "🏷️ Discount coupon added to your rewards!"}
                     {selectedPrize.prize_type === "xp" && "⚡ XP added to your balance"}
-                    {selectedPrize.prize_type === "spin" && "🎡 Bonus spin added"}
+                    {selectedPrize.prize_type === "spin" && "🎡 Bonus spin added - spin again!"}
+                    {selectedPrize.prize_type === "xp_multiplier" && "🚀 2x XP Boost activated for 24 hours!"}
                     {selectedPrize.prize_type === "credit" && "💰 Store credit added"}
                     {selectedPrize.prize_type === "shipping" && "🚚 Free shipping unlocked"}
                     {selectedPrize.prize_type === "mystery" && "🎁 Check your rewards!"}

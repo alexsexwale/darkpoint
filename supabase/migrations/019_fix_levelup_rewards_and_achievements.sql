@@ -6,7 +6,7 @@
 -- PART 1: Level-Up Reward Granting
 -- ============================================
 
--- Function to grant level-up rewards (discount coupons)
+-- Function to grant level-up rewards (XP bonuses, no real money cost)
 CREATE OR REPLACE FUNCTION grant_levelup_reward(
   p_user_id UUID,
   p_old_level INTEGER,
@@ -17,59 +17,51 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_old_tier RECORD;
-  v_new_tier RECORD;
-  v_discount_value INTEGER;
-  v_coupon_code TEXT;
+  v_xp_bonus INTEGER;
+  v_free_spin BOOLEAN := false;
 BEGIN
-  -- Get old tier info
-  SELECT * INTO v_old_tier
-  FROM levels
-  WHERE level = p_old_level;
+  -- Calculate XP bonus based on level achieved
+  -- Higher levels = bigger XP bonuses
+  CASE 
+    WHEN p_new_level >= 50 THEN 
+      v_xp_bonus := 500;
+      v_free_spin := true;
+    WHEN p_new_level >= 35 THEN 
+      v_xp_bonus := 300;
+      v_free_spin := true;
+    WHEN p_new_level >= 20 THEN 
+      v_xp_bonus := 200;
+    WHEN p_new_level >= 10 THEN 
+      v_xp_bonus := 100;
+    WHEN p_new_level >= 5 THEN 
+      v_xp_bonus := 50;
+    ELSE 
+      v_xp_bonus := 25;
+  END CASE;
   
-  -- Get new tier info
-  SELECT * INTO v_new_tier
-  FROM levels
-  WHERE level = p_new_level;
+  -- Grant XP bonus
+  UPDATE user_profiles 
+  SET total_xp = total_xp + v_xp_bonus,
+      updated_at = NOW()
+  WHERE id = p_user_id;
   
-  -- If moved to a new tier with different discount
-  IF v_new_tier.discount_percent > COALESCE(v_old_tier.discount_percent, 0) THEN
-    v_discount_value := v_new_tier.discount_percent;
-    v_coupon_code := 'LVLUP-' || p_new_level || '-' || UPPER(SUBSTRING(MD5(random()::text) FROM 1 FOR 6));
-    
-    -- Create coupon for the user
-    INSERT INTO user_coupons (
-      user_id, 
-      code, 
-      discount_type, 
-      discount_value,
-      min_order_value,
-      source, 
-      expires_at
-    )
-    VALUES (
-      p_user_id,
-      v_coupon_code,
-      'percent'::discount_type,
-      v_discount_value,
-      0, -- No minimum
-      'achievement', -- Level up is an achievement
-      NOW() + INTERVAL '30 days'
-    );
-    
-    RETURN json_build_object(
-      'success', true,
-      'reward_granted', true,
-      'discount_percent', v_discount_value,
-      'coupon_code', v_coupon_code,
-      'new_tier', v_new_tier.title
-    );
+  -- Log XP transaction
+  INSERT INTO xp_transactions (user_id, amount, action, description)
+  VALUES (p_user_id, v_xp_bonus, 'bonus', 'Level ' || p_new_level || ' reward bonus!');
+  
+  -- Grant free spin for milestone levels
+  IF v_free_spin THEN
+    UPDATE user_profiles 
+    SET available_spins = available_spins + 1
+    WHERE id = p_user_id;
   END IF;
   
   RETURN json_build_object(
     'success', true,
-    'reward_granted', false,
-    'reason', 'No tier change'
+    'reward_granted', true,
+    'xp_bonus', v_xp_bonus,
+    'free_spin', v_free_spin,
+    'new_level', p_new_level
   );
 END;
 $$;

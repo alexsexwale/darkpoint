@@ -15,7 +15,7 @@ export type Json =
 
 export type AchievementCategory = "shopping" | "social" | "engagement" | "collector" | "special";
 export type RarityType = "common" | "rare" | "epic" | "legendary" | "mythic";
-export type PrizeType = "discount" | "xp" | "shipping" | "credit" | "spin" | "mystery";
+export type PrizeType = "discount" | "xp" | "shipping" | "credit" | "spin" | "mystery" | "xp_multiplier";
 export type ReferralStatus = "pending" | "signed_up" | "converted";
 export type RewardCategory = "discount" | "shipping" | "xp_booster" | "cosmetic" | "exclusive" | "spin";
 export type DiscountType = "percent" | "fixed" | "shipping";

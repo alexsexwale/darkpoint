@@ -87,9 +87,9 @@ interface AddXPResponse {
   levelup_reward?: {
     success: boolean;
     reward_granted: boolean;
-    discount_percent?: number;
-    coupon_code?: string;
-    new_tier?: string;
+    xp_bonus?: number;
+    free_spin?: boolean;
+    new_level?: number;
   };
 }
 
@@ -641,17 +641,12 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
                 },
               });
 
-              // Refresh profile to get updated XP/credits
-              setTimeout(() => get().fetchUserProfile(), 100);
-              
-              // Add notification for the prize
-              const prizeValueNum = typeof prize.prize_value === "string" ? parseInt(prize.prize_value) : prize.prize_value;
-              get().addNotification({
-                type: prize.prize_type === "xp" ? "xp_gain" : "reward",
-                title: `🎉 ${prize.name}!`,
-                message: prize.description || `You won: ${prize.prize_value}`,
-                xpAmount: prize.prize_type === "xp" ? prizeValueNum : undefined,
-              });
+              // Refresh profile to get updated XP/credits after animation completes
+              // Don't add notification here - the SpinWheel component shows a proper modal
+              setTimeout(() => {
+                get().fetchUserProfile();
+                get().fetchActiveMultiplier(); // In case XP multiplier was won
+              }, 100);
 
               set({ isSpinning: false });
               return prize;
@@ -665,16 +660,18 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       }
     }
 
-    // Local fallback when database isn't available
+    // Local fallback when database isn't available (XP-only prizes - no real money cost)
     const localPrizes: SpinPrize[] = [
-      { id: "1", name: "+10 XP", description: "Nice! You won 10 XP!", prize_type: "xp", prize_value: "10", probability: 30, color: "#4CAF50", is_active: true },
-      { id: "2", name: "+25 XP", description: "Great! You won 25 XP!", prize_type: "xp", prize_value: "25", probability: 25, color: "#8BC34A", is_active: true },
-      { id: "3", name: "+50 XP", description: "Awesome! You won 50 XP!", prize_type: "xp", prize_value: "50", probability: 15, color: "#CDDC39", is_active: true },
-      { id: "4", name: "+100 XP", description: "Amazing! You won 100 XP!", prize_type: "xp", prize_value: "100", probability: 8, color: "#FFEB3B", is_active: true },
-      { id: "5", name: "5% Off", description: "You won 5% off your next order!", prize_type: "discount", prize_value: "5", probability: 10, color: "#FF9800", is_active: true },
-      { id: "6", name: "10% Off", description: "You won 10% off your next order!", prize_type: "discount", prize_value: "10", probability: 5, color: "#FF5722", is_active: true },
-      { id: "7", name: "Free Spin!", description: "Lucky! You get another spin!", prize_type: "spin", prize_value: "1", probability: 5, color: "#E91E63", is_active: true },
-      { id: "8", name: "Mystery!", description: "Something special awaits!", prize_type: "mystery", prize_value: "0", probability: 2, color: "#9E9E9E", is_active: true },
+      { id: "1", name: "+10 XP", description: "Nice! You earned 10 bonus XP!", prize_type: "xp", prize_value: "10", probability: 20, color: "#6b7280", is_active: true },
+      { id: "2", name: "+25 XP", description: "Great spin! 25 XP added!", prize_type: "xp", prize_value: "25", probability: 20, color: "#22c55e", is_active: true },
+      { id: "3", name: "+50 XP", description: "Awesome! 50 XP for you!", prize_type: "xp", prize_value: "50", probability: 15, color: "#3b82f6", is_active: true },
+      { id: "4", name: "+75 XP", description: "Lucky! 75 XP bonus!", prize_type: "xp", prize_value: "75", probability: 10, color: "#8b5cf6", is_active: true },
+      { id: "5", name: "+100 XP", description: "Amazing! 100 XP jackpot!", prize_type: "xp", prize_value: "100", probability: 10, color: "#a855f7", is_active: true },
+      { id: "6", name: "+150 XP", description: "Incredible! 150 XP mega bonus!", prize_type: "xp", prize_value: "150", probability: 8, color: "#ec4899", is_active: true },
+      { id: "7", name: "Free Spin!", description: "Lucky you! Another free spin!", prize_type: "spin", prize_value: "1", probability: 8, color: "#ef4444", is_active: true },
+      { id: "8", name: "+250 XP", description: "EPIC! 250 XP legendary spin!", prize_type: "xp", prize_value: "250", probability: 5, color: "#f59e0b", is_active: true },
+      { id: "9", name: "+500 XP", description: "JACKPOT! 500 XP ultra rare!", prize_type: "xp", prize_value: "500", probability: 2, color: "#fbbf24", is_active: true },
+      { id: "10", name: "2x XP Boost!", description: "LEGENDARY! 2x XP for 24 hours!", prize_type: "xp_multiplier", prize_value: "2", probability: 2, color: "#dc2626", is_active: true },
     ];
 
         // Weighted random selection
@@ -704,14 +701,12 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       },
     });
 
-    // Add notification
-    get().addNotification({
-      type: selectedPrize.prize_type === "xp" ? "xp_gain" : "reward",
-      title: `🎉 ${selectedPrize.name}!`,
-      message: selectedPrize.description || "",
-      xpAmount: selectedPrize.prize_type === "xp" ? prizeValue : undefined,
-    });
+    // Handle XP multiplier prize
+    if (selectedPrize.prize_type === "xp_multiplier") {
+      await get().grantMultiplier(prizeValue, 24, "spin_wheel", `Spin Wheel Prize: ${prizeValue}x XP for 24 hours!`);
+    }
 
+    // Don't add notification here - the SpinWheel component shows a proper modal after animation
     set({ isSpinning: false });
     return selectedPrize;
       },
@@ -753,15 +748,19 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
       const result = data as unknown as PurchaseRewardResponse;
       if (result?.success) {
-        // Refresh profile
+        // Refresh profile and active multiplier (in case XP booster was purchased)
         await get().fetchUserProfile();
+        await get().fetchActiveMultiplier();
 
-        // Add notification
+        // Add notification with specific message for XP boosters
+        const isXPBooster = reward?.category === "xp_booster";
         get().addNotification({
           type: "reward",
-          title: "Reward Purchased!",
-          message: `You got: ${result.reward?.name || rewardName}`,
-          icon: "🎁",
+          title: isXPBooster ? "XP Boost Activated! 🚀" : "Reward Purchased!",
+          message: isXPBooster 
+            ? `Your ${result.reward?.name || rewardName} is now active! All XP earned will be doubled for 24 hours.`
+            : `You got: ${result.reward?.name || rewardName}`,
+          icon: isXPBooster ? "⚡" : "🎁",
         });
 
         return { success: true };
@@ -845,18 +844,24 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             perks: tier.perks,
           });
           
-          // If a reward was granted, show notification and refresh rewards
-          if (result.levelup_reward?.reward_granted && result.levelup_reward?.discount_percent) {
+          // If a reward was granted, show notification
+          if (result.levelup_reward?.reward_granted) {
             setTimeout(() => {
+              const xpBonus = result.levelup_reward?.xp_bonus || 0;
+              const freeSpin = result.levelup_reward?.free_spin;
+              
+              let message = `+${xpBonus} bonus XP!`;
+              if (freeSpin) {
+                message += " Plus a free spin!";
+              }
+              
               get().addNotification({
                 type: "reward",
                 title: "🎁 Level Up Reward!",
-                message: `You received a ${result.levelup_reward!.discount_percent}% discount coupon! Check your cart to use it.`,
-                icon: "🏷️",
+                message,
+                icon: "⚡",
+                xpAmount: xpBonus,
               });
-              
-              // Trigger rewards refresh (will be picked up by rewardsStore listener)
-              window.dispatchEvent(new CustomEvent("refresh-rewards"));
             }, 2000);
           }
         }

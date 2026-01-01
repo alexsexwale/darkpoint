@@ -63,48 +63,48 @@ export const LEVEL_TIERS: LevelTier[] = [
     maxLevel: 4,
     title: "Noob",
     color: "#6b7280",
-    perks: ["Welcome 5% discount"],
-    discountPercent: 5,
+    perks: ["+25 XP bonus per level"],
+    discountPercent: 0,
   },
   {
     minLevel: 5,
     maxLevel: 9,
     title: "Casual",
     color: "#22c55e",
-    perks: ["Free shipping on R500+"],
-    discountPercent: 5,
+    perks: ["+50 XP bonus per level", "Daily quest bonus"],
+    discountPercent: 0,
   },
   {
     minLevel: 10,
     maxLevel: 19,
     title: "Gamer",
     color: "#3b82f6",
-    perks: ["Early sale access", "Free shipping on R500+"],
-    discountPercent: 5,
+    perks: ["+100 XP bonus per level", "Early sale notifications", "Exclusive badges"],
+    discountPercent: 0,
   },
   {
     minLevel: 20,
     maxLevel: 34,
     title: "Pro",
     color: "#8b5cf6",
-    perks: ["7% permanent discount", "Early sale access", "Free shipping"],
-    discountPercent: 7,
+    perks: ["+200 XP bonus per level", "Priority support", "Pro badge"],
+    discountPercent: 0,
   },
   {
     minLevel: 35,
     maxLevel: 49,
     title: "Legend",
     color: "#f59e0b",
-    perks: ["10% permanent discount", "Exclusive items", "Free shipping"],
-    discountPercent: 10,
+    perks: ["+300 XP bonus + Free spin per level", "Legend badge", "Exclusive access"],
+    discountPercent: 0,
   },
   {
     minLevel: 50,
     maxLevel: 999,
     title: "Elite",
     color: "#ef4444",
-    perks: ["15% permanent discount", "VIP support", "Monthly gifts", "All perks"],
-    discountPercent: 15,
+    perks: ["+500 XP bonus + Free spin per level", "Elite badge", "VIP recognition", "All perks"],
+    discountPercent: 0,
   },
 ];
 
@@ -126,8 +126,8 @@ export const RARITY_CONFIG: Record<RarityType, { color: string; glow: string; na
   mythic: { color: "#ef4444", glow: "0 0 40px rgba(239, 68, 68, 0.8)", name: "Mythic" },
 };
 
-// Daily Login Reward Types
-export type DailyRewardType = "discount" | "spin" | "mystery_key" | "badge" | "xp_multiplier";
+// Daily Login Reward Types (XP-focused, no real money cost)
+export type DailyRewardType = "spin" | "badge" | "xp_multiplier" | "xp_bonus";
 
 export interface DailyRewardBonus {
   type: DailyRewardType;
@@ -146,29 +146,29 @@ export const DAILY_REWARDS: DailyReward[] = [
   { day: 1, xp: 10 },
   { 
     day: 2, 
-    xp: 15, 
-    reward: { type: "discount", value: "5%", description: "5% off any item", icon: "🏷️" } 
+    xp: 20, 
+    reward: { type: "xp_bonus", value: "25", description: "+25 Bonus XP!", icon: "✨" } 
   },
-  { day: 3, xp: 25 },
+  { day: 3, xp: 30 },
   { 
     day: 4, 
-    xp: 35, 
+    xp: 40, 
     reward: { type: "xp_multiplier", value: "1.5x", description: "1.5x XP for 24 hours", icon: "⚡" } 
   },
   { 
     day: 5, 
     xp: 50, 
-    reward: { type: "spin", value: "1", description: "Free Spin", icon: "🎡" } 
+    reward: { type: "spin", value: "1", description: "Free Spin!", icon: "🎡" } 
   },
   { 
     day: 6, 
     xp: 75, 
-    reward: { type: "mystery_key", value: "bronze", description: "Bronze Mystery Key", icon: "🔑" } 
+    reward: { type: "xp_bonus", value: "100", description: "+100 Bonus XP!", icon: "🌟" } 
   },
   { 
     day: 7, 
     xp: 100, 
-    reward: { type: "mystery_key", value: "silver", description: "Silver Mystery Box", icon: "📦" } 
+    reward: { type: "spin", value: "2", description: "2 Free Spins!", icon: "🎰" } 
   },
 ];
 

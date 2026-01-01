@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { RewardShopGrid, XPBar, LevelBadge } from "@/components/gamification";
+import { RewardShopGrid, XPBar, LevelBadge, XPMultiplierIndicator } from "@/components/gamification";
 import { Button } from "@/components/ui";
 import { useGamificationStore, useAuthStore, useUIStore } from "@/stores";
 
@@ -225,6 +225,9 @@ export function RewardsShopPageClient() {
                 </div>
               )}
 
+              {/* Active XP Multiplier */}
+              <XPMultiplierIndicator variant="full" />
+
               {/* Stats */}
               <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
                 <h3 className="font-heading text-lg mb-4">Your Stats</h3>
@@ -258,7 +261,7 @@ export function RewardsShopPageClient() {
                       <span className="text-2xl">🎁</span>
                       <div>
                         <p className="font-heading text-sm">Refer Friends</p>
-                        <p className="text-xs text-white/60">Earn R50+ per referral</p>
+                        <p className="text-xs text-white/60">Earn 300+ XP per referral</p>
                       </div>
                     </div>
                   </div>
