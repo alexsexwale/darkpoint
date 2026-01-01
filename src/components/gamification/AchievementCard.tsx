@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { AchievementWithProgress } from "@/types/gamification";
 import { RARITY_CONFIG } from "@/types/gamification";
@@ -39,7 +39,7 @@ export function AchievementCard({
       className={cn(
         "relative group cursor-pointer h-full",
         "bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]",
-        "p-3 transition-all duration-300",
+        "p-4 transition-all duration-300",
         isUnlocked && "border-opacity-100",
         !isUnlocked && "opacity-70 grayscale-[20%]",
         className
@@ -55,12 +55,12 @@ export function AchievementCard({
         style={{ background: rarity.color, opacity: isUnlocked ? 1 : 0.3 }}
       />
 
-      {/* Content */}
-      <div className="flex items-start gap-3">
+      {/* Header: Icon + Rarity Badge */}
+      <div className="flex items-center gap-3 mb-3">
         {/* Icon */}
         <div
           className={cn(
-            "flex-shrink-0 w-12 h-12 flex items-center justify-center text-2xl",
+            "flex-shrink-0 w-10 h-10 flex items-center justify-center text-xl",
             "bg-[var(--color-dark-3)] border",
             isUnlocked ? "border-opacity-100" : "border-[var(--color-dark-4)]"
           )}
@@ -77,87 +77,82 @@ export function AchievementCard({
           )}
         </div>
 
-        {/* Details */}
-        <div className="flex-1 min-w-0 overflow-hidden">
-          {/* Rarity badge */}
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className="text-[9px] px-1.5 py-0.5 uppercase tracking-wider flex-shrink-0"
-              style={{
-                background: `${rarity.color}20`,
-                color: rarity.color,
-              }}
-            >
-              {rarity.name}
-            </span>
-          </div>
+        {/* Rarity badge */}
+        <span
+          className="text-[9px] px-1.5 py-0.5 uppercase tracking-wider"
+          style={{
+            background: `${rarity.color}20`,
+            color: rarity.color,
+          }}
+        >
+          {rarity.name}
+        </span>
 
-          {/* Title */}
-          <h3
-            className={cn(
-              "font-heading text-sm uppercase tracking-wider mb-1 leading-tight break-words",
-              isUnlocked ? "text-white" : "text-white/70"
-            )}
-            title={isLocked ? "???" : achievement.name}
+        {/* Unlocked checkmark */}
+        {isUnlocked && (
+          <div
+            className="ml-auto w-5 h-5 flex items-center justify-center rounded-full"
+            style={{ background: rarity.color }}
           >
-            {isLocked ? "???" : achievement.name}
-          </h3>
-
-          {/* Description */}
-          <p 
-            className={cn(
-              "text-xs mb-2 leading-relaxed transition-all break-words",
-              isUnlocked ? "text-white/60" : "text-white/50",
-              isExpanded ? "" : "line-clamp-2"
-            )}
-            title={isLocked ? "Complete hidden requirements to unlock" : achievement.description}
-          >
-            {isLocked ? "Complete hidden requirements to unlock" : achievement.description}
-          </p>
-
-          {/* Progress bar */}
-          {!isUnlocked && !isLocked && (
-            <div className="mb-2">
-              <div className="flex justify-between text-[10px] text-white/40 mb-0.5">
-                <span>Progress</span>
-                <span>{achievement.progress} / {achievement.requirement_value}</span>
-              </div>
-              <div className="h-1 bg-[var(--color-dark-4)] overflow-hidden rounded-full">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  className="h-full rounded-full"
-                  style={{ background: rarity.color }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* XP reward */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--color-main-1)]">
-              +{achievement.xp_reward} XP
-            </span>
-            {isUnlocked && achievement.unlocked_at && (
-              <span className="text-[10px] text-white/40">
-                {new Date(achievement.unlocked_at).toLocaleDateString()}
-              </span>
-            )}
+            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Unlocked checkmark */}
-      {isUnlocked && (
-        <div
-          className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full"
-          style={{ background: rarity.color }}
-        >
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
+      {/* Title - Full width */}
+      <h3
+        className={cn(
+          "font-heading uppercase tracking-wide mb-2 leading-tight text-sm",
+          isUnlocked ? "text-white" : "text-white/70"
+        )}
+        title={isLocked ? "???" : achievement.name}
+      >
+        {isLocked ? "???" : achievement.name}
+      </h3>
+
+      {/* Description */}
+      <p 
+        className={cn(
+          "text-[11px] mb-3 leading-relaxed transition-all",
+          isUnlocked ? "text-white/60" : "text-white/50",
+          isExpanded ? "" : "line-clamp-2"
+        )}
+        title={isLocked ? "Complete hidden requirements to unlock" : achievement.description}
+      >
+        {isLocked ? "Complete hidden requirements to unlock" : achievement.description}
+      </p>
+
+      {/* Progress bar */}
+      {!isUnlocked && !isLocked && (
+        <div className="mb-3">
+          <div className="flex justify-between text-[10px] text-white/40 mb-1">
+            <span>Progress</span>
+            <span>{achievement.progress} / {achievement.requirement_value}</span>
+          </div>
+          <div className="h-1.5 bg-[var(--color-dark-4)] overflow-hidden rounded-full">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              className="h-full rounded-full"
+              style={{ background: rarity.color }}
+            />
+          </div>
         </div>
       )}
+
+      {/* Footer: XP reward + Date */}
+      <div className="flex items-center justify-between mt-auto pt-2 border-t border-[var(--color-dark-3)]">
+        <span className="text-xs font-semibold text-[var(--color-main-1)]">
+          +{achievement.xp_reward} XP
+        </span>
+        {isUnlocked && achievement.unlocked_at && (
+          <span className="text-[10px] text-white/40">
+            {new Date(achievement.unlocked_at).toLocaleDateString()}
+          </span>
+        )}
+      </div>
 
       {/* Hover glow effect */}
       <div
@@ -169,4 +164,3 @@ export function AchievementCard({
     </motion.div>
   );
 }
-
