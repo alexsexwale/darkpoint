@@ -7,6 +7,103 @@ import { SpinWheel, XPBar, LevelBadge } from "@/components/gamification";
 import { Button } from "@/components/ui";
 import { useGamificationStore, useAuthStore, useUIStore } from "@/stores";
 
+// Skeleton components
+function SkeletonPulse({ className }: { className?: string }) {
+  return (
+    <div className={`animate-pulse bg-[var(--color-dark-3)] rounded ${className}`} />
+  );
+}
+
+function SpinPageSkeleton() {
+  return (
+    <div className="min-h-screen">
+      <section className="relative py-8 md:py-16 overflow-hidden px-4">
+        {/* Background glow */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-main-1)]/10 to-transparent" />
+
+        <div className="container relative max-w-7xl mx-auto">
+          {/* Header skeleton */}
+          <div className="text-center mb-6 md:mb-12">
+            <SkeletonPulse className="h-10 md:h-14 w-64 mx-auto mb-4" />
+            <SkeletonPulse className="h-4 w-80 mx-auto" />
+          </div>
+
+          {/* Main content grid */}
+          <div className="grid lg:grid-cols-3 gap-6 md:gap-8 items-start">
+            {/* Left sidebar skeleton */}
+            <div className="lg:col-span-1 space-y-4 md:space-y-6 order-2 lg:order-1">
+              {/* User card skeleton */}
+              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-4 md:p-6">
+                <div className="flex items-center gap-3 md:gap-4 mb-4">
+                  <SkeletonPulse className="w-12 h-12 rounded-full" />
+                  <div className="flex-1">
+                    <SkeletonPulse className="h-5 w-24 mb-2" />
+                    <SkeletonPulse className="h-3 w-16" />
+                  </div>
+                </div>
+                <SkeletonPulse className="h-2 w-full rounded-full" />
+                <div className="flex justify-between mt-2">
+                  <SkeletonPulse className="h-3 w-12" />
+                  <SkeletonPulse className="h-3 w-16" />
+                </div>
+              </div>
+
+              {/* Spins info skeleton */}
+              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-4 md:p-6">
+                <SkeletonPulse className="h-5 w-24 mb-4" />
+                <div className="text-center py-3 md:py-4">
+                  <SkeletonPulse className="h-12 w-12 mx-auto rounded-full mb-2" />
+                  <SkeletonPulse className="h-3 w-20 mx-auto" />
+                </div>
+                <div className="border-t border-[var(--color-dark-3)] pt-3 md:pt-4 mt-3 md:mt-4 space-y-2">
+                  <SkeletonPulse className="h-3 w-full" />
+                  <SkeletonPulse className="h-3 w-3/4" />
+                  <SkeletonPulse className="h-3 w-5/6" />
+                </div>
+              </div>
+
+              {/* Quick links skeleton */}
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
+                <SkeletonPulse className="h-10 w-full" />
+                <SkeletonPulse className="h-10 w-full" />
+              </div>
+            </div>
+
+            {/* Center - Wheel skeleton */}
+            <div className="lg:col-span-2 flex flex-col items-center order-1 lg:order-2">
+              <div className="relative">
+                {/* Wheel circle skeleton */}
+                <SkeletonPulse className="w-[300px] h-[300px] md:w-[380px] md:h-[380px] rounded-full" />
+                {/* Center button skeleton */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <SkeletonPulse className="w-16 h-16 md:w-20 md:h-20 rounded-full" />
+                </div>
+              </div>
+              <SkeletonPulse className="h-4 w-32 mt-4" />
+            </div>
+          </div>
+
+          {/* Prize list skeleton */}
+          <div className="mt-8 md:mt-16">
+            <SkeletonPulse className="h-7 w-40 mx-auto mb-6" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 md:gap-4">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-3 md:p-4"
+                >
+                  <SkeletonPulse className="w-8 h-8 mx-auto mb-2 rounded" />
+                  <SkeletonPulse className="h-3 w-16 mx-auto" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function SpinPageClient() {
   const { 
     userProfile, 
@@ -14,6 +111,7 @@ export function SpinPageClient() {
     isSpinning,
     fetchSpinPrizes,
     isInitialized,
+    isLoading,
     updateQuestProgress,
     initDailyQuests,
     logActivity,
@@ -46,6 +144,11 @@ export function SpinPageClient() {
       });
     }
   }, [authInitialized, isAuthenticated, initDailyQuests, logActivity, updateQuestProgress]);
+
+  // Show skeleton loader while loading
+  if (!authInitialized || (isAuthenticated && (isLoading || !userProfile))) {
+    return <SpinPageSkeleton />;
+  }
 
   // Show login prompt for unauthenticated users
   if (authInitialized && !isAuthenticated) {
@@ -153,15 +256,14 @@ export function SpinPageClient() {
               <h3 className="text-lg md:text-xl font-heading text-center mb-6 text-white/80">
                 🎰 Prizes You Could Win
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
                 {[
-                  { name: "5% Off", color: "#22c55e", icon: "🏷️" },
-                  { name: "10% Off", color: "#3b82f6", icon: "🎫" },
-                  { name: "50 XP", color: "#8b5cf6", icon: "⚡" },
-                  { name: "100 XP", color: "#a855f7", icon: "⚡" },
-                  { name: "Free Ship", color: "#f59e0b", icon: "🚚" },
-                  { name: "Mystery", color: "#ec4899", icon: "🎁" },
-                  { name: "R500", color: "#ef4444", icon: "💰" },
+                  { name: "5% Off", color: "#6b7280", icon: "🏷️" },
+                  { name: "10% Off", color: "#22c55e", icon: "🎫" },
+                  { name: "Free Spin", color: "#ef4444", icon: "🎡" },
+                  { name: "+100 XP", color: "#a855f7", icon: "⚡" },
+                  { name: "+500 XP", color: "#fbbf24", icon: "🏆" },
+                  { name: "2x XP Boost", color: "#dc2626", icon: "🚀" },
                 ].map((prize, i) => (
                   <motion.div
                     key={prize.name}
@@ -247,7 +349,7 @@ export function SpinPageClient() {
                 <div className="border-t border-[var(--color-dark-3)] pt-3 md:pt-4 mt-3 md:mt-4 text-xs md:text-sm text-white/40 space-y-1.5 md:space-y-2">
                   <p>• Login daily for bonus spins</p>
                   <p>• Day 5 streak = Free spin</p>
-                  <p>• Spend R1000+ = Bonus spin</p>
+                  <p>• Spend R1000+ (after discounts) = Bonus spin</p>
                 </div>
               </div>
 
@@ -312,15 +414,19 @@ export function SpinPageClient() {
             className="mt-8 md:mt-16"
           >
             <h2 className="text-xl md:text-2xl font-heading text-center mb-4 md:mb-8">Possible Prizes</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
               {[
-                { name: "5% Off", color: "#22c55e", icon: "🏷️" },
-                { name: "10% Off", color: "#3b82f6", icon: "🎫" },
-                { name: "50 XP", color: "#8b5cf6", icon: "⚡" },
-                { name: "100 XP", color: "#a855f7", icon: "⚡" },
-                { name: "Free Shipping", color: "#f59e0b", icon: "🚚" },
-                { name: "Mystery Gift", color: "#ec4899", icon: "🎁" },
-                { name: "R500 Credit", color: "#ef4444", icon: "💰" },
+                { name: "5% Off", color: "#6b7280", icon: "🏷️" },
+                { name: "10% Off", color: "#22c55e", icon: "🎫" },
+                { name: "Free Spin", color: "#ef4444", icon: "🎡" },
+                { name: "Bonus Spin", color: "#f97316", icon: "🎰" },
+                { name: "+50 XP", color: "#3b82f6", icon: "⚡" },
+                { name: "+75 XP", color: "#8b5cf6", icon: "⚡" },
+                { name: "+100 XP", color: "#a855f7", icon: "⚡" },
+                { name: "+150 XP", color: "#ec4899", icon: "⚡" },
+                { name: "+250 XP", color: "#f59e0b", icon: "💎" },
+                { name: "+500 XP", color: "#fbbf24", icon: "🏆" },
+                { name: "2x XP Boost", color: "#dc2626", icon: "🚀" },
               ].map((prize) => (
                 <div
                   key={prize.name}
