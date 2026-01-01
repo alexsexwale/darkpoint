@@ -41,7 +41,7 @@ function AchievementCardSkeleton() {
 export function AchievementsPageClient() {
   const { userProfile, achievements, achievementStats, fetchAchievements, isInitialized, isLoading } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
-  const { toggleSignIn } = useUIStore();
+  const { openSignIn } = useUIStore();
   const [isFetching, setIsFetching] = useState(false);
 
   // Fetch achievements when component mounts
@@ -145,11 +145,19 @@ export function AchievementsPageClient() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
-                  onClick={toggleSignIn}
+                  onClick={() => openSignIn("login")}
                   size="lg"
                   className="min-w-[200px] text-base"
                 >
-                  Sign In / Register
+                  Sign In
+                </Button>
+                <Button
+                  onClick={() => openSignIn("register")}
+                  variant="outline"
+                  size="lg"
+                  className="min-w-[200px] text-base"
+                >
+                  Create Account
                 </Button>
                 <Link href="/rewards">
                   <Button variant="outline" size="lg" className="min-w-[200px] text-base">

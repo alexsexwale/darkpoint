@@ -8,11 +8,18 @@ import { Button } from "./Button";
 
 export function SignInModal() {
   const router = useRouter();
-  const { isSignInOpen, closeSignIn } = useUIStore();
+  const { isSignInOpen, closeSignIn, signInModalMode } = useUIStore();
   const { signIn, signUp, signInWithGoogle, signInWithGithub, isLoading, user } = useAuthStore();
   const { fetchWishlist, processPendingProduct, pendingProduct } = useWishlistStore();
   
   const [mode, setMode] = useState<"login" | "register">("login");
+  
+  // Sync mode with store when modal opens
+  useEffect(() => {
+    if (isSignInOpen) {
+      setMode(signInModalMode);
+    }
+  }, [isSignInOpen, signInModalMode]);
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");

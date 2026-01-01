@@ -142,7 +142,7 @@ function ResetPasswordForm() {
               <Link href="/forgot-password">
                 <Button variant="primary">Request New Link</Button>
               </Link>
-              <Button variant="outline" onClick={openSignIn}>
+              <Button variant="outline" onClick={() => openSignIn("login")}>
                 Back to Sign In
               </Button>
             </div>
@@ -194,7 +194,7 @@ function ResetPasswordForm() {
                 Your password has been successfully reset. You can now sign in with your new password.
               </p>
 
-              <Button variant="primary" size="lg" onClick={openSignIn}>
+              <Button variant="primary" size="lg" onClick={() => openSignIn("login")}>
                 Sign In Now
               </Button>
             </div>
@@ -357,7 +357,7 @@ function ResetPasswordForm() {
             {/* Back to sign in */}
             <div className="mt-6 text-center">
               <button
-                onClick={openSignIn}
+                onClick={() => openSignIn("login")}
                 className="text-white/50 text-sm hover:text-white/70"
               >
                 ← Back to Sign In

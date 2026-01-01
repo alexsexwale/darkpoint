@@ -24,6 +24,37 @@ async function sendWelcomeEmail(email: string, username?: string) {
   }
 }
 
+// Helper function to subscribe user to newsletter (without sending newsletter email)
+async function subscribeToNewsletter(userId: string, email: string) {
+  try {
+    // Update user profile to mark as newsletter subscribed
+    await supabase
+      .from("user_profiles")
+      .update({ 
+        newsletter_subscribed: true,
+        email: email.toLowerCase()
+      } as never)
+      .eq("id", userId);
+
+    // Also add to newsletter_subscribers table for tracking
+    await supabase
+      .from("newsletter_subscribers")
+      .upsert([{
+        email: email.toLowerCase(),
+        is_subscribed: true,
+        source: "registration",
+        subscribed_at: new Date().toISOString()
+      }] as never, { 
+        onConflict: "email" 
+      });
+
+    console.log("User subscribed to newsletter:", email);
+  } catch (error) {
+    console.warn("Error subscribing to newsletter:", error);
+    // Don't fail signup if newsletter subscription fails
+  }
+}
+
 interface AuthState {
   user: User | null;
   session: Session | null;
@@ -249,6 +280,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           if (data.user && !data.session) {
             // Send welcome email even if confirmation is needed
             sendWelcomeEmail(email, metadata?.username || email.split("@")[0]);
+            // Subscribe to newsletter (doesn't send newsletter email)
+            subscribeToNewsletter(data.user.id, email);
             
             set({ isLoading: false });
             return { 
@@ -257,9 +290,11 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             };
           }
 
-          // Send welcome email for immediate signup
+          // Send welcome email and subscribe to newsletter for immediate signup
           if (data.user) {
             sendWelcomeEmail(email, metadata?.username || email.split("@")[0]);
+            // Subscribe to newsletter (doesn't send newsletter email)
+            subscribeToNewsletter(data.user.id, email);
           }
 
           set({

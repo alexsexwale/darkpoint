@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+type AuthModalMode = "login" | "register";
+
 interface UIState {
   // Preloader
   isPreloaderVisible: boolean;
@@ -8,6 +10,7 @@ interface UIState {
   // Modals
   isSearchOpen: boolean;
   isSignInOpen: boolean;
+  signInModalMode: AuthModalMode;
   isForgotPasswordOpen: boolean;
   isSideNavOpen: boolean;
   isMobileMenuOpen: boolean;
@@ -32,7 +35,7 @@ interface UIActions {
   toggleSearch: () => void;
   
   // Sign In
-  openSignIn: () => void;
+  openSignIn: (mode?: AuthModalMode) => void;
   closeSignIn: () => void;
   toggleSignIn: () => void;
   
@@ -70,6 +73,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   isInitialLoad: true,
   isSearchOpen: false,
   isSignInOpen: false,
+  signInModalMode: "login" as AuthModalMode,
   isForgotPasswordOpen: false,
   isSideNavOpen: false,
   isMobileMenuOpen: false,
@@ -97,9 +101,9 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
 
   // Sign In
-  openSignIn: () => {
+  openSignIn: (mode: AuthModalMode = "login") => {
     get().closeAllModals();
-    set({ isSignInOpen: true });
+    set({ isSignInOpen: true, signInModalMode: mode });
   },
   closeSignIn: () => set({ isSignInOpen: false }),
   toggleSignIn: () => {

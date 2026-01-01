@@ -107,7 +107,7 @@ export function ForgotPasswordPageClient() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button variant="outline" onClick={openSignIn}>
+                <Button variant="outline" onClick={() => openSignIn("login")}>
                   Back to Sign In
                 </Button>
                 <Link href="/">
@@ -205,7 +205,7 @@ export function ForgotPasswordPageClient() {
               <p className="text-white/50 text-sm">
                 Remember your password?{" "}
                 <button
-                  onClick={openSignIn}
+                  onClick={() => openSignIn("login")}
                   className="text-[var(--color-main-1)] hover:underline font-medium"
                 >
                   Sign In

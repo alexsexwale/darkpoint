@@ -156,7 +156,7 @@ export function WishlistPageClient() {
             Create an account or sign in to save your favorite items. Your wishlist will be synced across all your devices.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="primary" size="lg" onClick={openSignIn}>
+            <Button variant="primary" size="lg" onClick={() => openSignIn("login")}>
               Sign In / Register
             </Button>
             <Link href="/store">

@@ -15,7 +15,7 @@ export function RewardsShopPageClient() {
     logActivity 
   } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
-  const { toggleSignIn } = useUIStore();
+  const { openSignIn } = useUIStore();
   const hasTrackedVisit = useRef(false);
 
   // Track page visit for "Reward Seeker" quest
@@ -115,11 +115,19 @@ export function RewardsShopPageClient() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
-                  onClick={toggleSignIn}
+                  onClick={() => openSignIn("login")}
                   size="lg"
                   className="min-w-[200px] text-base"
                 >
-                  Sign In / Register
+                  Sign In
+                </Button>
+                <Button
+                  onClick={() => openSignIn("register")}
+                  variant="outline"
+                  size="lg"
+                  className="min-w-[200px] text-base"
+                >
+                  Create Account
                 </Button>
                 <Link href="/rewards">
                   <Button variant="outline" size="lg" className="min-w-[200px] text-base">

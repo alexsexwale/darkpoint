@@ -96,7 +96,7 @@ function GuestWelcome() {
           <Button 
             variant="primary" 
             size="lg"
-            onClick={() => openSignIn()}
+            onClick={() => openSignIn("login")}
             className="px-8"
           >
             Sign In to Start Earning
@@ -104,7 +104,7 @@ function GuestWelcome() {
           <Button 
             variant="outline" 
             size="lg"
-            onClick={() => openSignIn()}
+            onClick={() => openSignIn("register")}
             className="px-8"
           >
             Create Free Account

@@ -69,7 +69,7 @@ export function ReferralLandingPageClient({ code }: ReferralLandingPageClientPro
   const handleSignUp = () => {
     // Store referral code before opening sign in
     sessionStorage.setItem("referralCode", code);
-    openSignIn();
+    openSignIn("register");
   };
 
   // Loading state
@@ -118,7 +118,7 @@ export function ReferralLandingPageClient({ code }: ReferralLandingPageClientPro
                   Go to Homepage
                 </Button>
               </Link>
-              <Button variant="outline" size="lg" onClick={() => openSignIn()}>
+              <Button variant="outline" size="lg" onClick={() => openSignIn("register")}>
                 Sign Up Anyway
               </Button>
             </div>
@@ -341,7 +341,7 @@ export function ReferralLandingPageClient({ code }: ReferralLandingPageClientPro
                 <p className="text-white/40 text-sm mt-4">
                   Already have an account?{" "}
                   <button
-                    onClick={() => openSignIn()}
+                    onClick={() => openSignIn("login")}
                     className="text-[var(--color-main-1)] hover:underline"
                   >
                     Sign In
