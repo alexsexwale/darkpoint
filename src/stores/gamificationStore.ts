@@ -418,6 +418,15 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // First, try to restore/sync achievements based on user stats
+    // This ensures achievements are properly calculated even if data was lost
+    try {
+      await supabase.rpc("restore_user_achievements", { p_user_id: user.id } as never);
+    } catch (restoreError) {
+      // Silently continue if restore fails - it might not be deployed yet
+      console.warn("restore_user_achievements not available:", restoreError);
+    }
+
     try {
       // Try RPC call first
       const { data, error } = await supabase
@@ -464,8 +473,8 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       );
 
       // Combine data - cast to Achievement type from database
+      // Show ALL achievements (no hidden filter - all achievements should be visible)
       const achievements = ((achievementsData || []) as Tables<"achievements">[])
-        .filter(a => !a.is_hidden || unlockedMap.has(a.id))
         .filter(a => !category || a.category === category)
         .map(a => {
           const unlocked = unlockedMap.get(a.id);

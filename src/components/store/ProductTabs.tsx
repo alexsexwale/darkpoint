@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Rating } from "@/components/ui";
 import { ReportReviewModal } from "@/components/ui/ReportReviewModal";
 import { ProductDescription } from "./ProductDescription";
-import type { Product, ProductReview } from "@/types";
+import { useReviewsStore, type Review, type ReviewStats } from "@/stores/reviewsStore";
+import { useAuthStore, useUIStore } from "@/stores";
+import type { Product } from "@/types";
 
 interface ProductTabsProps {
   product: Product;
-  reviews?: ProductReview[];
 }
 
 const REVIEWS_PER_PAGE = 5;
@@ -18,7 +19,7 @@ const REVIEWS_PER_PAGE = 5;
 const getSpecifications = (product: Product) => {
   const commonSpecs = [
     { label: "Brand", value: "Dark Point" },
-    { label: "SKU", value: product.id.toUpperCase() },
+    { label: "SKU", value: product.id.toUpperCase().slice(0, 12) },
   ];
 
   const categorySpecs: Record<string, { label: string; value: string }[]> = {
@@ -51,238 +52,333 @@ const getSpecifications = (product: Product) => {
   return [...commonSpecs, ...(categorySpecs[product.category] || categorySpecs.gaming)];
 };
 
-// Mock reviews for demonstration (expanded for pagination testing)
-const getMockReviews = (product: Product): ProductReview[] => [
-  {
-    id: "1",
-    productId: product.id,
-    author: "GamerPro2024",
-    rating: 5,
-    title: "Absolutely amazing!",
-    content: "This product exceeded my expectations. The quality is top-notch and it arrived quickly. Highly recommend to all gamers!",
-    createdAt: "2024-12-01",
-    helpful: 24,
-  },
-  {
-    id: "2",
-    productId: product.id,
-    author: "TechEnthusiast",
-    rating: 4,
-    title: "Great value for money",
-    content: "Good product overall. Works exactly as described. Would buy again from Dark Point.",
-    createdAt: "2024-11-28",
-    helpful: 15,
-  },
-  {
-    id: "3",
-    productId: product.id,
-    author: "StreamerKing",
-    rating: 5,
-    title: "Perfect for streaming",
-    content: "Using this for my streams and it's been fantastic. My viewers love it!",
-    createdAt: "2024-11-15",
-    helpful: 31,
-  },
-  {
-    id: "4",
-    productId: product.id,
-    author: "CasualGamer99",
-    rating: 4,
-    title: "Solid purchase",
-    content: "Does what it says on the box. Good quality and fast delivery. Would recommend.",
-    createdAt: "2024-11-10",
-    helpful: 8,
-  },
-  {
-    id: "5",
-    productId: product.id,
-    author: "ProPlayer_ZA",
-    rating: 5,
-    title: "Tournament ready!",
-    content: "Been using this in competitive play. No issues whatsoever. Top tier quality!",
-    createdAt: "2024-11-05",
-    helpful: 42,
-  },
-  {
-    id: "6",
-    productId: product.id,
-    author: "RetroGamer",
-    rating: 4,
-    title: "Better than expected",
-    content: "I was skeptical at first, but this product really delivers. Great build quality.",
-    createdAt: "2024-10-28",
-    helpful: 12,
-  },
-  {
-    id: "7",
-    productId: product.id,
-    author: "NightOwlGaming",
-    rating: 5,
-    title: "Best purchase this year",
-    content: "Absolutely love it! The quality is outstanding and customer service was excellent.",
-    createdAt: "2024-10-20",
-    helpful: 19,
-  },
-  {
-    id: "8",
-    productId: product.id,
-    author: "GameDevSA",
-    rating: 3,
-    title: "Decent product",
-    content: "It's okay for the price. Nothing spectacular but gets the job done.",
-    createdAt: "2024-10-15",
-    helpful: 5,
-  },
-  {
-    id: "9",
-    productId: product.id,
-    author: "EsportsCoach",
-    rating: 5,
-    title: "Highly recommended for teams",
-    content: "We bought these for our entire esports team. Everyone loves them!",
-    createdAt: "2024-10-10",
-    helpful: 28,
-  },
-  {
-    id: "10",
-    productId: product.id,
-    author: "WeekendWarrior",
-    rating: 4,
-    title: "Great for casual gaming",
-    content: "Perfect for my weekend gaming sessions. Good value for the price.",
-    createdAt: "2024-10-05",
-    helpful: 7,
-  },
-  {
-    id: "11",
-    productId: product.id,
-    author: "TechReviewer",
-    rating: 5,
-    title: "Impressive quality",
-    content: "As someone who reviews tech products, I can say this is one of the better ones I've tested.",
-    createdAt: "2024-09-28",
-    helpful: 35,
-  },
-  {
-    id: "12",
-    productId: product.id,
-    author: "FirstTimeGamer",
-    rating: 4,
-    title: "Great starter product",
-    content: "Perfect for someone new to gaming. Easy to use and great quality.",
-    createdAt: "2024-09-20",
-    helpful: 11,
-  },
-];
+// Calculate rating distribution from stats
+const getRatingDistribution = (stats: ReviewStats | null) => {
+  if (!stats) {
+    return [5, 4, 3, 2, 1].map((star) => ({ star, count: 0, percentage: 0 }));
+  }
 
-// Calculate rating distribution
-const getRatingDistribution = (reviews: ProductReview[]) => {
-  const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  reviews.forEach((review) => {
-    if (review.rating >= 1 && review.rating <= 5) {
-      distribution[review.rating as keyof typeof distribution]++;
-    }
-  });
-  
-  const total = reviews.length;
-  return Object.entries(distribution)
-    .reverse()
-    .map(([star, count]) => ({
-      star: parseInt(star),
+  const total = stats.total;
+  return [5, 4, 3, 2, 1].map((star) => {
+    const count = stats.distribution[star.toString() as keyof typeof stats.distribution] || 0;
+    return {
+      star,
       count,
       percentage: total > 0 ? Math.round((count / total) * 100) : 0,
-    }));
+    };
+  });
 };
 
-export function ProductTabs({ product, reviews: providedReviews }: ProductTabsProps) {
+export function ProductTabs({ product }: ProductTabsProps) {
   const [activeTab, setActiveTab] = useState<"description" | "parameters" | "reviews">("description");
   const [reviewRating, setReviewRating] = useState(0);
-  const [helpfulReviews, setHelpfulReviews] = useState<Set<string>>(new Set());
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewContent, setReviewContent] = useState("");
+  const [authorName, setAuthorName] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportingReviewId, setReportingReviewId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  
+  const [sortBy, setSortBy] = useState<string>("recent");
+
+  const { isAuthenticated, user } = useAuthStore();
+  const { openSignIn } = useUIStore();
+  const {
+    reviews,
+    stats,
+    isLoading,
+    isSubmitting,
+    canReview,
+    totalReviews,
+    hasMore,
+    fetchProductReviews,
+    submitReview,
+    checkCanReview,
+    voteHelpful,
+    reportReview,
+  } = useReviewsStore();
+
   const specifications = getSpecifications(product);
-  const reviews = providedReviews || getMockReviews(product);
-  const ratingDistribution = getRatingDistribution(reviews);
-  const avgRating = product.rating || 4.0;
+  const ratingDistribution = getRatingDistribution(stats);
+  const avgRating = stats?.average || 0;
 
-  // Pagination calculations
-  const totalPages = Math.ceil(reviews.length / REVIEWS_PER_PAGE);
-  const paginatedReviews = useMemo(() => {
-    const startIndex = (currentPage - 1) * REVIEWS_PER_PAGE;
-    const endIndex = startIndex + REVIEWS_PER_PAGE;
-    return reviews.slice(startIndex, endIndex);
-  }, [reviews, currentPage]);
-
-  // Generate page numbers to display
-  const getPageNumbers = () => {
-    const pages: (number | "ellipsis")[] = [];
-    
-    if (totalPages <= 7) {
-      // Show all pages if 7 or fewer
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      // Always show first page
-      pages.push(1);
-      
-      if (currentPage > 3) {
-        pages.push("ellipsis");
-      }
-      
-      // Show pages around current page
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-      
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
-      
-      if (currentPage < totalPages - 2) {
-        pages.push("ellipsis");
-      }
-      
-      // Always show last page
-      pages.push(totalPages);
+  // Fetch reviews when tab is active or product changes
+  useEffect(() => {
+    if (activeTab === "reviews") {
+      fetchProductReviews(product.id, {
+        limit: REVIEWS_PER_PAGE,
+        offset: 0,
+        sort: sortBy,
+      });
+      checkCanReview(product.id);
     }
-    
-    return pages;
-  };
+  }, [activeTab, product.id, fetchProductReviews, checkCanReview, sortBy]);
+
+  // Set author name from user profile
+  useEffect(() => {
+    if (user?.email) {
+      setAuthorName(user.email.split("@")[0]);
+    }
+  }, [user]);
+
+  const totalPages = Math.ceil(totalReviews / REVIEWS_PER_PAGE);
 
   const tabs = [
     { id: "description", label: "Description" },
     { id: "parameters", label: "Parameters" },
-    { id: "reviews", label: "Reviews", count: product.reviewCount || reviews.length },
+    { id: "reviews", label: "Reviews", count: totalReviews },
   ] as const;
 
-  const handleHelpful = (reviewId: string) => {
-    setHelpfulReviews((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(reviewId)) {
-        newSet.delete(reviewId);
-      } else {
-        newSet.add(reviewId);
-      }
-      return newSet;
-    });
+  const handleHelpful = async (reviewId: string, isHelpful: boolean) => {
+    if (!isAuthenticated) {
+      openSignIn("login");
+      return;
+    }
+
+    const result = await voteHelpful(reviewId, isHelpful);
+    if (!result.success && result.error) {
+      console.error(result.error);
+    }
   };
 
   const handleReport = (reviewId: string) => {
+    if (!isAuthenticated) {
+      openSignIn("login");
+      return;
+    }
     setReportingReviewId(reviewId);
     setReportModalOpen(true);
   };
 
-  const handleReportSubmit = (reason: string) => {
-    console.log(`Reported review ${reportingReviewId} for reason: ${reason}`);
-    // In a real app, this would send to an API
+  const handleReportSubmit = async (reason: string) => {
+    if (!reportingReviewId) return;
+    
+    const result = await reportReview(reportingReviewId, reason);
+    if (!result.success && result.error) {
+      console.error(result.error);
+    }
   };
 
-  const handlePageChange = (page: number) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitError(null);
+    setSubmitSuccess(null);
+
+    if (!isAuthenticated) {
+      openSignIn("login");
+      return;
+    }
+
+    if (reviewRating === 0) {
+      setSubmitError("Please select a rating");
+      return;
+    }
+
+    if (!reviewTitle.trim()) {
+      setSubmitError("Please enter a review title");
+      return;
+    }
+
+    if (!reviewContent.trim()) {
+      setSubmitError("Please enter your review");
+      return;
+    }
+
+    const result = await submitReview(product.id, {
+      rating: reviewRating,
+      title: reviewTitle.trim(),
+      content: reviewContent.trim(),
+      authorName: authorName.trim() || "Anonymous",
+    });
+
+    if (result.success) {
+      setSubmitSuccess(`Review submitted successfully! +${result.xpAwarded} XP`);
+      setReviewRating(0);
+      setReviewTitle("");
+      setReviewContent("");
+      // Refresh reviews
+      fetchProductReviews(product.id, { limit: REVIEWS_PER_PAGE, offset: 0, sort: sortBy });
+    } else {
+      setSubmitError(result.error || "Failed to submit review");
+    }
+  };
+
+  const handlePageChange = async (page: number) => {
     setCurrentPage(page);
-    // Scroll to reviews section
+    await fetchProductReviews(product.id, {
+      limit: REVIEWS_PER_PAGE,
+      offset: (page - 1) * REVIEWS_PER_PAGE,
+      sort: sortBy,
+    });
     document.getElementById("customer-reviews")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleSortChange = (newSort: string) => {
+    setSortBy(newSort);
+    setCurrentPage(1);
+    fetchProductReviews(product.id, {
+      limit: REVIEWS_PER_PAGE,
+      offset: 0,
+      sort: newSort,
+    });
+  };
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | "ellipsis")[] = [];
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("ellipsis");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push("ellipsis");
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
+
+  // Render review form based on can_review status
+  const renderReviewForm = () => {
+    if (!isAuthenticated) {
+      return (
+        <div className="text-center py-8">
+          <div className="text-4xl mb-4">🔒</div>
+          <h4 className="text-lg font-medium mb-2">Sign in to Write a Review</h4>
+          <p className="text-white/60 mb-4 text-sm">
+            You must be logged in and have purchased this product to leave a review.
+          </p>
+          <button
+            type="button"
+            onClick={() => openSignIn("login")}
+            className="nk-btn nk-btn-outline"
+          >
+            <span className="nk-btn-inner" />
+            <span className="nk-btn-content">Sign In</span>
+          </button>
+        </div>
+      );
+    }
+
+    if (canReview?.reason === "not_purchased") {
+      return (
+        <div className="text-center py-8">
+          <div className="text-4xl mb-4">🛒</div>
+          <h4 className="text-lg font-medium mb-2">Purchase Required</h4>
+          <p className="text-white/60 text-sm">
+            You must purchase this product before you can write a review.
+          </p>
+        </div>
+      );
+    }
+
+    if (canReview?.reason === "already_reviewed") {
+      return (
+        <div className="text-center py-8">
+          <div className="text-4xl mb-4">✅</div>
+          <h4 className="text-lg font-medium mb-2">Review Submitted</h4>
+          <p className="text-white/60 text-sm">
+            You have already reviewed this product. Thank you for your feedback!
+          </p>
+        </div>
+      );
+    }
+
+    // User can review
+    return (
+      <form className="nk-review-form space-y-4" onSubmit={handleSubmitReview}>
+        {/* Success/Error Messages */}
+        {submitSuccess && (
+          <div className="bg-green-500/20 border border-green-500/50 text-green-400 px-4 py-3 rounded text-sm">
+            {submitSuccess}
+          </div>
+        )}
+        {submitError && (
+          <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded text-sm">
+            {submitError}
+          </div>
+        )}
+
+        {/* Rating Input */}
+        <div className="nk-rating-input flex justify-center">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              className={cn("star", reviewRating >= star && "active")}
+              onClick={() => setReviewRating(star)}
+              aria-label={`Rate ${star} stars`}
+            >
+              <svg
+                className="w-6 h-6"
+                fill={reviewRating >= star ? "currentColor" : "none"}
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                />
+              </svg>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <input
+            type="text"
+            placeholder="Name *"
+            value={authorName}
+            onChange={(e) => setAuthorName(e.target.value)}
+            className="nk-form-control"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Title *"
+            value={reviewTitle}
+            onChange={(e) => setReviewTitle(e.target.value)}
+            className="nk-form-control"
+            required
+          />
+        </div>
+
+        <textarea
+          placeholder="Your Review *"
+          value={reviewContent}
+          onChange={(e) => setReviewContent(e.target.value)}
+          className="nk-form-control nk-form-control-textarea"
+          rows={4}
+          required
+        />
+
+        <p className="text-xs text-white/40 text-center">
+          💡 Tip: Write a detailed review (200+ characters) to earn bonus XP!
+        </p>
+
+        <div className="text-center pt-2">
+          <button
+            type="submit"
+            className="nk-btn nk-btn-outline"
+            disabled={isSubmitting}
+          >
+            <span className="nk-btn-inner" />
+            <span className="nk-btn-content">
+              {isSubmitting ? "Submitting..." : "Submit Review"}
+            </span>
+          </button>
+        </div>
+      </form>
+    );
   };
 
   return (
@@ -315,48 +411,44 @@ export function ProductTabs({ product, reviews: providedReviews }: ProductTabsPr
           className={cn("nk-tabs-pane", activeTab === "description" && "active")}
         >
           <div className="nk-box-3">
-            {/* Product Description with HTML stripped and Read More */}
-            <ProductDescription 
-              description={product.description} 
-              maxLength={500}
-            />
-            
+            <ProductDescription description={product.description} maxLength={500} />
+
             <div className="mt-8 pt-8 border-t border-[var(--color-dark-3)]">
-              <h4 className="text-lg font-heading uppercase tracking-wider mb-4">Why Choose Dark Point?</h4>
+              <h4 className="text-lg font-heading uppercase tracking-wider mb-4">
+                Why Choose Dark Point?
+              </h4>
               <p className="text-[var(--muted-foreground)] mb-4">
-                At Dark Point, we pride ourselves on offering only the highest quality gaming products. 
-                Each item is carefully selected to ensure it meets the standards that gamers expect and deserve.
+                At Dark Point, we pride ourselves on offering only the highest quality gaming
+                products. Each item is carefully selected to ensure it meets the standards that
+                gamers expect and deserve.
               </p>
               <p className="text-[var(--muted-foreground)]">
-                This product comes with our satisfaction guarantee. If you&apos;re not completely happy with your 
-                purchase, our customer support team is here to help make it right.
+                This product comes with our satisfaction guarantee. If you&apos;re not completely
+                happy with your purchase, our customer support team is here to help make it right.
               </p>
             </div>
             <ul className="mt-6 space-y-2">
-              <li className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-[var(--color-main-1)]" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>Premium quality materials</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-[var(--color-main-1)]" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>1 year warranty included</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-[var(--color-main-1)]" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>Free shipping on orders over R500</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-[var(--color-main-1)]" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>30-day money-back guarantee</span>
-              </li>
+              {[
+                "Premium quality materials",
+                "1 year warranty included",
+                "Free shipping on orders over R500",
+                "30-day money-back guarantee",
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-2">
+                  <svg
+                    className="w-5 h-5 text-[var(--color-main-1)]"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>{item}</span>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -393,14 +485,16 @@ export function ProductTabs({ product, reviews: providedReviews }: ProductTabsPr
               <h3 className="text-xl font-heading uppercase tracking-wider text-center mb-6">
                 Reviews Summary
               </h3>
-              
+
               <div className="nk-reviews-summary">
                 <div className="nk-reviews-rating">
                   <Rating value={avgRating} size="lg" />
                 </div>
-                <p className="nk-reviews-count">{avgRating.toFixed(1)} out of 5.0</p>
+                <p className="nk-reviews-count">
+                  {avgRating.toFixed(1)} out of 5.0
+                </p>
               </div>
-              
+
               <div className="nk-reviews-progress">
                 <table>
                   <tbody>
@@ -423,6 +517,12 @@ export function ProductTabs({ product, reviews: providedReviews }: ProductTabsPr
                   </tbody>
                 </table>
               </div>
+
+              {totalReviews === 0 && (
+                <p className="text-center text-white/50 mt-4 text-sm">
+                  No reviews yet. Be the first to review this product!
+                </p>
+              )}
             </div>
 
             {/* Add Review Form */}
@@ -430,163 +530,143 @@ export function ProductTabs({ product, reviews: providedReviews }: ProductTabsPr
               <h3 className="text-xl font-heading uppercase tracking-wider text-center mb-6">
                 Add a Review
               </h3>
-              
-              <form className="nk-review-form space-y-4">
-                {/* Rating Input */}
-                <div className="nk-rating-input flex justify-center">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      className={cn("star", reviewRating >= star && "active")}
-                      onClick={() => setReviewRating(star)}
-                      aria-label={`Rate ${star} stars`}
-                    >
-                      <svg
-                        className="w-6 h-6"
-                        fill={reviewRating >= star ? "currentColor" : "none"}
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                        />
-                      </svg>
-                    </button>
-                  ))}
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    placeholder="Name *"
-                    className="nk-form-control"
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Title *"
-                    className="nk-form-control"
-                    required
-                  />
-                </div>
-                
-                <textarea
-                  placeholder="Your Review *"
-                  className="nk-form-control nk-form-control-textarea"
-                  rows={4}
-                  required
-                />
-                
-                <div className="text-center pt-2">
-                  <button type="submit" className="nk-btn nk-btn-outline">
-                    <span className="nk-btn-inner" />
-                    <span className="nk-btn-content">Submit</span>
-                  </button>
-                </div>
-              </form>
+              {renderReviewForm()}
             </div>
           </div>
 
           {/* Individual Reviews */}
           {reviews.length > 0 && (
             <div className="mt-8" id="customer-reviews">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
                 <h4 className="text-lg font-heading uppercase tracking-wider">
                   Customer Reviews
                 </h4>
-                <p className="text-sm text-white/50">
-                  Showing {((currentPage - 1) * REVIEWS_PER_PAGE) + 1}-{Math.min(currentPage * REVIEWS_PER_PAGE, reviews.length)} of {reviews.length} reviews
-                </p>
+                <div className="flex items-center gap-4">
+                  {/* Sort Dropdown */}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => handleSortChange(e.target.value)}
+                    className="bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white/80 text-sm px-3 py-1.5 rounded cursor-pointer"
+                  >
+                    <option value="recent">Most Recent</option>
+                    <option value="helpful">Most Helpful</option>
+                    <option value="highest">Highest Rated</option>
+                    <option value="lowest">Lowest Rated</option>
+                  </select>
+                  <p className="text-sm text-white/50">
+                    Showing {(currentPage - 1) * REVIEWS_PER_PAGE + 1}-
+                    {Math.min(currentPage * REVIEWS_PER_PAGE, totalReviews)} of {totalReviews} reviews
+                  </p>
+                </div>
               </div>
-              
-              <div className="space-y-4">
-                {paginatedReviews.map((review) => {
-                  const isHelpful = helpfulReviews.has(review.id);
-                  const helpfulCount = review.helpful + (isHelpful ? 1 : 0);
-                  
-                  return (
+
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="nk-box-3 p-6 animate-pulse">
+                      <div className="h-4 bg-white/10 rounded w-1/4 mb-2" />
+                      <div className="h-3 bg-white/10 rounded w-1/6 mb-4" />
+                      <div className="h-3 bg-white/10 rounded w-full mb-2" />
+                      <div className="h-3 bg-white/10 rounded w-3/4" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((review) => (
                     <div key={review.id} className="nk-box-3 p-6">
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h5 className="font-medium">{review.title}</h5>
-                          <p className="text-sm text-white/60">by {review.author}</p>
+                          <div className="flex items-center gap-2 text-sm text-white/60">
+                            <span>by {review.author_name}</span>
+                            {review.is_verified_purchase && (
+                              <span className="text-green-400 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Verified Purchase
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <Rating value={review.rating} size="sm" />
                       </div>
                       <p className="text-white/80">{review.content}</p>
-                      
+
                       {/* Review Actions */}
                       <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
                         <div className="flex items-center gap-2 text-sm text-white/50">
-                          <span>{new Date(review.createdAt).toLocaleDateString()}</span>
+                          <span>{new Date(review.created_at).toLocaleDateString()}</span>
                           <span>·</span>
-                          <span>{helpfulCount} found this helpful</span>
+                          <span>{review.helpful_count} found this helpful</span>
                         </div>
-                        
-                        <div className="flex items-center gap-3">
-                          {/* Helpful Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleHelpful(review.id)}
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-1.5 rounded text-sm transition-colors cursor-pointer",
-                              isHelpful
-                                ? "bg-[var(--color-main-1)]/20 text-[var(--color-main-1)]"
-                                : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
-                            )}
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill={isHelpful ? "currentColor" : "none"}
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+
+                        {!review.is_own_review && (
+                          <div className="flex items-center gap-3">
+                            {/* Helpful Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleHelpful(review.id, true)}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded text-sm transition-colors cursor-pointer",
+                                review.user_voted === true
+                                  ? "bg-[var(--color-main-1)]/20 text-[var(--color-main-1)]"
+                                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                              )}
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-                              />
-                            </svg>
-                            <span>Helpful</span>
-                          </button>
-                          
-                          {/* Report Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleReport(review.id)}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded text-sm bg-white/5 text-white/60 hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                              <svg
+                                className="w-4 h-4"
+                                fill={review.user_voted === true ? "currentColor" : "none"}
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
+                                />
+                              </svg>
+                              <span>Helpful</span>
+                            </button>
+
+                            {/* Report Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleReport(review.id)}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded text-sm bg-white/5 text-white/60 hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
-                              />
-                            </svg>
-                            <span>Report</span>
-                          </button>
-                        </div>
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
+                                />
+                              </svg>
+                              <span>Report</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="mt-8 flex items-center justify-center gap-2">
-                  {/* Previous Button */}
                   <button
                     type="button"
                     onClick={() => handlePageChange(currentPage - 1)}
@@ -604,11 +684,13 @@ export function ProductTabs({ product, reviews: providedReviews }: ProductTabsPr
                     </svg>
                   </button>
 
-                  {/* Page Numbers */}
                   <div className="flex items-center gap-1">
-                    {getPageNumbers().map((page, index) => (
+                    {getPageNumbers().map((page, index) =>
                       page === "ellipsis" ? (
-                        <span key={`ellipsis-${index}`} className="w-10 h-10 flex items-center justify-center text-white/50">
+                        <span
+                          key={`ellipsis-${index}`}
+                          className="w-10 h-10 flex items-center justify-center text-white/50"
+                        >
                           ...
                         </span>
                       ) : (
@@ -628,10 +710,9 @@ export function ProductTabs({ product, reviews: providedReviews }: ProductTabsPr
                           {page}
                         </button>
                       )
-                    ))}
+                    )}
                   </div>
 
-                  {/* Next Button */}
                   <button
                     type="button"
                     onClick={() => handlePageChange(currentPage + 1)}
@@ -650,6 +731,17 @@ export function ProductTabs({ product, reviews: providedReviews }: ProductTabsPr
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Empty state when no reviews */}
+          {reviews.length === 0 && !isLoading && (
+            <div className="mt-8 text-center py-12 bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]">
+              <div className="text-6xl mb-4">📝</div>
+              <h4 className="text-lg font-heading mb-2">No Reviews Yet</h4>
+              <p className="text-white/60 text-sm">
+                Be the first to share your experience with this product!
+              </p>
             </div>
           )}
         </div>

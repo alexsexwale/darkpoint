@@ -8,4 +8,5 @@ export { useRomsStore } from "./romsStore";
 export { useAuthStore } from "./authStore";
 export { useAccountStore } from "./accountStore";
 export { useRewardsStore } from "./rewardsStore";
+export { useReviewsStore } from "./reviewsStore";
 
