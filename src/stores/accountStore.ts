@@ -80,7 +80,7 @@ interface AccountState {
   updateProfile: (updates: {
     display_name?: string;
     username?: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
   }) => Promise<{ success: boolean; error?: string }>;
   
   updatePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
