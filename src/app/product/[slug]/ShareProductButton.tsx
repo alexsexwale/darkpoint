@@ -60,7 +60,7 @@ const shareOptions = [
 export function ShareProductButton({ product, className }: ShareProductButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const { updateQuestProgress, initDailyQuests, logActivity, addNotification, addXP } = useGamificationStore();
+  const { updateQuestProgress, initDailyQuests, logActivity, addNotification, addXP, incrementShareCount } = useGamificationStore();
   const { isAuthenticated } = useAuthStore();
   const hasSharedRef = useRef(false);
 
@@ -80,6 +80,9 @@ export function ShareProductButton({ product, className }: ShareProductButtonPro
       
       // Award bonus XP for sharing
       await addXP(10, "share", `Shared product on ${platform}: ${product.name}`);
+      
+      // Increment share count for achievements (Sharing is Caring, Social Butterfly, etc.)
+      await incrementShareCount();
       
       addNotification({
         type: "xp_gain",

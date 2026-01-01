@@ -47,7 +47,7 @@ const socialLinks = [
 export function SocialShareButtons() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const pathname = usePathname();
-  const { updateQuestProgress, initDailyQuests, logActivity, addNotification, addXP } = useGamificationStore();
+  const { updateQuestProgress, initDailyQuests, logActivity, addNotification, addXP, incrementShareCount } = useGamificationStore();
   const { isAuthenticated } = useAuthStore();
   const hasSharedRef = useRef(false);
 
@@ -68,6 +68,9 @@ export function SocialShareButtons() {
       
       // Award bonus XP for sharing
       await addXP(10, "share", `Shared product on ${socialName}`);
+      
+      // Increment share count for achievements (Sharing is Caring, Social Butterfly, etc.)
+      await incrementShareCount();
       
       addNotification({
         type: "xp_gain",

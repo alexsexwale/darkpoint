@@ -51,6 +51,11 @@ export interface Database {
           referral_count: number; // INTEGER
           available_spins: number; // INTEGER
           store_credit: number; // DECIMAL(10,2)
+          total_shares: number; // INTEGER - for share achievements
+          categories_viewed: number; // INTEGER - for explorer achievement
+          wishlist_purchases: number; // INTEGER - for wishlist to cart conversion
+          single_order_max_value: number; // DECIMAL(10,2) - max order value for big spender
+          single_order_max_items: number; // INTEGER - max items in single order
           created_at: string; // TIMESTAMPTZ
           updated_at: string; // TIMESTAMPTZ
         };
@@ -73,6 +78,11 @@ export interface Database {
           referral_count?: number;
           available_spins?: number;
           store_credit?: number;
+          total_shares?: number;
+          categories_viewed?: number;
+          wishlist_purchases?: number;
+          single_order_max_value?: number;
+          single_order_max_items?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -95,6 +105,11 @@ export interface Database {
           referral_count?: number;
           available_spins?: number;
           store_credit?: number;
+          total_shares?: number;
+          categories_viewed?: number;
+          wishlist_purchases?: number;
+          single_order_max_value?: number;
+          single_order_max_items?: number;
           created_at?: string;
           updated_at?: string;
         };

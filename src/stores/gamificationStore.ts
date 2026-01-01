@@ -281,6 +281,9 @@ interface GamificationActions {
   grantMultiplier: (multiplier: number, durationHours: number, source: string, description?: string) => Promise<boolean>;
   clearActiveMultiplier: () => void;
 
+  // Share tracking
+  incrementShareCount: () => Promise<void>;
+
   // Helpers
   getCurrentTier: () => ReturnType<typeof getLevelTier>;
   getXPProgress: () => number;
@@ -1351,6 +1354,46 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
       clearActiveMultiplier: () => {
         set({ activeMultiplier: null });
+      },
+
+      // Increment share count for achievements
+      incrementShareCount: async () => {
+        if (!isSupabaseConfigured()) return;
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        try {
+          const { data, error } = await supabase
+            .rpc("increment_share_count", { p_user_id: user.id } as never);
+          
+          if (error) {
+            console.warn("increment_share_count RPC not available:", error);
+            return;
+          }
+          
+          // Refresh profile and check if any achievements were unlocked
+          await get().fetchUserProfile();
+          await get().fetchAchievements();
+          
+          // Check if achievements were unlocked
+          const result = data as { unlocked?: string[] };
+          if (result?.unlocked && result.unlocked.length > 0) {
+            const unlockedAchievements = get().achievements.filter(
+              a => result.unlocked?.includes(a.id)
+            );
+            unlockedAchievements.forEach(achievement => {
+              get().addNotification({
+                type: "achievement",
+                title: "🏆 Achievement Unlocked!",
+                message: achievement.name,
+                xpAmount: achievement.xp_reward,
+              });
+            });
+          }
+        } catch (error) {
+          console.warn("Error incrementing share count:", error);
+        }
       },
 
       // Helpers
