@@ -80,6 +80,30 @@ interface AddXPResponse {
   old_level?: number;
   new_level?: number;
   leveled_up?: boolean;
+  base_xp?: number;
+  bonus_xp?: number;
+  total_xp_earned?: number;
+  multiplier_applied?: number;
+}
+
+interface XPMultiplier {
+  id: string;
+  multiplier: number;
+  source: string;
+  source_description: string | null;
+  starts_at: string;
+  expires_at: string;
+  time_remaining_seconds: number;
+  xp_earned_with_multiplier: number;
+}
+
+interface GrantMultiplierResponse {
+  success: boolean;
+  action?: "created" | "extended";
+  multiplier_id?: string;
+  multiplier?: number;
+  expires_at?: string;
+  duration_hours?: number;
 }
 
 interface CheckAchievementsResponse {
@@ -191,6 +215,9 @@ interface GamificationState {
 
   // Track which action types have given XP today (to avoid double XP for achievements)
   questRewardedActions: Set<string>;
+
+  // XP Multiplier state
+  activeMultiplier: XPMultiplier | null;
 }
 
 // Actions interface
@@ -242,6 +269,11 @@ interface GamificationActions {
   setAchievementModal: (show: boolean, achievement?: Achievement | null) => void;
   setStreakMilestoneModal: (show: boolean, milestone?: StreakMilestone | null) => void;
 
+  // XP Multiplier actions
+  fetchActiveMultiplier: () => Promise<void>;
+  grantMultiplier: (multiplier: number, durationHours: number, source: string, description?: string) => Promise<boolean>;
+  clearActiveMultiplier: () => void;
+
   // Helpers
   getCurrentTier: () => ReturnType<typeof getLevelTier>;
   getXPProgress: () => number;
@@ -276,6 +308,7 @@ const initialState: GamificationState = {
   isSpinning: false,
   lastSpinResult: null,
   questRewardedActions: new Set<string>(),
+  activeMultiplier: null,
 };
 
 export const useGamificationStore = create<GamificationStore>()((set, get) => ({
@@ -302,6 +335,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         get().fetchUserProfile(),
         get().fetchSpinPrizes(),
         get().fetchRewards(),
+        get().fetchActiveMultiplier(),
       ]);
 
       // Check daily reward status
@@ -542,6 +576,15 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           xpAmount: result.xp_earned || 0,
         });
 
+        // Check for XP multiplier reward (day 4 in cycle)
+        const cycleDay = result.cycle_day || 1;
+        if (cycleDay === 4 || result.bonus_reward === "1.5x XP for 24 hours") {
+          // Grant 1.5x XP multiplier for 24 hours
+          setTimeout(async () => {
+            await get().grantMultiplier(1.5, 24, "daily_reward", "Day 4 Login Reward: 1.5x XP for 24 hours");
+          }, 500);
+        }
+
         // Check for streak milestone
         const milestone = getStreakMilestone(result.streak || 1);
         if (milestone) {
@@ -759,16 +802,32 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
       const result = data as unknown as AddXPResponse;
       if (result?.success) {
-        // Refresh profile
+        // Refresh profile and multiplier
         await get().fetchUserProfile();
+        await get().fetchActiveMultiplier();
+
+        // Build notification message based on whether multiplier was applied
+        const baseXP = result.base_xp || amount;
+        const bonusXP = result.bonus_xp || 0;
+        const totalXP = result.total_xp_earned || amount;
+        const multiplierApplied = result.multiplier_applied && result.multiplier_applied > 1;
 
         // Add notification
-        get().addNotification({
-          type: "xp_gain",
-          title: `+${amount} XP`,
-          message: description || `Earned from ${action}`,
-          xpAmount: amount,
-        });
+        if (multiplierApplied && bonusXP > 0) {
+          get().addNotification({
+            type: "xp_gain",
+            title: `+${totalXP} XP`,
+            message: `${description || `Earned from ${action}`} (${baseXP} + ${bonusXP} bonus from ${result.multiplier_applied}x)`,
+            xpAmount: totalXP,
+          });
+        } else {
+          get().addNotification({
+            type: "xp_gain",
+            title: `+${amount} XP`,
+            message: description || `Earned from ${action}`,
+            xpAmount: amount,
+          });
+        }
 
         // Check for level up
         if (result.leveled_up && result.new_level) {
@@ -1188,6 +1247,83 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
       setStreakMilestoneModal: (show, milestone = null) => {
         set({ showStreakMilestoneModal: show, milestoneData: milestone });
+      },
+
+      // XP Multiplier actions
+      fetchActiveMultiplier: async () => {
+        if (!isSupabaseConfigured()) return;
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        try {
+          const { data, error } = await supabase
+            .rpc("get_active_xp_multiplier", { p_user_id: user.id } as never);
+
+          if (error) {
+            console.warn("Could not fetch active multiplier:", error);
+            return;
+          }
+
+          // RPC returns an array, get first result
+          const result = (data as XPMultiplier[] | null)?.[0] || null;
+          
+          if (result && result.time_remaining_seconds > 0) {
+            set({ activeMultiplier: result });
+          } else {
+            set({ activeMultiplier: null });
+          }
+        } catch (error) {
+          console.warn("Error fetching active multiplier:", error);
+        }
+      },
+
+      grantMultiplier: async (multiplier, durationHours, source, description) => {
+        if (!isSupabaseConfigured()) return false;
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
+        try {
+          const { data, error } = await supabase
+            .rpc("grant_xp_multiplier", {
+              p_user_id: user.id,
+              p_multiplier: multiplier,
+              p_duration_hours: durationHours,
+              p_source: source,
+              p_description: description || null,
+            } as never);
+
+          if (error) {
+            console.warn("Could not grant multiplier:", error);
+            return false;
+          }
+
+          const result = data as unknown as GrantMultiplierResponse;
+          if (result?.success) {
+            // Refresh active multiplier
+            await get().fetchActiveMultiplier();
+            
+            // Show notification
+            get().addNotification({
+              type: "reward",
+              title: `⚡ ${multiplier}x XP Boost Activated!`,
+              message: `All XP earned for the next ${durationHours} hours will be multiplied by ${multiplier}x!`,
+              icon: "⚡",
+            });
+            
+            return true;
+          }
+
+          return false;
+        } catch (error) {
+          console.warn("Error granting multiplier:", error);
+          return false;
+        }
+      },
+
+      clearActiveMultiplier: () => {
+        set({ activeMultiplier: null });
       },
 
       // Helpers

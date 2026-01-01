@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore, useUIStore, useWishlistStore, useGamificationStore, useAuthStore } from "@/stores";
+import { XPMultiplierIndicator } from "@/components/gamification";
 
 export function NavIcons() {
   const { toggleCart, itemCount } = useCartStore();
@@ -100,6 +101,13 @@ export function NavIcons() {
             <span className="absolute inset-0 bg-[var(--color-main-1)] rounded-full animate-ping" />
           </span>
         </button>
+      )}
+
+      {/* XP Multiplier Indicator - visible in header when active */}
+      {showAuthenticatedUI && (
+        <div className="hidden sm:block">
+          <XPMultiplierIndicator variant="header" showOnlyWhenActive />
+        </div>
       )}
 
       {/* Wishlist */}

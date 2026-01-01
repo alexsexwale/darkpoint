@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AccountLayout } from "@/components/account";
+import { XPMultiplierIndicator } from "@/components/gamification";
 import { useAuthStore, useGamificationStore } from "@/stores";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -202,6 +203,11 @@ export function XPHistoryPageClient() {
           </p>
           <p className="text-xs text-white/40 mt-1">Total activities</p>
         </div>
+      </div>
+
+      {/* Active XP Multiplier */}
+      <div className="mb-8">
+        <XPMultiplierIndicator variant="full" showOnlyWhenActive />
       </div>
 
       {/* Filters */}

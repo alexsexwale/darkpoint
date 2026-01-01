@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
-import { DailyRewardCalendar, DailyQuestList, StreakIndicator, LevelBadge, XPBar } from "@/components/gamification";
+import { DailyRewardCalendar, DailyQuestList, StreakIndicator, LevelBadge, XPBar, XPMultiplierIndicator } from "@/components/gamification";
 import { useGamificationStore, useAuthStore, useUIStore } from "@/stores";
 
 // Animated background particles for the hero section
@@ -224,7 +224,13 @@ export function RewardsPageClient() {
           {!isAuthenticated ? (
             <GuestWelcome />
           ) : (
-            <UserStatsHeader />
+            <>
+              <UserStatsHeader />
+              {/* Active XP Multiplier */}
+              <div className="mb-8 max-w-5xl mx-auto">
+                <XPMultiplierIndicator variant="full" showOnlyWhenActive />
+              </div>
+            </>
           )}
 
           {/* Featured: Daily Rewards & Quests */}

@@ -22,4 +22,5 @@ export { RewardShopGrid } from "./RewardShopGrid";
 export { NotificationStack } from "./NotificationStack";
 export { DailyQuestCard } from "./DailyQuestCard";
 export { DailyQuestList } from "./DailyQuestList";
+export { XPMultiplierIndicator } from "./XPMultiplierIndicator";
 
