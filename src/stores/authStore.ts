@@ -308,18 +308,37 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           if (error) {
-            // Provide more user-friendly error messages
-            let errorMessage = error.message;
-            
-            if (error.message.includes("Database error") || error.message.includes("500") || error.message.includes("Internal Server Error")) {
-              errorMessage = "Database error saving new user. Please try again or contact support.";
-            } else if (error.message.includes("User already registered") || error.message.includes("already registered")) {
+            // Provide more user-friendly error messages, but keep useful debug details.
+            const anyErr = error as unknown as { status?: number; code?: string; name?: string; message: string };
+            const status = anyErr.status;
+            const code = anyErr.code;
+
+            // Always log the full error object for debugging (users can screenshot Console).
+            console.error("Supabase signUp error:", error, { status, code });
+
+            let errorMessage = anyErr.message || "Sign up failed";
+
+            if (
+              errorMessage.includes("Database error") ||
+              errorMessage.includes("500") ||
+              errorMessage.includes("Internal Server Error") ||
+              status === 500
+            ) {
+              errorMessage =
+                "Signup failed due to a database trigger/policy error. " +
+                "Please open Supabase Dashboard → Logs → Auth to see the exact Postgres error, " +
+                "or send a screenshot of the Network response body from /auth/v1/signup.";
+            } else if (errorMessage.includes("User already registered") || errorMessage.includes("already registered")) {
               errorMessage = "An account with this email already exists. Please sign in instead.";
-            } else if (error.message.includes("Password") || error.message.includes("password")) {
+            } else if (errorMessage.includes("Password") || errorMessage.includes("password")) {
               errorMessage = "Password does not meet requirements. Please use a stronger password.";
-            } else if (error.message.includes("Email") || error.message.includes("email")) {
+            } else if (errorMessage.includes("Email") || errorMessage.includes("email")) {
               errorMessage = "Invalid email address. Please check and try again.";
             }
+
+            const debugSuffix =
+              status || code ? ` (debug: status=${status ?? "?"}${code ? `, code=${code}` : ""})` : "";
+            errorMessage = `${errorMessage}${debugSuffix}`;
             
             set({ error: errorMessage, isLoading: false });
             return { success: false, error: errorMessage };
