@@ -7,10 +7,11 @@
 -- ============================================
 
 -- ============================================
--- Add email_verified column to user_profiles
+-- Add missing columns to user_profiles
 -- ============================================
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS newsletter_subscribed BOOLEAN DEFAULT TRUE;
 
 -- ============================================
 -- SIMPLIFIED: Handle New User Function

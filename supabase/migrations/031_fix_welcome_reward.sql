@@ -7,6 +7,12 @@
 -- ============================================
 
 -- ============================================
+-- Add missing columns (ensure they exist before use)
+-- ============================================
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS newsletter_subscribed BOOLEAN DEFAULT TRUE;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS total_shares INTEGER DEFAULT 0;
+
+-- ============================================
 -- UPDATE: Handle New User Trigger
 -- ============================================
 CREATE OR REPLACE FUNCTION handle_new_user_v2()
