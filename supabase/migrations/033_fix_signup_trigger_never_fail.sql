@@ -17,6 +17,7 @@
 -- ============================================
 -- 1) Ensure required columns exist
 -- ============================================
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS newsletter_subscribed BOOLEAN DEFAULT TRUE;
@@ -159,11 +160,58 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- NOTE: trigger functions can't be safely "called" via PERFORM, so we duplicate
+  -- the minimal safe behavior here. This ensures that even if some environment
+  -- still points the trigger at handle_new_user_v2(), signup won't fail and the
+  -- profile will still be created best-effort.
   BEGIN
-    PERFORM public.handle_new_user();
+    INSERT INTO public.user_profiles (
+      id,
+      username,
+      display_name,
+      email,
+      referral_code,
+      total_xp,
+      current_level,
+      current_streak,
+      longest_streak,
+      total_spent,
+      total_orders,
+      total_reviews,
+      referral_count,
+      available_spins,
+      newsletter_subscribed,
+      is_returning_user,
+      email_verified,
+      email_verified_at
+    )
+    VALUES (
+      NEW.id,
+      LEFT(COALESCE(NEW.raw_user_meta_data->>'username', SPLIT_PART(NEW.email, '@', 1)), 30),
+      COALESCE(NEW.raw_user_meta_data->>'full_name', SPLIT_PART(NEW.email, '@', 1)),
+      NEW.email,
+      'DARK-' || UPPER(LEFT(SPLIT_PART(NEW.email, '@', 1), 6)) || FLOOR(RANDOM() * 9000 + 1000)::TEXT,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      TRUE,
+      FALSE,
+      (NEW.email_confirmed_at IS NOT NULL),
+      NEW.email_confirmed_at
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      email = EXCLUDED.email,
+      email_verified = EXCLUDED.email_verified,
+      email_verified_at = EXCLUDED.email_verified_at,
+      updated_at = NOW();
   EXCEPTION WHEN OTHERS THEN
-    -- Never abort signup if v2 is used anywhere
-    RAISE WARNING 'handle_new_user_v2 wrapper error for %: %', NEW.id, SQLERRM;
+    RAISE WARNING 'handle_new_user_v2 error for %: %', NEW.id, SQLERRM;
   END;
   RETURN NEW;
 END;

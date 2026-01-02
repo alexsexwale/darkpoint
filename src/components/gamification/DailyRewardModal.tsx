@@ -16,6 +16,7 @@ export function DailyRewardModal() {
   const [claimedReward, setClaimedReward] = useState<DailyReward | null>(null);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [showBonusReveal, setShowBonusReveal] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   useEffect(() => {
     const updateSize = () => {
@@ -32,6 +33,7 @@ export function DailyRewardModal() {
       setClaimed(false);
       setClaimedReward(null);
       setShowBonusReveal(false);
+      setClaimError(null);
     } else {
       document.body.style.overflow = "";
     }
@@ -41,6 +43,7 @@ export function DailyRewardModal() {
   }, [showDailyRewardModal]);
 
   const handleClaim = async () => {
+    setClaimError(null);
     const success = await claimDailyReward();
     if (success) {
       const cycleDay = ((userProfile?.current_streak || 1) - 1) % 7;
@@ -51,6 +54,11 @@ export function DailyRewardModal() {
       if (reward.reward) {
         setTimeout(() => setShowBonusReveal(true), 800);
       }
+    } else {
+      setClaimError(
+        "Couldn’t claim your reward due to a server/database configuration issue. " +
+          "If this keeps happening, it usually means a required Supabase migration hasn’t been applied."
+      );
     }
   };
 
@@ -244,7 +252,8 @@ export function DailyRewardModal() {
                           )}
                           title={reward.reward?.description || `+${reward.xp} XP`}
                         >
-                          {isPast ? "✓" : reward.reward ? reward.reward.icon : dayNum}
+                          {/* Show checkmarks for past days, and numbers for current/future days */}
+                          {isPast ? "✓" : dayNum}
                         </div>
                       );
                     })}
@@ -267,6 +276,12 @@ export function DailyRewardModal() {
                     </Button>
                   )}
                 </motion.div>
+
+                {!claimed && claimError && (
+                  <div className="mt-4 border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
+                    {claimError}
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

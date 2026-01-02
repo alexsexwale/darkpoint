@@ -568,7 +568,18 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       // Try claim_daily_reward_v2 first, fall back to claim_daily_reward
       let data, error;
       const result1 = await supabase.rpc("claim_daily_reward_v2", { p_user_id: user.id } as never);
-      if (result1.error?.message?.includes("does not exist")) {
+
+      const err1 = result1.error as unknown as { code?: string; message?: string } | null;
+      const shouldFallback =
+        !!err1 &&
+        (err1.message?.includes("does not exist") ||
+          err1.code === "42703" || // undefined_column
+          err1.message?.includes("streak_day") ||
+          err1.message?.includes("bonus_spin") ||
+          err1.message?.includes("daily_logins"));
+
+      if (shouldFallback) {
+        // Older schema path (works with daily_logins.day_of_streak / bonus_reward)
         const result2 = await supabase.rpc("claim_daily_reward", { p_user_id: user.id } as never);
         data = result2.data;
         error = result2.error;
