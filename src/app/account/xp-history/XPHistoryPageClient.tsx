@@ -37,6 +37,7 @@ const ACTION_CONFIG: Record<XPAction, { icon: string; label: string; color: stri
   admin: { icon: "⚡", label: "Admin Grant", color: "text-violet-400" },
   read_article: { icon: "📰", label: "Read Article", color: "text-sky-400" },
   add_wishlist: { icon: "❤️", label: "Wishlist", color: "text-red-400" },
+  redeem: { icon: "🛍️", label: "Reward Redeemed", color: "text-amber-400" },
 };
 
 // Filter options
@@ -442,6 +443,7 @@ function getDefaultDescription(action: XPAction, amount: number): string {
     case "admin": return "Granted by admin";
     case "read_article": return "Article read";
     case "add_wishlist": return "Item added to wishlist";
+    case "redeem": return "Reward redeemed from shop";
     default: return "XP transaction";
   }
 }

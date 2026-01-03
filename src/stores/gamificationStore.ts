@@ -665,8 +665,9 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             if (result?.success && result.prize) {
               const prize = result.prize;
 
-        set({
-                lastSpinResult: prize,
+              // Only update spins count - DON'T set lastSpinResult here
+              // The SpinWheel component will set it after animation completes
+              set({
                 userProfile: {
                   ...profile,
                   available_spins: result.remaining_spins || 0,
@@ -678,13 +679,14 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
               setTimeout(() => {
                 get().fetchUserProfile();
                 get().fetchActiveMultiplier(); // In case XP multiplier was won
-              }, 100);
+              }, 5500); // Wait for spin animation to complete (5s) + buffer
 
-              set({ isSpinning: false });
+              // DON'T set isSpinning: false here - let SpinWheel component control it
+              // The component sets it false in GSAP animation's onComplete callback
               return prize;
             }
           } else {
-            console.warn("Spin wheel RPC error, using local fallback:", error);
+            console.error("Spin wheel RPC error:", error);
           }
         } catch (error) {
           console.warn("Spin wheel error, using local fallback:", error);
@@ -693,17 +695,17 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     }
 
     // Local fallback when database isn't available (XP-only prizes - no real money cost)
+    // Note: XP multipliers removed from local fallback as they require DB to persist
     const localPrizes: SpinPrize[] = [
       { id: "1", name: "+10 XP", description: "Nice! You earned 10 bonus XP!", prize_type: "xp", prize_value: "10", probability: 20, color: "#6b7280", is_active: true },
       { id: "2", name: "+25 XP", description: "Great spin! 25 XP added!", prize_type: "xp", prize_value: "25", probability: 20, color: "#22c55e", is_active: true },
-      { id: "3", name: "+50 XP", description: "Awesome! 50 XP for you!", prize_type: "xp", prize_value: "50", probability: 15, color: "#3b82f6", is_active: true },
-      { id: "4", name: "+75 XP", description: "Lucky! 75 XP bonus!", prize_type: "xp", prize_value: "75", probability: 10, color: "#8b5cf6", is_active: true },
-      { id: "5", name: "+100 XP", description: "Amazing! 100 XP jackpot!", prize_type: "xp", prize_value: "100", probability: 10, color: "#a855f7", is_active: true },
+      { id: "3", name: "+50 XP", description: "Awesome! 50 XP for you!", prize_type: "xp", prize_value: "50", probability: 18, color: "#3b82f6", is_active: true },
+      { id: "4", name: "+75 XP", description: "Lucky! 75 XP bonus!", prize_type: "xp", prize_value: "75", probability: 12, color: "#8b5cf6", is_active: true },
+      { id: "5", name: "+100 XP", description: "Amazing! 100 XP jackpot!", prize_type: "xp", prize_value: "100", probability: 12, color: "#a855f7", is_active: true },
       { id: "6", name: "+150 XP", description: "Incredible! 150 XP mega bonus!", prize_type: "xp", prize_value: "150", probability: 8, color: "#ec4899", is_active: true },
-      { id: "7", name: "Free Spin!", description: "Lucky you! Another free spin!", prize_type: "spin", prize_value: "1", probability: 8, color: "#ef4444", is_active: true },
-      { id: "8", name: "+250 XP", description: "EPIC! 250 XP legendary spin!", prize_type: "xp", prize_value: "250", probability: 5, color: "#f59e0b", is_active: true },
+      { id: "7", name: "Free Spin!", description: "Lucky you! Another free spin!", prize_type: "spin", prize_value: "1", probability: 5, color: "#ef4444", is_active: true },
+      { id: "8", name: "+250 XP", description: "EPIC! 250 XP legendary spin!", prize_type: "xp", prize_value: "250", probability: 3, color: "#f59e0b", is_active: true },
       { id: "9", name: "+500 XP", description: "JACKPOT! 500 XP ultra rare!", prize_type: "xp", prize_value: "500", probability: 2, color: "#fbbf24", is_active: true },
-      { id: "10", name: "2x XP Boost!", description: "LEGENDARY! 2x XP for 24 hours!", prize_type: "xp_multiplier", prize_value: "2", probability: 2, color: "#dc2626", is_active: true },
     ];
 
         // Weighted random selection
@@ -719,13 +721,16 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       }
     }
 
-    // Apply prize locally
+    // WARNING: Local fallback - data will NOT persist to database!
+    console.error("Using local spin fallback - prize will NOT be saved to database!");
+    
+    // Apply prize locally (temporary - won't persist on refresh)
     const prizeValue = parseInt(selectedPrize.prize_value) || 0;
     const newSpins = profile.available_spins - 1 + (selectedPrize.prize_type === "spin" ? prizeValue : 0);
     const newXP = profile.total_xp + (selectedPrize.prize_type === "xp" ? prizeValue : 0);
 
+    // DON'T set lastSpinResult here - SpinWheel component will set it after animation
     set({
-      lastSpinResult: selectedPrize,
       userProfile: {
         ...profile,
         available_spins: newSpins,
@@ -733,13 +738,8 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       },
     });
 
-    // Handle XP multiplier prize
-    if (selectedPrize.prize_type === "xp_multiplier") {
-      await get().grantMultiplier(prizeValue, 24, "spin_wheel", `Spin Wheel Prize: ${prizeValue}x XP for 24 hours!`);
-    }
-
     // Don't add notification here - the SpinWheel component shows a proper modal after animation
-    set({ isSpinning: false });
+    // DON'T set isSpinning: false here - let SpinWheel component control it via onComplete
     return selectedPrize;
       },
 
