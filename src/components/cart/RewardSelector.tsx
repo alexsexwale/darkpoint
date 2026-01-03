@@ -2,7 +2,13 @@
 
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRewardsStore, getRewardDisplayInfo, getSourceDisplay, type UserReward } from "@/stores/rewardsStore";
+import { 
+  useRewardsStore, 
+  getRewardDisplayInfo, 
+  getSourceDisplay, 
+  type UserReward,
+  type VIPWeeklyPrize 
+} from "@/stores/rewardsStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useGamificationStore } from "@/stores/gamificationStore";
@@ -34,14 +40,26 @@ export function RewardSelector({
     getDiscountAmount,
     getShippingDiscount,
     isShippingRewardRedundant,
+    // VIP Prize
+    vipPrize,
+    appliedVIPPrize,
+    isVIPPrizeActive,
+    applyVIPPrize,
+    removeVIPPrize,
+    canApplyVIPPrize,
+    getVIPPrizeTimeRemaining,
   } = useRewardsStore();
   
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { toggleSignIn } = useUIStore();
-  const { addNotification } = useGamificationStore();
+  const { addNotification, hasAnyBadge } = useGamificationStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [removedRewardMessage, setRemovedRewardMessage] = useState<string | null>(null);
   const prevSubtotalRef = useRef(subtotal);
+  
+  // Check if VIP prize is available
+  const vipPrizeActive = isVIPPrizeActive();
+  const vipPrizeAvailable = vipPrizeActive && vipPrize.activatedPrize && !appliedVIPPrize;
 
   // Check if order already qualifies for free shipping
   const alreadyQualifiesForFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
@@ -157,8 +175,8 @@ export function RewardSelector({
     );
   }
 
-  // No rewards available
-  if (availableRewards.length === 0 && !appliedReward) {
+  // No rewards available (also check VIP prize)
+  if (availableRewards.length === 0 && !appliedReward && !vipPrizeAvailable && !appliedVIPPrize) {
     return (
       <div className={cn("bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-lg p-4", className)}>
         <div className="flex items-center gap-3 text-white/50">
@@ -166,6 +184,59 @@ export function RewardSelector({
           <div>
             <p className="text-sm">No rewards available</p>
             <p className="text-xs">Earn XP to unlock rewards in the shop!</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Applied VIP prize display
+  if (appliedVIPPrize) {
+    return (
+      <div className={cn("relative overflow-hidden rounded-lg", className)}>
+        {/* Animated gradient border */}
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500"
+          animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          style={{ backgroundSize: "200% 200%" }}
+        />
+        <div className="relative m-[2px] bg-[var(--color-dark-1)] rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <motion.div 
+                className={`w-10 h-10 rounded-lg bg-gradient-to-br ${appliedVIPPrize.color} flex items-center justify-center`}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <span className="text-xl">{appliedVIPPrize.icon}</span>
+              </motion.div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-sm bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    {appliedVIPPrize.name}
+                  </p>
+                  <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 text-xs rounded-full">
+                    VIP Prize
+                  </span>
+                </div>
+                <p className="text-xs text-white/60">{appliedVIPPrize.description}</p>
+                {totalSavings > 0 && (
+                  <p className="text-xs text-purple-400 mt-1 font-medium">
+                    You save R{totalSavings.toFixed(0)}!
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={removeVIPPrize}
+              className="p-2 text-white/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+              title="Remove VIP prize"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -210,18 +281,27 @@ export function RewardSelector({
     );
   }
 
+  // Total available count (rewards + VIP prize if available)
+  const totalAvailableCount = availableRewards.length + (vipPrizeAvailable ? 1 : 0);
+
   // Compact variant for drawer
   if (variant === "compact") {
     return (
       <div className={cn("", className)}>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full bg-gradient-to-r from-[var(--color-main-1)]/10 to-purple-500/10 border border-[var(--color-main-1)]/30 rounded-lg p-3 flex items-center justify-between hover:border-[var(--color-main-1)]/50 transition-colors"
+          className={cn(
+            "w-full rounded-lg p-3 flex items-center justify-between transition-colors",
+            vipPrizeAvailable 
+              ? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 hover:border-purple-500/50"
+              : "bg-gradient-to-r from-[var(--color-main-1)]/10 to-purple-500/10 border border-[var(--color-main-1)]/30 hover:border-[var(--color-main-1)]/50"
+          )}
         >
           <div className="flex items-center gap-2">
-            <span className="text-lg">🎁</span>
+            <span className="text-lg">{vipPrizeAvailable ? "👑" : "🎁"}</span>
             <span className="text-sm font-medium">
-              {availableRewards.length} reward{availableRewards.length !== 1 ? "s" : ""} available
+              {totalAvailableCount} reward{totalAvailableCount !== 1 ? "s" : ""} available
+              {vipPrizeAvailable && <span className="text-purple-400 ml-1">(VIP)</span>}
             </span>
           </div>
           <motion.svg 
@@ -244,6 +324,21 @@ export function RewardSelector({
               className="overflow-hidden"
             >
               <div className="pt-2 space-y-2 max-h-48 overflow-y-auto">
+                {/* VIP Prize Card - Show first if available */}
+                {vipPrizeAvailable && vipPrize.activatedPrize && (
+                  <VIPPrizeCard
+                    prize={vipPrize.activatedPrize}
+                    subtotal={subtotal}
+                    timeRemaining={getVIPPrizeTimeRemaining()}
+                    onApply={() => {
+                      applyVIPPrize();
+                      setIsExpanded(false);
+                    }}
+                    compact
+                    alreadyQualifiesForFreeShipping={alreadyQualifiesForFreeShipping}
+                  />
+                )}
+                
                 {availableRewards.map((reward) => (
                   <RewardCard 
                     key={reward.id} 
@@ -267,19 +362,32 @@ export function RewardSelector({
 
   // Full variant for cart page
   return (
-    <div className={cn("bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-lg overflow-hidden", className)}>
+    <div className={cn(
+      "rounded-lg overflow-hidden",
+      vipPrizeAvailable 
+        ? "bg-gradient-to-br from-purple-900/20 to-[var(--color-dark-2)] border-2 border-purple-500/30"
+        : "bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]"
+    , className)}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full p-4 flex items-center justify-between hover:bg-[var(--color-dark-3)]/30 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--color-main-1)]/30 to-purple-500/30 flex items-center justify-center">
-            <span className="text-xl">🎁</span>
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center",
+            vipPrizeAvailable
+              ? "bg-gradient-to-br from-purple-500/30 to-pink-500/30"
+              : "bg-gradient-to-br from-[var(--color-main-1)]/30 to-purple-500/30"
+          )}>
+            <span className="text-xl">{vipPrizeAvailable ? "👑" : "🎁"}</span>
           </div>
           <div className="text-left">
-            <p className="font-medium text-sm">Apply a Reward</p>
+            <p className="font-medium text-sm">
+              {vipPrizeAvailable ? "Apply Reward or VIP Prize" : "Apply a Reward"}
+            </p>
             <p className="text-xs text-white/60">
-              {availableRewards.length} reward{availableRewards.length !== 1 ? "s" : ""} available
+              {totalAvailableCount} reward{totalAvailableCount !== 1 ? "s" : ""} available
+              {vipPrizeAvailable && <span className="text-purple-400 ml-1">• VIP prize ready!</span>}
             </p>
           </div>
         </div>
@@ -302,10 +410,25 @@ export function RewardSelector({
             exit={{ height: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-4 pt-0 space-y-3 max-h-64 overflow-y-auto">
+            <div className="p-4 pt-0 space-y-3 max-h-80 overflow-y-auto">
               <p className="text-xs text-white/50 border-t border-[var(--color-dark-3)] pt-3">
-                Select one reward to apply (only 1 per order)
+                Select one reward OR VIP prize to apply (only 1 per order)
               </p>
+              
+              {/* VIP Prize Card - Show first if available */}
+              {vipPrizeAvailable && vipPrize.activatedPrize && (
+                <VIPPrizeCard
+                  prize={vipPrize.activatedPrize}
+                  subtotal={subtotal}
+                  timeRemaining={getVIPPrizeTimeRemaining()}
+                  onApply={() => {
+                    applyVIPPrize();
+                    setIsExpanded(false);
+                  }}
+                  alreadyQualifiesForFreeShipping={alreadyQualifiesForFreeShipping}
+                />
+              )}
+              
               {availableRewards.map((reward) => (
                 <RewardCard 
                   key={reward.id} 
@@ -422,6 +545,130 @@ function RewardCard({ reward, subtotal, onApply, compact, alreadyQualifiesForFre
         </div>
       </div>
     </div>
+  );
+}
+
+// VIP Prize card
+interface VIPPrizeCardProps {
+  prize: VIPWeeklyPrize;
+  subtotal: number;
+  timeRemaining: string;
+  onApply: () => void;
+  compact?: boolean;
+  alreadyQualifiesForFreeShipping?: boolean;
+}
+
+function VIPPrizeCard({ prize, subtotal, timeRemaining, onApply, compact, alreadyQualifiesForFreeShipping = false }: VIPPrizeCardProps) {
+  const { canApplyVIPPrize } = useRewardsStore();
+  const { canApply, reason } = canApplyVIPPrize(subtotal, alreadyQualifiesForFreeShipping);
+
+  if (compact) {
+    return (
+      <motion.button
+        onClick={onApply}
+        disabled={!canApply}
+        className={cn(
+          "w-full p-3 rounded-lg text-left transition-all relative overflow-hidden",
+          canApply 
+            ? "border-2 border-purple-500/50 hover:border-purple-400" 
+            : "border border-purple-500/20 opacity-60 cursor-not-allowed"
+        )}
+        whileHover={canApply ? { scale: 1.02 } : {}}
+        whileTap={canApply ? { scale: 0.98 } : {}}
+      >
+        {/* Gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-900/30 to-pink-900/30" />
+        
+        <div className="relative flex items-center gap-2">
+          <motion.span 
+            className="text-lg"
+            animate={{ rotate: [0, 10, -10, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            {prize.icon}
+          </motion.span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1">
+              <p className="font-medium text-sm truncate bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                {prize.name}
+              </p>
+              <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded-full">VIP</span>
+            </div>
+            {!canApply && reason && (
+              <p className="text-xs text-red-400">{reason}</p>
+            )}
+          </div>
+          {canApply && (
+            <span className="text-purple-400 text-xs font-medium">Apply</span>
+          )}
+        </div>
+      </motion.button>
+    );
+  }
+
+  return (
+    <motion.div
+      className={cn(
+        "relative overflow-hidden rounded-lg",
+        canApply 
+          ? "border-2 border-purple-500/50" 
+          : "border border-purple-500/20 opacity-70"
+      )}
+      whileHover={canApply ? { scale: 1.01 } : {}}
+    >
+      {/* Animated gradient background */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-r from-purple-900/40 via-pink-900/40 to-purple-900/40"
+        animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+        style={{ backgroundSize: "200% 200%" }}
+      />
+      
+      <div className="relative p-4">
+        <div className="flex items-start gap-3">
+          <motion.div 
+            className={`w-12 h-12 rounded-lg bg-gradient-to-br ${prize.color} flex items-center justify-center text-2xl`}
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            {prize.icon}
+          </motion.div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-sm bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    {prize.name}
+                  </h4>
+                  <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 text-[10px] rounded-full">
+                    👑 VIP PRIZE
+                  </span>
+                </div>
+                <p className="text-xs text-white/60 mt-0.5">{prize.description}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-[10px] text-purple-400/70">
+                ⏱️ {timeRemaining}
+              </span>
+              
+              {canApply ? (
+                <button
+                  onClick={onApply}
+                  className="px-4 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors"
+                >
+                  Apply VIP Prize
+                </button>
+              ) : (
+                <span className="text-xs text-red-400">{reason}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 

@@ -23,4 +23,6 @@ export { NotificationStack } from "./NotificationStack";
 export { DailyQuestCard } from "./DailyQuestCard";
 export { DailyQuestList } from "./DailyQuestList";
 export { XPMultiplierIndicator } from "./XPMultiplierIndicator";
+export { BadgeDisplay, BadgeCollection, BadgeShowcase, MiniBadge, BADGE_CONFIGS } from "./BadgeDisplay";
+export type { BadgeType, BadgeSize, BadgeConfig } from "./BadgeDisplay";
 

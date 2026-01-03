@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
 import { AccountLayout } from "@/components/account";
-import { DailyRewardCalendar, DailyQuestList, StreakIndicator } from "@/components/gamification";
+import { DailyRewardCalendar, DailyQuestList, StreakIndicator, BadgeShowcase, BadgeDisplay, BADGE_CONFIGS, type BadgeType } from "@/components/gamification";
 import { MyRewardsList } from "@/components/cart/RewardSelector";
 import { useUIStore, useGamificationStore, useAuthStore, useAccountStore, useRewardsStore } from "@/stores";
 
 export function AccountPageClient() {
   const { openSignIn } = useUIStore();
   const { isAuthenticated, isInitialized, user, signOut } = useAuthStore();
-  const { userProfile, setDailyRewardModal, initDailyQuests } = useGamificationStore();
+  const { userProfile, setDailyRewardModal, initDailyQuests, userBadges, hasAnyBadge } = useGamificationStore();
   const { orders, stats, isLoadingStats, fetchOrders, fetchStats } = useAccountStore();
   const { rewards, fetchRewards } = useRewardsStore();
 
@@ -298,6 +299,96 @@ export function AccountPageClient() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* VIP Badge Collection */}
+      <div className="mb-8 bg-[var(--color-dark-2)] p-6 overflow-hidden relative">
+        {/* Secret glow for badge owners */}
+        {hasAnyBadge() && (
+          <motion.div
+            className="absolute inset-0 opacity-20"
+            style={{
+              background: "radial-gradient(circle at 30% 50%, rgba(255,215,0,0.3) 0%, transparent 50%)",
+            }}
+            animate={{ opacity: [0.1, 0.2, 0.1] }}
+            transition={{ duration: 4, repeat: Infinity }}
+          />
+        )}
+        
+        <div className="relative">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🏅</span>
+              <h3 className="font-heading text-xl">Badge Collection</h3>
+              {hasAnyBadge() && (
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded-full font-semibold animate-pulse">
+                  VIP MEMBER
+                </span>
+              )}
+            </div>
+            <Link href="/rewards/shop" className="text-sm text-[var(--color-main-1)] hover:underline">
+              Get Badges →
+            </Link>
+          </div>
+          
+          {hasAnyBadge() ? (
+            <div className="space-y-4">
+              {/* Owned Badges */}
+              <div className="grid gap-4">
+                {userBadges.map((badge, index) => (
+                  <motion.div
+                    key={badge.badge_id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <BadgeShowcase 
+                      badge={badge.badge_id as BadgeType} 
+                      acquiredAt={badge.acquired_at}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+              
+              {/* Secret hint for badge owners */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+                className="mt-4 p-4 bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20 rounded-lg"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-xl">🔮</span>
+                  <div>
+                    <p className="text-sm text-amber-400 font-semibold">Secret VIP Perk</p>
+                    <p className="text-xs text-white/60 mt-1">
+                      As a badge owner, you have access to exclusive features. 
+                      Try the ancient code at any time... <span className="text-amber-400/80 italic">up up down down left right left right...</span>
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="flex justify-center gap-6 mb-6">
+                {(Object.keys(BADGE_CONFIGS) as BadgeType[]).map((badgeId) => (
+                  <div key={badgeId} className="opacity-40">
+                    <BadgeDisplay badge={badgeId} size="lg" isOwned={false} showTooltip={false} />
+                  </div>
+                ))}
+              </div>
+              <p className="text-white/60 mb-4">
+                Unlock exclusive badges to become a VIP member with secret perks!
+              </p>
+              <Link href="/rewards/shop">
+                <Button variant="outline" size="sm">
+                  Browse Badges
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Recent Orders & Quick Actions */}

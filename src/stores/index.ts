@@ -7,6 +7,6 @@ export { useEmulatorStore } from "./emulatorStore";
 export { useRomsStore } from "./romsStore";
 export { useAuthStore } from "./authStore";
 export { useAccountStore } from "./accountStore";
-export { useRewardsStore } from "./rewardsStore";
+export { useRewardsStore, getCurrentVIPPrize, VIP_WEEKLY_PRIZES, type VIPWeeklyPrize, type VIPPrizeState } from "./rewardsStore";
 export { useReviewsStore } from "./reviewsStore";
 

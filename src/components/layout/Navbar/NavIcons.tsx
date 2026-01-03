@@ -5,14 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore, useUIStore, useWishlistStore, useGamificationStore, useAuthStore } from "@/stores";
-import { XPMultiplierIndicator } from "@/components/gamification";
+import { XPMultiplierIndicator, MiniBadge, type BadgeType } from "@/components/gamification";
 
 export function NavIcons() {
   const { toggleCart, itemCount } = useCartStore();
   const { itemCount: wishlistItemCount } = useWishlistStore();
   const { toggleSearch, toggleSignIn, toggleMobileMenu } = useUIStore();
-  const { userProfile, setDailyRewardModal } = useGamificationStore();
+  const { userProfile, setDailyRewardModal, getHighestBadge } = useGamificationStore();
   const { user, signOut, isLoading, isAuthenticated, isInitialized } = useAuthStore();
+  
+  // Get highest badge for display
+  const highestBadge = getHighestBadge() as BadgeType | null;
   
   const [mounted, setMounted] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -158,9 +161,13 @@ export function NavIcons() {
           <>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="p-1.5 text-white hover:text-[var(--color-main-1)] transition-colors cursor-pointer"
+              className="p-1.5 text-white hover:text-[var(--color-main-1)] transition-colors cursor-pointer flex items-center gap-1"
               aria-label="User menu"
             >
+              {/* Badge Display */}
+              {highestBadge && (
+                <MiniBadge badge={highestBadge} className="mr-0.5" />
+              )}
               {userAvatar ? (
                 <Image
                   src={userAvatar}

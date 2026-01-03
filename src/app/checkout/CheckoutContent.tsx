@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCartStore, useAuthStore } from "@/stores";
-import { useRewardsStore, getRewardDisplayInfo } from "@/stores/rewardsStore";
+import { useRewardsStore, getRewardDisplayInfo, type VIPWeeklyPrize } from "@/stores/rewardsStore";
 import { Button, Input, TextArea, FreeDeliveryIndicator } from "@/components/ui";
 import { VerificationRequired } from "@/components/auth";
 import { RewardSelector } from "@/components/cart/RewardSelector";
@@ -37,7 +37,15 @@ export function CheckoutContent() {
   const router = useRouter();
   const { items, subtotal, clearCart } = useCartStore();
   const { user, isAuthenticated, isEmailVerified } = useAuthStore();
-  const { appliedReward, getDiscountAmount, getShippingDiscount, removeAppliedReward } = useRewardsStore();
+  const { 
+    appliedReward, 
+    getDiscountAmount, 
+    getShippingDiscount, 
+    removeAppliedReward,
+    appliedVIPPrize,
+    removeVIPPrize,
+    markVIPPrizeUsed,
+  } = useRewardsStore();
   
   // If user is logged in but not verified, show verification required
   // (Guest checkout is allowed - only logged-in unverified users are blocked)
@@ -192,6 +200,12 @@ export function CheckoutContent() {
         total: finalTotal,
         customerNotes: customerNotes || null,
         appliedRewardId: appliedReward?.id || null,
+        appliedVIPPrize: appliedVIPPrize ? {
+          id: appliedVIPPrize.id,
+          name: appliedVIPPrize.name,
+          discount_type: appliedVIPPrize.discount_type,
+          discount_value: appliedVIPPrize.discount_value,
+        } : null,
         userId: user?.id || null,
       };
       
@@ -213,6 +227,10 @@ export function CheckoutContent() {
         // Clear cart before redirecting (will be restored if payment fails)
         clearCart();
         removeAppliedReward();
+        // Mark VIP prize as used if applied
+        if (appliedVIPPrize) {
+          markVIPPrizeUsed();
+        }
         window.location.href = result.checkoutUrl;
       } else {
         throw new Error("No checkout URL received");
@@ -452,8 +470,11 @@ export function CheckoutContent() {
               {discountAmount > 0 && (
                 <tr className="border-b border-[var(--color-dark-3)]">
                   <td className="py-4 text-green-500 flex items-center gap-2">
-                    <span>🎁</span>
-                    {appliedReward && getRewardDisplayInfo(appliedReward).name}
+                    <span>{appliedVIPPrize ? "👑" : "🎁"}</span>
+                    {appliedVIPPrize 
+                      ? <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent font-medium">{appliedVIPPrize.name}</span>
+                      : appliedReward && getRewardDisplayInfo(appliedReward).name
+                    }
                   </td>
                   <td className="py-4 text-right text-green-500">
                     -{formatPrice(discountAmount)}
@@ -495,7 +516,7 @@ export function CheckoutContent() {
           </table>
 
           {/* Free Delivery Indicator */}
-          {!isFreeShipping && total < FREE_SHIPPING_THRESHOLD && !appliedReward && (
+          {!isFreeShipping && total < FREE_SHIPPING_THRESHOLD && !appliedReward && !appliedVIPPrize && (
             <div className="mt-6 pt-6 border-t border-[var(--color-dark-3)]">
               <FreeDeliveryIndicator subtotal={total} variant="compact" />
             </div>

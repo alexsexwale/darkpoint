@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Marcellus_SC, Roboto_Condensed } from "next/font/google";
 import { Header, Footer, PageBorder, SideNav, SocialShareButtons, SideButtons } from "@/components/layout";
-import { Preloader, BackgroundAudio, BackgroundVideo, PageTransition } from "@/components/effects";
+import { Preloader, BackgroundAudio, BackgroundVideo, PageTransition, EasterEggProvider } from "@/components/effects";
 import { CartDrawer, SearchModal, SignInModal, ForgotPasswordModal } from "@/components/ui";
 import { EmailVerificationBanner } from "@/components/auth";
 import {
@@ -127,10 +127,12 @@ export default function RootLayout({
           {/* Social Share Buttons - Left Side */}
           <SocialShareButtons />
 
-          {/* Main Content with Daily Reward Auto-Popup */}
-          <DailyRewardProvider>
-            <main className="flex-1">{children}</main>
-          </DailyRewardProvider>
+          {/* Main Content with Daily Reward Auto-Popup and Easter Eggs */}
+          <EasterEggProvider>
+            <DailyRewardProvider>
+              <main className="flex-1">{children}</main>
+            </DailyRewardProvider>
+          </EasterEggProvider>
 
           {/* Footer */}
           <Footer />

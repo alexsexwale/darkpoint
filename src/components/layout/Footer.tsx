@@ -1,11 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SITE_NAME } from "@/lib/constants";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const [secretClicks, setSecretClicks] = useState(0);
+
+  // Easter egg: Click the dot 7 times to access the hidden arcade
+  const handleSecretClick = () => {
+    const newCount = secretClicks + 1;
+    setSecretClicks(newCount);
+    if (newCount >= 7) {
+      setSecretClicks(0);
+      window.location.href = "/arcade";
+    }
+  };
 
   return (
     <footer className="nk-footer relative mt-auto pt-12 pb-6 bg-[#0a0a0a] border-t border-white/10">
@@ -179,7 +191,21 @@ export function Footer() {
         <div className="pt-8 border-t border-white/10 text-center md:text-left">
           {/* Copyright */}
           <p className="text-white/60 text-sm mb-4">
-            © {currentYear} {SITE_NAME}. All Rights Reserved. Prices in ZAR. {SITE_NAME} and related logos are registered trademarks. All other trademarks or trade names are the property of their respective owners.
+            © {currentYear} {SITE_NAME}
+            <span 
+              onClick={handleSecretClick}
+              className={`cursor-default select-none transition-all duration-300 ${
+                secretClicks > 0 
+                  ? secretClicks >= 5 
+                    ? "text-purple-400 animate-pulse" 
+                    : "text-amber-400/50" 
+                  : ""
+              }`}
+              title={secretClicks >= 3 ? "Keep going..." : undefined}
+            >
+              .
+            </span>{" "}
+            All Rights Reserved. Prices in ZAR. {SITE_NAME} and related logos are registered trademarks. All other trademarks or trade names are the property of their respective owners.
           </p>
 
           {/* Description */}

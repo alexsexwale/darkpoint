@@ -225,6 +225,9 @@ interface GamificationState {
 
   // XP Multiplier state
   activeMultiplier: XPMultiplier | null;
+
+  // Badge state
+  userBadges: Array<{ badge_id: string; equipped: boolean; acquired_at: string }>;
 }
 
 // Actions interface
@@ -284,6 +287,13 @@ interface GamificationActions {
   // Share tracking
   incrementShareCount: () => Promise<void>;
 
+  // Badge actions
+  fetchUserBadges: () => Promise<void>;
+  hasBadge: (badgeId: string) => boolean;
+  hasAnyBadge: () => boolean;
+  getHighestBadge: () => string | null;
+  equipBadge: (badgeId: string) => Promise<void>;
+
   // Helpers
   getCurrentTier: () => ReturnType<typeof getLevelTier>;
   getXPProgress: () => number;
@@ -319,6 +329,7 @@ const initialState: GamificationState = {
   lastSpinResult: null,
   questRewardedActions: new Set<string>(),
   activeMultiplier: null,
+  userBadges: [],
 };
 
 export const useGamificationStore = create<GamificationStore>()((set, get) => ({
@@ -346,6 +357,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         get().fetchSpinPrizes(),
         get().fetchRewards(),
         get().fetchActiveMultiplier(),
+        get().fetchUserBadges(),
       ]);
 
       // Check daily reward status
@@ -783,16 +795,25 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         // Refresh profile and active multiplier (in case XP booster was purchased)
         await get().fetchUserProfile();
         await get().fetchActiveMultiplier();
+        
+        // Refresh badges if this was a cosmetic/badge purchase
+        const isCosmetic = reward?.category === "cosmetic" || reward?.category === "exclusive";
+        if (isCosmetic || rewardId.includes("badge") || rewardId.includes("frame")) {
+          await get().fetchUserBadges();
+        }
 
-        // Add notification with specific message for XP boosters
+        // Add notification with specific message for XP boosters and badges
         const isXPBooster = reward?.category === "xp_booster";
+        const isBadge = reward?.category === "cosmetic" || rewardId.includes("badge") || rewardId.includes("frame");
         get().addNotification({
           type: "reward",
-          title: isXPBooster ? "XP Boost Activated! 🚀" : "Reward Purchased!",
-          message: isXPBooster 
+          title: isBadge ? "🏅 Badge Unlocked!" : isXPBooster ? "XP Boost Activated! 🚀" : "Reward Purchased!",
+          message: isBadge 
+            ? `You are now a VIP member! Check your profile to see your new ${result.reward?.name || rewardName}.`
+            : isXPBooster 
             ? `Your ${result.reward?.name || rewardName} is now active! All XP earned will be doubled for 24 hours.`
             : `You got: ${result.reward?.name || rewardName}`,
-          icon: isXPBooster ? "⚡" : "🎁",
+          icon: isBadge ? "👑" : isXPBooster ? "⚡" : "🎁",
         });
 
         return { success: true };
@@ -1451,6 +1472,106 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           }
         } catch (error) {
           console.warn("Error incrementing share count:", error);
+        }
+      },
+
+      // Badge actions
+      fetchUserBadges: async () => {
+        if (!isSupabaseConfigured()) return;
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        try {
+          // Try to fetch from user_badges table using RPC (more reliable with RLS)
+          const { data: rpcData, error: rpcError } = await supabase
+            .rpc("get_user_badges" as never, { p_user_id: user.id } as never);
+          
+          const rpcResult = rpcData as unknown as Array<{ badge_id: string; equipped: boolean; acquired_at: string }> | null;
+          if (!rpcError && rpcResult && Array.isArray(rpcResult) && rpcResult.length > 0) {
+            set({ userBadges: rpcResult });
+            return;
+          }
+          
+          // Fall back to direct table query
+          const { data, error } = await supabase
+            .from("user_badges")
+            .select("badge_id, equipped, acquired_at")
+            .eq("user_id", user.id);
+          
+          const tableResult = data as unknown as Array<{ badge_id: string; equipped: boolean; acquired_at: string }> | null;
+          if (!error && tableResult && tableResult.length > 0) {
+            set({ userBadges: tableResult });
+            return;
+          }
+          
+          // Final fallback: check user_rewards for cosmetic rewards
+          const { data: rewardsData } = await supabase
+            .from("user_rewards")
+            .select("reward_id, created_at")
+            .eq("user_id", user.id);
+          
+          if (rewardsData) {
+            const typedRewardsData = rewardsData as Array<{ reward_id: string; created_at: string }>;
+            const badges = typedRewardsData
+              .filter(r => r.reward_id.startsWith("badge_") || r.reward_id.startsWith("frame_"))
+              .map(r => ({
+                badge_id: r.reward_id,
+                equipped: false,
+                acquired_at: r.created_at,
+              }));
+            if (badges.length > 0) {
+              set({ userBadges: badges });
+            }
+          }
+        } catch (err) {
+          console.warn("Error fetching badges:", err);
+        }
+      },
+
+      hasBadge: (badgeId: string) => {
+        return get().userBadges.some(b => b.badge_id === badgeId);
+      },
+
+      hasAnyBadge: () => {
+        return get().userBadges.length > 0;
+      },
+
+      getHighestBadge: () => {
+        const badges = get().userBadges;
+        if (badges.length === 0) return null;
+        
+        // Badge priority: frame_gold > badge_crown > badge_fire
+        const priority = ["frame_gold", "badge_crown", "badge_fire"];
+        for (const badge of priority) {
+          if (badges.some(b => b.badge_id === badge)) {
+            return badge;
+          }
+        }
+        return badges[0]?.badge_id || null;
+      },
+
+      equipBadge: async (badgeId: string) => {
+        if (!isSupabaseConfigured()) return;
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        try {
+          // Use RPC to equip badge (table might not exist yet)
+          const { error } = await supabase.rpc("equip_badge" as never, {
+            p_user_id: user.id,
+            p_badge_id: badgeId,
+          } as never);
+          
+          if (error) {
+            console.warn("equip_badge RPC not available:", error);
+          }
+          
+          // Refresh badges
+          await get().fetchUserBadges();
+        } catch {
+          console.warn("Error equipping badge");
         }
       },
 

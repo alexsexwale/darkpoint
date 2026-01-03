@@ -84,8 +84,8 @@ export function Navbar() {
         {/* Main nav */}
         <div className="container">
           <nav className="flex items-center justify-between h-16 lg:h-20">
-            {/* Logo */}
-            <Link href="/" className="flex-shrink-0">
+            {/* Logo - Click 5 times rapidly for easter egg */}
+            <Link href="/" className="flex-shrink-0" data-logo-click>
               <Image
                 src="/images/logo.png"
                 alt={SITE_NAME}

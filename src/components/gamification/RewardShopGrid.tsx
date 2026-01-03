@@ -1,12 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useGamificationStore, useRewardsStore } from "@/stores";
 import { useGamification } from "@/hooks";
 import { RewardShopCard, RewardShopCardSkeleton } from "./RewardShopCard";
 import type { Reward } from "@/types/gamification";
+
+// Extended reward type with VIP flag
+interface ExtendedReward extends Reward {
+  vip_only?: boolean;
+}
 
 interface RewardShopGridProps {
   className?: string;
@@ -134,16 +140,71 @@ const SAMPLE_REWARDS: Reward[] = [
     is_active: true,
     created_at: new Date().toISOString(),
   },
+  // VIP-only rewards
+  {
+    id: "vip_discount_25",
+    name: "VIP 25% Discount",
+    description: "Exclusive 25% off - VIP members only!",
+    category: "exclusive",
+    xp_cost: 800,
+    value: "25",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+  } as ExtendedReward,
+  {
+    id: "vip_triple_xp",
+    name: "Triple XP Boost",
+    description: "3x XP for 24 hours - VIP exclusive!",
+    category: "exclusive",
+    xp_cost: 500,
+    value: "3x_24h",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+  } as ExtendedReward,
+  {
+    id: "vip_diamond_frame",
+    name: "Diamond Frame",
+    description: "Ultra-rare diamond avatar frame",
+    category: "exclusive",
+    xp_cost: 2500,
+    value: "frame_diamond",
+    image_url: null,
+    stock: 10,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+  } as ExtendedReward,
+  {
+    id: "vip_mystery_box",
+    name: "VIP Mystery Box",
+    description: "Contains rare items only available to VIP members",
+    category: "exclusive",
+    xp_cost: 1000,
+    value: "mystery_vip",
+    image_url: null,
+    stock: 50,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+  } as ExtendedReward,
 ];
 
 export function RewardShopGrid({ className }: RewardShopGridProps) {
-  const { userProfile, rewards: storeRewards, addNotification, isLoading: gamificationLoading, fetchRewards: fetchGamificationRewards } = useGamificationStore();
+  const { userProfile, rewards: storeRewards, addNotification, isLoading: gamificationLoading, fetchRewards: fetchGamificationRewards, hasAnyBadge } = useGamificationStore();
   const { fetchRewards } = useRewardsStore();
   const { purchaseReward } = useGamification();
   const [selectedCategory, setSelectedCategory] = useState<RewardCategory>("all");
   const [redeeming, setRedeeming] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  const isVIP = hasAnyBadge();
 
   // Fetch rewards on mount
   useEffect(() => {
@@ -156,7 +217,14 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
   }, [fetchGamificationRewards]);
 
   // Use store rewards or sample data
-  const rewards = storeRewards.length > 0 ? storeRewards : SAMPLE_REWARDS;
+  const allRewards = storeRewards.length > 0 ? storeRewards : SAMPLE_REWARDS;
+  
+  // Filter VIP-only rewards for non-VIP members (hide them entirely or show as locked)
+  const rewards = allRewards.filter((reward) => {
+    const isVIPReward = (reward as ExtendedReward).vip_only;
+    // Show all rewards to VIP members, hide VIP-only from non-VIP
+    return !isVIPReward || isVIP;
+  });
   const userXP = userProfile?.total_xp || 0;
   const isLoading = isInitialLoading || gamificationLoading;
 
@@ -316,6 +384,43 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
         <div className="text-center py-12 bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]">
           <span className="text-4xl mb-4 block">🏪</span>
           <p className="text-white/60">No rewards available in this category</p>
+        </div>
+      )}
+
+      {/* VIP Section */}
+      {isVIP ? (
+        <Link href="/vip" className="block">
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            className="bg-gradient-to-r from-amber-900/30 to-[var(--color-dark-2)] border-2 border-amber-500/30 p-6 cursor-pointer hover:border-amber-500/50 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="text-4xl">👑</div>
+                <div>
+                  <h3 className="font-heading text-xl text-amber-400">VIP Lounge Access</h3>
+                  <p className="text-sm text-white/60">
+                    As a badge holder, you have access to exclusive perks and secret features!
+                  </p>
+                </div>
+              </div>
+              <div className="text-amber-400">
+                Enter →
+              </div>
+            </div>
+          </motion.div>
+        </Link>
+      ) : (
+        <div className="bg-gradient-to-r from-purple-900/20 to-[var(--color-dark-2)] border border-purple-500/20 p-6">
+          <div className="flex items-center gap-4">
+            <div className="text-4xl opacity-50">🔒</div>
+            <div>
+              <h3 className="font-heading text-lg text-purple-400/80">Unlock VIP Perks</h3>
+              <p className="text-sm text-white/60">
+                Purchase a badge above to unlock exclusive VIP rewards, secret deals, and hidden features!
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

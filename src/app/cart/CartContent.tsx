@@ -12,7 +12,7 @@ import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from "@/lib/constants"
 
 export function CartContent() {
   const { items, removeItem, updateQuantity, subtotal, clearCart } = useCartStore();
-  const { appliedReward, getDiscountAmount, getShippingDiscount } = useRewardsStore();
+  const { appliedReward, appliedVIPPrize, getDiscountAmount, getShippingDiscount } = useRewardsStore();
 
   const total = subtotal();
   const baseShippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
@@ -339,11 +339,13 @@ export function CartContent() {
             {/* Show discount if applied */}
             {discountAmount > 0 && (
               <div className="flex justify-between items-center py-3 border-b border-[var(--color-dark-3)]">
-                <span className="text-green-500 flex items-center gap-2">
-                  <span>🎁</span>
-                  Reward Discount
+                <span className={`flex items-center gap-2 ${appliedVIPPrize ? "bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent" : "text-green-500"}`}>
+                  <span>{appliedVIPPrize ? "👑" : "🎁"}</span>
+                  {appliedVIPPrize ? "VIP Prize" : "Reward Discount"}
                 </span>
-                <span className="font-medium text-green-500">-{formatPrice(discountAmount)}</span>
+                <span className={`font-medium ${appliedVIPPrize ? "text-purple-400" : "text-green-500"}`}>
+                  -{formatPrice(discountAmount)}
+                </span>
               </div>
             )}
             
@@ -379,7 +381,7 @@ export function CartContent() {
             </div>
           </div>
 
-          {!isFreeShipping && total < FREE_SHIPPING_THRESHOLD && !appliedReward && (
+          {!isFreeShipping && total < FREE_SHIPPING_THRESHOLD && !appliedReward && !appliedVIPPrize && (
             <div className="mb-6 p-4 bg-[var(--color-main-1)]/10 border border-[var(--color-main-1)]/30 rounded-lg">
               <p className="text-sm text-center">
                 Add{" "}

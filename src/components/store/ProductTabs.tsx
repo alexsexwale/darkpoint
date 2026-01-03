@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Rating } from "@/components/ui";
 import { ReportReviewModal } from "@/components/ui/ReportReviewModal";
 import { ProductDescription } from "./ProductDescription";
+import { MiniBadge, type BadgeType } from "@/components/gamification";
 import { useReviewsStore, type Review, type ReviewStats } from "@/stores/reviewsStore";
 import { useAuthStore, useUIStore } from "@/stores";
 import type { Product } from "@/types";
@@ -579,7 +580,15 @@ export function ProductTabs({ product }: ProductTabsProps) {
                         <div>
                           <h5 className="font-medium">{review.title}</h5>
                           <div className="flex items-center gap-2 text-sm text-white/60">
-                            <span>by {review.author_name}</span>
+                            <span className="flex items-center gap-1.5">
+                              by {review.author_name}
+                              {/* VIP Badge - shows if reviewer has a badge */}
+                              {(review as Review & { reviewer_badge?: string }).reviewer_badge && (
+                                <MiniBadge 
+                                  badge={(review as Review & { reviewer_badge?: string }).reviewer_badge as BadgeType} 
+                                />
+                              )}
+                            </span>
                             {review.is_verified_purchase && (
                               <span className="text-green-400 flex items-center gap-1">
                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
