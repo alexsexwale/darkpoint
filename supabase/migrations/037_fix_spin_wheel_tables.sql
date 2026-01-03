@@ -321,12 +321,13 @@ BEGIN
   CASE v_reward.category
     WHEN 'discount' THEN
       -- Create discount coupon - expires in 60 days
+      -- Note: v_reward.value contains the discount percentage as TEXT (e.g., '5', '10', '15')
       INSERT INTO user_coupons (user_id, code, discount_type, discount_value, min_order_value, source, description, expires_at)
       VALUES (
         p_user_id,
         'REWARD-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8)),
         'percent',
-        v_reward.discount_value,
+        COALESCE(v_reward.value::INTEGER, 5), -- Convert TEXT value to INTEGER
         0,
         'reward',
         '🛒 ' || v_reward.name,
@@ -355,10 +356,16 @@ BEGIN
       
     WHEN 'xp_booster' THEN
       -- Grant XP multiplier immediately
+      -- Note: v_reward.value is like '2x_24h', we extract the multiplier (default 2.0)
       BEGIN
         PERFORM grant_xp_multiplier(
           p_user_id,
-          COALESCE(v_reward.multiplier_value, 2.0),
+          CASE 
+            WHEN v_reward.value LIKE '2x%' THEN 2.0
+            WHEN v_reward.value LIKE '3x%' THEN 3.0
+            WHEN v_reward.value LIKE '1.5x%' THEN 1.5
+            ELSE 2.0
+          END,
           24, -- 24 hours duration
           'reward_shop',
           v_reward.name
@@ -371,7 +378,8 @@ BEGIN
       
     WHEN 'spin' THEN
       -- Grant extra spins
-      v_new_spins := COALESCE(v_user_spins, 0) + COALESCE(v_reward.spin_count, 1);
+      -- Note: v_reward.value contains the number of spins as TEXT (e.g., '1')
+      v_new_spins := COALESCE(v_user_spins, 0) + COALESCE(v_reward.value::INTEGER, 1);
       UPDATE user_profiles 
       SET total_xp = v_new_xp, available_spins = v_new_spins, updated_at = NOW() 
       WHERE id = p_user_id;

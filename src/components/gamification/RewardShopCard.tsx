@@ -8,8 +8,8 @@ import { Button } from "@/components/ui";
 // Skeleton loader for the reward card
 export function RewardShopCardSkeleton() {
   return (
-    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] animate-pulse">
-      <div className="p-5">
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] animate-pulse h-full">
+      <div className="p-5 h-full flex flex-col">
         {/* Header skeleton */}
         <div className="flex items-start justify-between mb-4">
           <div className="w-12 h-12 bg-[var(--color-dark-3)] rounded" />
@@ -22,13 +22,25 @@ export function RewardShopCardSkeleton() {
         <div className="h-4 w-full bg-[var(--color-dark-3)] rounded mb-1" />
         <div className="h-4 w-2/3 bg-[var(--color-dark-3)] rounded mb-4" />
 
+        {/* Spacer */}
+        <div className="flex-1" />
+
         {/* Cost and action skeleton */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 bg-[var(--color-dark-3)] rounded" />
             <div className="h-7 w-16 bg-[var(--color-dark-3)] rounded" />
           </div>
           <div className="h-9 w-24 bg-[var(--color-dark-3)] rounded" />
+        </div>
+
+        {/* Progress skeleton - for consistent height */}
+        <div className="mt-3 pt-3 border-t border-[var(--color-dark-3)]">
+          <div className="flex justify-between mb-1">
+            <div className="h-3 w-16 bg-[var(--color-dark-3)] rounded" />
+            <div className="h-3 w-20 bg-[var(--color-dark-3)] rounded" />
+          </div>
+          <div className="h-1 bg-[var(--color-dark-4)] rounded" />
         </div>
       </div>
     </div>
@@ -96,7 +108,7 @@ export function RewardShopCard({
     <motion.div
       whileHover={{ scale: canAfford && !isOutOfStock ? 1.02 : 1 }}
       className={cn(
-        "relative group overflow-hidden",
+        "relative group overflow-hidden h-full",
         "bg-[var(--color-dark-2)] border transition-all duration-300",
         canAfford && !isOutOfStock
           ? "border-[var(--color-dark-3)] hover:border-[var(--color-main-1)]"
@@ -113,7 +125,7 @@ export function RewardShopCard({
       />
 
       {/* Content */}
-      <div className="relative p-5">
+      <div className="relative p-5 h-full flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           {/* Icon */}
@@ -147,13 +159,16 @@ export function RewardShopCard({
           {reward.description}
         </p>
 
+        {/* Spacer to push footer to bottom */}
+        <div className="flex-1" />
+
         {/* Cost and action */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">⚡</span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-base">⚡</span>
             <span
               className={cn(
-                "font-heading text-xl",
+                "font-heading text-lg",
                 canAfford ? "text-[var(--color-main-1)]" : "text-white/40"
               )}
             >
@@ -167,7 +182,7 @@ export function RewardShopCard({
             size="sm"
             onClick={onRedeem}
             disabled={!canAfford || isOutOfStock || isRedeeming}
-            className="min-w-[100px]"
+            className="whitespace-nowrap"
           >
             {isRedeeming ? (
               <span className="flex items-center gap-2">
@@ -180,21 +195,22 @@ export function RewardShopCard({
           </Button>
         </div>
 
-        {/* Progress to afford (if can't afford) */}
-        {!canAfford && !isOutOfStock && (
-          <div className="mt-3 pt-3 border-t border-[var(--color-dark-3)]">
-            <div className="flex justify-between text-xs text-white/40 mb-1">
-              <span>Your XP: {userXP.toLocaleString()}</span>
-              <span>Need: {(reward.xp_cost - userXP).toLocaleString()} more</span>
-            </div>
-            <div className="h-1 bg-[var(--color-dark-4)] overflow-hidden">
-              <div
-                className="h-full bg-[var(--color-main-1)]"
-                style={{ width: `${(userXP / reward.xp_cost) * 100}%` }}
-              />
-            </div>
+        {/* Progress to afford (if can't afford) - Always reserve space for consistent height */}
+        <div className={cn(
+          "mt-3 pt-3 border-t border-[var(--color-dark-3)]",
+          canAfford && "invisible"
+        )}>
+          <div className="flex justify-between text-xs text-white/40 mb-1">
+            <span>Your XP: {userXP.toLocaleString()}</span>
+            <span>Need: {(reward.xp_cost - userXP).toLocaleString()} more</span>
           </div>
-        )}
+          <div className="h-1 bg-[var(--color-dark-4)] overflow-hidden">
+            <div
+              className="h-full bg-[var(--color-main-1)]"
+              style={{ width: `${Math.min((userXP / reward.xp_cost) * 100, 100)}%` }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Hover glow */}
