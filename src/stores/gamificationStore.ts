@@ -850,21 +850,23 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         const totalXP = result.total_xp_earned || amount;
         const multiplierApplied = result.multiplier_applied && result.multiplier_applied > 1;
 
-        // Add notification
-        if (multiplierApplied && bonusXP > 0) {
-          get().addNotification({
-            type: "xp_gain",
-            title: `+${totalXP} XP`,
-            message: `${description || `Earned from ${action}`} (${baseXP} + ${bonusXP} bonus from ${result.multiplier_applied}x)`,
-            xpAmount: totalXP,
-          });
-        } else {
-          get().addNotification({
-            type: "xp_gain",
-            title: `+${amount} XP`,
-            message: description || `Earned from ${action}`,
-            xpAmount: amount,
-          });
+        // Add notification (skip for quests - they have their own notification)
+        if (action !== "quest") {
+          if (multiplierApplied && bonusXP > 0) {
+            get().addNotification({
+              type: "xp_gain",
+              title: `+${totalXP} XP`,
+              message: `${description || `Earned from ${action}`} (${baseXP} + ${bonusXP} bonus from ${result.multiplier_applied}x)`,
+              xpAmount: totalXP,
+            });
+          } else {
+            get().addNotification({
+              type: "xp_gain",
+              title: `+${amount} XP`,
+              message: description || `Earned from ${action}`,
+              xpAmount: amount,
+            });
+          }
         }
 
         // Check for level up
@@ -966,13 +968,15 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       }
     }
 
-    // Add notification
-    get().addNotification({
-      type: "xp_gain",
-      title: `+${amount} XP`,
-      message: description || `Earned from ${action}`,
-      xpAmount: amount,
-    });
+    // Add notification (skip for quests - they have their own notification)
+    if (action !== "quest") {
+      get().addNotification({
+        type: "xp_gain",
+        title: `+${amount} XP`,
+        message: description || `Earned from ${action}`,
+        xpAmount: amount,
+      });
+    }
 
     return true;
   },
@@ -1204,6 +1208,15 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           if (achievementType) {
             get().trackQuestRewardedAction(achievementType);
           }
+          
+          // Show quest completion notification immediately
+          get().addNotification({
+            type: "reward",
+            title: "🎯 Quest Complete!",
+            message: `${q.title} - +${q.xpReward} XP`,
+            icon: "✅",
+            xpAmount: q.xpReward,
+          });
           
           // Quest completed - add XP (will use local fallback if DB not available)
           setTimeout(async () => {
