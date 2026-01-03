@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useGamificationStore, useRewardsStore } from "@/stores";
 import { useGamification } from "@/hooks";
-import { RewardShopCard } from "./RewardShopCard";
+import { RewardShopCard, RewardShopCardSkeleton } from "./RewardShopCard";
 import type { Reward } from "@/types/gamification";
 
 interface RewardShopGridProps {
@@ -137,16 +137,28 @@ const SAMPLE_REWARDS: Reward[] = [
 ];
 
 export function RewardShopGrid({ className }: RewardShopGridProps) {
-  const { userProfile, rewards: storeRewards, addNotification } = useGamificationStore();
+  const { userProfile, rewards: storeRewards, addNotification, isLoading: gamificationLoading, fetchRewards: fetchGamificationRewards } = useGamificationStore();
   const { fetchRewards } = useRewardsStore();
   const { purchaseReward } = useGamification();
   const [selectedCategory, setSelectedCategory] = useState<RewardCategory>("all");
   const [redeeming, setRedeeming] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  // Fetch rewards on mount
+  useEffect(() => {
+    const loadRewards = async () => {
+      setIsInitialLoading(true);
+      await fetchGamificationRewards();
+      setIsInitialLoading(false);
+    };
+    loadRewards();
+  }, [fetchGamificationRewards]);
 
   // Use store rewards or sample data
   const rewards = storeRewards.length > 0 ? storeRewards : SAMPLE_REWARDS;
   const userXP = userProfile?.total_xp || 0;
+  const isLoading = isInitialLoading || gamificationLoading;
 
   // Filter rewards
   const filteredRewards = rewards.filter(
@@ -198,13 +210,25 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
             <p className="text-sm text-white/60">Spend your XP on exclusive rewards</p>
           </div>
           <div className="text-right">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">⚡</span>
-              <span className="text-4xl font-heading text-[var(--color-main-1)]">
-                {userXP.toLocaleString()}
-              </span>
-            </div>
-            <p className="text-xs text-white/40">Available XP</p>
+            {isLoading ? (
+              <>
+                <div className="flex items-center gap-2 justify-end">
+                  <span className="text-2xl">⚡</span>
+                  <div className="h-10 w-24 bg-[var(--color-dark-3)] animate-pulse rounded" />
+                </div>
+                <p className="text-xs text-white/40">Available XP</p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">⚡</span>
+                  <span className="text-4xl font-heading text-[var(--color-main-1)]">
+                    {userXP.toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-xs text-white/40">Available XP</p>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -257,28 +281,38 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
 
       {/* Rewards grid */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <AnimatePresence mode="popLayout">
-          {filteredRewards.map((reward, index) => (
-            <motion.div
-              key={reward.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.2, delay: index * 0.05 }}
-            >
-              <RewardShopCard
-                reward={reward}
-                userXP={userXP}
-                onRedeem={() => handleRedeem(reward)}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {isLoading ? (
+          // Skeleton loading state
+          <>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <RewardShopCardSkeleton key={i} />
+            ))}
+          </>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {filteredRewards.map((reward, index) => (
+              <motion.div
+                key={reward.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2, delay: index * 0.05 }}
+              >
+                <RewardShopCard
+                  reward={reward}
+                  userXP={userXP}
+                  onRedeem={() => handleRedeem(reward)}
+                  isRedeeming={redeeming === reward.id}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
       </div>
 
       {/* Empty state */}
-      {filteredRewards.length === 0 && (
+      {!isLoading && filteredRewards.length === 0 && (
         <div className="text-center py-12 bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]">
           <span className="text-4xl mb-4 block">🏪</span>
           <p className="text-white/60">No rewards available in this category</p>

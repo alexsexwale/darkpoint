@@ -17,7 +17,7 @@ export { ReferralDashboard } from "./ReferralDashboard";
 export { ReferralShareCard } from "./ReferralShareCard";
 export { MysteryBoxCard } from "./MysteryBoxCard";
 export { MysteryBoxOpening } from "./MysteryBoxOpening";
-export { RewardShopCard } from "./RewardShopCard";
+export { RewardShopCard, RewardShopCardSkeleton } from "./RewardShopCard";
 export { RewardShopGrid } from "./RewardShopGrid";
 export { NotificationStack } from "./NotificationStack";
 export { DailyQuestCard } from "./DailyQuestCard";

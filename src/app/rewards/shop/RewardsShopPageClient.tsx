@@ -8,16 +8,56 @@ import { Button } from "@/components/ui";
 import { VerificationRequired } from "@/components/auth";
 import { useGamificationStore, useAuthStore, useUIStore } from "@/stores";
 
+// Skeleton components for loading state
+function UserCardSkeleton() {
+  return (
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 animate-pulse">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="w-12 h-12 bg-[var(--color-dark-3)] rounded" />
+        <div>
+          <div className="h-5 w-24 bg-[var(--color-dark-3)] rounded mb-2" />
+          <div className="h-4 w-16 bg-[var(--color-dark-3)] rounded" />
+        </div>
+      </div>
+      <div className="h-2 bg-[var(--color-dark-3)] rounded mb-2" />
+      <div className="flex justify-between">
+        <div className="h-3 w-12 bg-[var(--color-dark-3)] rounded" />
+        <div className="h-3 w-16 bg-[var(--color-dark-3)] rounded" />
+      </div>
+    </div>
+  );
+}
+
+function StatsSkeleton() {
+  return (
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 animate-pulse">
+      <div className="h-6 w-24 bg-[var(--color-dark-3)] rounded mb-4" />
+      <div className="space-y-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex justify-between">
+            <div className="h-4 w-24 bg-[var(--color-dark-3)] rounded" />
+            <div className="h-4 w-8 bg-[var(--color-dark-3)] rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RewardsShopPageClient() {
   const { 
     userProfile, 
     updateQuestProgress, 
     initDailyQuests, 
-    logActivity 
+    logActivity,
+    isLoading: gamificationLoading,
+    isInitialized: gamificationInitialized
   } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized, isEmailVerified } = useAuthStore();
   const { openSignIn } = useUIStore();
   const hasTrackedVisit = useRef(false);
+  
+  const isLoading = !authInitialized || (isAuthenticated && (!gamificationInitialized || gamificationLoading));
 
   // Track page visit for "Reward Seeker" quest
   useEffect(() => {
@@ -261,7 +301,9 @@ export function RewardsShopPageClient() {
               className="lg:col-span-1 space-y-6"
             >
               {/* User card */}
-              {userProfile && (
+              {isLoading ? (
+                <UserCardSkeleton />
+              ) : userProfile ? (
                 <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
                   <div className="flex items-center gap-4 mb-4">
                     <LevelBadge size="md" showTitle={false} />
@@ -276,35 +318,39 @@ export function RewardsShopPageClient() {
                   </div>
                   <XPBar showLevel showXPText />
                 </div>
-              )}
+              ) : null}
 
               {/* Active XP Multiplier */}
-              <XPMultiplierIndicator variant="full" />
+              {!isLoading && <XPMultiplierIndicator variant="full" />}
 
               {/* Stats */}
-              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
-                <h3 className="font-heading text-lg mb-4">Your Stats</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-white/60">Total Orders</span>
-                    <span className="text-white">{userProfile?.total_orders || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60">Total Reviews</span>
-                    <span className="text-white">{userProfile?.total_reviews || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60">Referrals</span>
-                    <span className="text-white">{userProfile?.referral_count || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60">Login Streak</span>
-                    <span className="text-[var(--color-main-1)]">
-                      {userProfile?.current_streak || 0} 🔥
-                    </span>
+              {isLoading ? (
+                <StatsSkeleton />
+              ) : (
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+                  <h3 className="font-heading text-lg mb-4">Your Stats</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-white/60">Total Orders</span>
+                      <span className="text-white">{userProfile?.total_orders || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/60">Total Reviews</span>
+                      <span className="text-white">{userProfile?.total_reviews || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/60">Referrals</span>
+                      <span className="text-white">{userProfile?.referral_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/60">Login Streak</span>
+                      <span className="text-[var(--color-main-1)]">
+                        {userProfile?.current_streak || 0} 🔥
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Quick actions */}
               <div className="space-y-2">

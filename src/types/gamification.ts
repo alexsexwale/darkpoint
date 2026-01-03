@@ -45,6 +45,7 @@ export const XP_REWARDS: Record<XPAction, number | ((value?: number) => number)>
   admin: 0, // Admin-granted XP (variable)
   read_article: 20, // XP for reading a news article
   add_wishlist: 0, // XP only via quests/achievements, not direct
+  redeem: 0, // XP spent on rewards (negative value in transactions)
 };
 
 // Level Tier Configuration
