@@ -49,8 +49,8 @@ const VIP_DEALS = [
 
 export function VIPPageClient() {
   const router = useRouter();
-  const { isAuthenticated, isInitialized } = useAuthStore();
-  const { userBadges, hasAnyBadge, userProfile } = useGamificationStore();
+  const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
+  const { userBadges, hasAnyBadge, userProfile, isInitialized: gamificationInitialized } = useGamificationStore();
   const { 
     activateVIPPrize, 
     isVIPPrizeActive, 
@@ -65,13 +65,23 @@ export function VIPPageClient() {
   const [showPrizeReveal, setShowPrizeReveal] = useState(false);
   const [currentPrize, setCurrentPrize] = useState<VIPWeeklyPrize | null>(null);
   const [timeRemaining, setTimeRemaining] = useState("");
+  const [accessChecked, setAccessChecked] = useState(false);
 
-  // Check VIP access
+  // Both auth and gamification must be initialized before checking access
+  const fullyInitialized = authInitialized && gamificationInitialized;
+
+  // Check VIP access - only after both stores are initialized
   useEffect(() => {
-    if (isInitialized && (!isAuthenticated || !hasAnyBadge())) {
+    if (!fullyInitialized) return;
+    
+    // Only check access once
+    if (accessChecked) return;
+    setAccessChecked(true);
+    
+    if (!isAuthenticated || !hasAnyBadge()) {
       // Redirect non-VIP users to 404
       router.replace("/404");
-    } else if (isInitialized && hasAnyBadge()) {
+    } else {
       // Play VIP access sound
       playVIPAccess();
       // Show particles celebration
@@ -83,7 +93,7 @@ export function VIPPageClient() {
         setPrizeActivated(true);
       }
     }
-  }, [isInitialized, isAuthenticated, hasAnyBadge, router, playVIPAccess, isVIPPrizeActive, vipPrize]);
+  }, [fullyInitialized, accessChecked, isAuthenticated, hasAnyBadge, router, playVIPAccess, isVIPPrizeActive, vipPrize]);
 
   // Update time remaining
   useEffect(() => {
@@ -115,7 +125,7 @@ export function VIPPageClient() {
   };
 
   // Don't render anything until we verify access
-  if (!isInitialized || !isAuthenticated || !hasAnyBadge()) {
+  if (!fullyInitialized || !accessChecked || !isAuthenticated || !hasAnyBadge()) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-2 border-[var(--color-main-1)] border-t-transparent rounded-full" />
@@ -457,20 +467,21 @@ export function VIPPageClient() {
                 </p>
               </div>
               
-              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg group cursor-pointer hover:bg-white/10 transition-colors"
-                onClick={() => {
-                  // Easter egg discovery!
-                  window.location.href = "/arcade";
-                }}
+              <Link 
+                href="/arcade"
+                className="flex items-start gap-3 p-3 bg-white/5 rounded-lg group cursor-pointer hover:bg-purple-500/20 hover:border-purple-500/30 border border-transparent transition-all"
               >
                 <span className="text-amber-400">💡</span>
-                <p>
-                  <span className="text-amber-400">Hint 4:</span> There&apos;s a hidden arcade somewhere on this site...
-                  <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-purple-400 text-xs">
-                    (click me! 🕹️)
+                <div className="flex-1">
+                  <span className="text-amber-400">Hint 4:</span>{" "}
+                  <span className="text-white/70 group-hover:text-white transition-colors">
+                    There&apos;s a hidden arcade somewhere on this site...
                   </span>
-                </p>
-              </div>
+                  <span className="ml-2 text-purple-400 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                    → Click to play! 🕹️
+                  </span>
+                </div>
+              </Link>
             </div>
 
             <div className="mt-6 pt-6 border-t border-white/10 text-center">

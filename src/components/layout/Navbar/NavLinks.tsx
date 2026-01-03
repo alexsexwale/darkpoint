@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NavLinkEffect } from "@/components/ui/NavLinkEffect";
+import { useGamificationStore } from "@/stores";
 
 interface NavLink {
   label: string;
   href: string;
   children?: NavLink[];
+  vipOnly?: boolean;
 }
 
-const navLinks: NavLink[] = [
+const baseNavLinks: NavLink[] = [
   { label: "Home", href: "/" },
   {
     label: "Store",
@@ -35,6 +37,7 @@ const navLinks: NavLink[] = [
       { label: "Rewards Shop", href: "/rewards/shop" },
       { label: "Achievements", href: "/account/achievements" },
       { label: "Referrals", href: "/account/referrals" },
+      { label: "✨ VIP Lounge", href: "/vip", vipOnly: true },
     ],
   },
   { label: "News", href: "/news" },
@@ -48,6 +51,14 @@ interface NavLinksProps {
 
 export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
   const pathname = usePathname();
+  const { hasAnyBadge } = useGamificationStore();
+  const isVIP = hasAnyBadge();
+
+  // Filter out VIP-only links if user doesn't have a badge
+  const navLinks = baseNavLinks.map(link => ({
+    ...link,
+    children: link.children?.filter(child => !child.vipOnly || isVIP),
+  }));
 
   // Check if a child link is active (exact match or starts with for nested routes)
   const isChildActive = (href: string) => {
@@ -136,7 +147,7 @@ export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
           >
             {link.label}
           </NavLinkEffect>
-          {link.children && (
+          {link.children && link.children.length > 0 && (
             <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
               <ul className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] min-w-[200px] py-2 shadow-xl">
                 {link.children.map((child) => (
@@ -145,9 +156,11 @@ export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
                       href={child.href}
                       className={cn(
                         "block px-4 py-2 text-sm transition-colors",
-                        isChildActive(child.href)
-                          ? "text-[var(--color-main-1)] bg-[var(--color-dark-3)]"
-                          : "text-[var(--muted-foreground)] hover:text-white hover:bg-[var(--color-dark-3)]"
+                        child.vipOnly 
+                          ? "bg-gradient-to-r from-purple-500/10 to-amber-500/10 text-amber-400 hover:from-purple-500/20 hover:to-amber-500/20 border-t border-amber-500/20 mt-1"
+                          : isChildActive(child.href)
+                            ? "text-[var(--color-main-1)] bg-[var(--color-dark-3)]"
+                            : "text-[var(--muted-foreground)] hover:text-white hover:bg-[var(--color-dark-3)]"
                       )}
                     >
                       {child.label}

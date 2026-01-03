@@ -55,5 +55,6 @@ export const CURRENCY_LOCALE = "en-ZA";
 export const PRODUCTS_PER_PAGE = 12;
 
 // Shipping
-export const FREE_SHIPPING_THRESHOLD = 500; // R500
+export const FREE_SHIPPING_THRESHOLD = 500; // R500 for regular users
+export const VIP_FREE_SHIPPING_THRESHOLD = 300; // R300 for VIP badge holders
 export const STANDARD_SHIPPING_FEE = 65; // R65

@@ -384,21 +384,31 @@ function TriviaGame({ onWin }: { onWin: (xp: number) => void }) {
 // Main Arcade Page
 export function ArcadePageClient() {
   const router = useRouter();
-  const { isAuthenticated, isInitialized } = useAuthStore();
-  const { hasAnyBadge, addXP, addNotification } = useGamificationStore();
+  const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
+  const { hasAnyBadge, addXP, addNotification, isInitialized: gamificationInitialized } = useGamificationStore();
   const { playEasterEgg } = useBadgeSound();
 
   const [selectedGame, setSelectedGame] = useState<"memory" | "slots" | "trivia" | null>(null);
   const [totalXPEarned, setTotalXPEarned] = useState(0);
+  const [accessChecked, setAccessChecked] = useState(false);
 
-  // Check VIP access
+  // Both auth and gamification must be initialized before checking access
+  const fullyInitialized = authInitialized && gamificationInitialized;
+
+  // Check VIP access - only after both stores are initialized
   useEffect(() => {
-    if (isInitialized && (!isAuthenticated || !hasAnyBadge())) {
+    if (!fullyInitialized) return;
+    
+    // Only check access once
+    if (accessChecked) return;
+    setAccessChecked(true);
+    
+    if (!isAuthenticated || !hasAnyBadge()) {
       router.replace("/404");
-    } else if (isInitialized && hasAnyBadge()) {
+    } else {
       playEasterEgg();
     }
-  }, [isInitialized, isAuthenticated, hasAnyBadge, router, playEasterEgg]);
+  }, [fullyInitialized, accessChecked, isAuthenticated, hasAnyBadge, router, playEasterEgg]);
 
   const handleWin = useCallback((xp: number) => {
     addXP(xp, "bonus", "Arcade game reward");
@@ -411,7 +421,7 @@ export function ArcadePageClient() {
     });
   }, [addXP, addNotification]);
 
-  if (!isInitialized || !isAuthenticated || !hasAnyBadge()) {
+  if (!fullyInitialized || !accessChecked || !isAuthenticated || !hasAnyBadge()) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-2 border-[var(--color-main-1)] border-t-transparent rounded-full" />

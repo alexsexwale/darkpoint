@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCartStore, useAuthStore } from "@/stores";
 import { useRewardsStore, getRewardDisplayInfo, type VIPWeeklyPrize } from "@/stores/rewardsStore";
+import { useShippingThreshold } from "@/hooks";
 import { Button, Input, TextArea, FreeDeliveryIndicator } from "@/components/ui";
 import { VerificationRequired } from "@/components/auth";
 import { RewardSelector } from "@/components/cart/RewardSelector";
 import { formatPrice } from "@/lib/utils";
-import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from "@/lib/constants";
+import { STANDARD_SHIPPING_FEE } from "@/lib/constants";
 
 interface BillingDetails {
   firstName: string;
@@ -46,6 +47,7 @@ export function CheckoutContent() {
     removeVIPPrize,
     markVIPPrizeUsed,
   } = useRewardsStore();
+  const { threshold: freeShippingThreshold, isVIP } = useShippingThreshold();
   
   // If user is logged in but not verified, show verification required
   // (Guest checkout is allowed - only logged-in unverified users are blocked)
@@ -104,7 +106,7 @@ export function CheckoutContent() {
   });
 
   const total = subtotal();
-  const baseShippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+  const baseShippingCost = total >= freeShippingThreshold ? 0 : STANDARD_SHIPPING_FEE;
   
   // Calculate reward discounts
   const discountAmount = getDiscountAmount(total);
@@ -516,7 +518,7 @@ export function CheckoutContent() {
           </table>
 
           {/* Free Delivery Indicator */}
-          {!isFreeShipping && total < FREE_SHIPPING_THRESHOLD && !appliedReward && !appliedVIPPrize && (
+          {!isFreeShipping && total < freeShippingThreshold && !appliedReward && !appliedVIPPrize && (
             <div className="mt-6 pt-6 border-t border-[var(--color-dark-3)]">
               <FreeDeliveryIndicator subtotal={total} variant="compact" />
             </div>
@@ -530,11 +532,11 @@ export function CheckoutContent() {
               </svg>
               <p>
                 {isFreeShipping ? (
-                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!</>
-                ) : total >= FREE_SHIPPING_THRESHOLD ? (
-                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!</>
+                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!{isVIP && <span className="text-amber-400 ml-1">(VIP Perk)</span>}</>
+                ) : total >= freeShippingThreshold ? (
+                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!{isVIP && <span className="text-amber-400 ml-1">(VIP Perk)</span>}</>
                 ) : (
-                  <>Standard delivery fee of <span className="text-white font-medium">{formatPrice(STANDARD_SHIPPING_FEE)}</span> applies. Spend <span className="text-[var(--color-main-1)] font-medium">{formatPrice(FREE_SHIPPING_THRESHOLD - total)}</span> more for free delivery!</>
+                  <>Standard delivery fee of <span className="text-white font-medium">{formatPrice(STANDARD_SHIPPING_FEE)}</span> applies. Spend <span className="text-[var(--color-main-1)] font-medium">{formatPrice(freeShippingThreshold - total)}</span> more for free delivery!{isVIP && <span className="text-amber-400 ml-1">(VIP: R300 threshold)</span>}</>
                 )}
               </p>
             </div>

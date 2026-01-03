@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { SITE_NAME } from "@/lib/constants";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const router = useRouter();
   const [secretClicks, setSecretClicks] = useState(0);
 
   // Easter egg: Click the dot 7 times to access the hidden arcade
@@ -15,7 +17,7 @@ export function Footer() {
     setSecretClicks(newCount);
     if (newCount >= 7) {
       setSecretClicks(0);
-      window.location.href = "/arcade";
+      router.push("/arcade");
     }
   };
 

@@ -6,8 +6,9 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/stores";
 import { useRewardsStore, getRewardDisplayInfo } from "@/stores/rewardsStore";
+import { useShippingThreshold } from "@/hooks";
 import { formatPrice } from "@/lib/utils";
-import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from "@/lib/constants";
+import { STANDARD_SHIPPING_FEE } from "@/lib/constants";
 import { Button } from "./Button";
 import { FreeDeliveryIndicator } from "./FreeDeliveryIndicator";
 import { RewardSelector } from "@/components/cart/RewardSelector";
@@ -16,6 +17,7 @@ export function CartDrawer() {
   const { isOpen, closeCart, items, removeItem, updateQuantity, subtotal } =
     useCartStore();
   const { appliedReward, getDiscountAmount, getShippingDiscount } = useRewardsStore();
+  const { threshold: freeShippingThreshold } = useShippingThreshold();
 
   // Lock body scroll when open
   useEffect(() => {
@@ -41,7 +43,7 @@ export function CartDrawer() {
   }, [isOpen, closeCart]);
 
   const total = subtotal();
-  const baseShippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+  const baseShippingCost = total >= freeShippingThreshold ? 0 : STANDARD_SHIPPING_FEE;
   
   // Calculate reward discounts
   const discountAmount = getDiscountAmount(total);

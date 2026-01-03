@@ -18,7 +18,12 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const navItems: NavItem[] = [
+interface NavItemWithVIP extends NavItem {
+  vipOnly?: boolean;
+  children?: NavItemWithVIP[];
+}
+
+const baseNavItems: NavItemWithVIP[] = [
   { 
     id: "home",
     label: "Home", 
@@ -56,6 +61,7 @@ const navItems: NavItem[] = [
       { id: "rewards-shop", label: "Rewards Shop", href: "/rewards/shop", icon: "🏪" },
       { id: "achievements", label: "Achievements", href: "/account/achievements", icon: "🎖️" },
       { id: "referrals", label: "Referrals", href: "/account/referrals", icon: "🤝" },
+      { id: "vip-lounge", label: "VIP Lounge", href: "/vip", icon: "👑", vipOnly: true },
     ],
   },
   { 
@@ -79,9 +85,18 @@ const accountItems: NavItem[] = [
 export function MobileNav() {
   const { isMobileMenuOpen, closeMobileMenu, openSignIn } = useUIStore();
   const { user, isAuthenticated, signOut, isLoading, isInitialized } = useAuthStore();
-  const { userProfile } = useGamificationStore();
+  const { userProfile, hasAnyBadge } = useGamificationStore();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  
+  // Check if user is VIP
+  const isVIP = hasAnyBadge();
+  
+  // Filter nav items based on VIP status
+  const navItems = baseNavItems.map(item => ({
+    ...item,
+    children: item.children?.filter(child => !child.vipOnly || isVIP),
+  }));
 
   // Wait for client-side hydration
   useEffect(() => {
@@ -157,7 +172,7 @@ export function MobileNav() {
 
   // Get current panel data
   const currentPanelData = activePanel 
-    ? navItems.find(item => item.id === activePanel) 
+    ? navItems.find(item => item.id === activePanel) as NavItemWithVIP | undefined
     : null;
 
   // Level info
@@ -471,13 +486,20 @@ export function MobileNav() {
                               onClick={handleLinkClick}
                               className={cn(
                                 "flex items-center gap-3 py-3 px-4 rounded-lg transition-all active:scale-[0.98]",
-                                isActive(item.href || "")
-                                  ? "bg-[var(--color-main-1)]/10 text-[var(--color-main-1)]"
-                                  : "text-white hover:bg-white/5"
+                                (item as NavItemWithVIP).vipOnly
+                                  ? "bg-gradient-to-r from-purple-500/20 to-amber-500/20 text-amber-400 border border-amber-500/30 mt-2"
+                                  : isActive(item.href || "")
+                                    ? "bg-[var(--color-main-1)]/10 text-[var(--color-main-1)]"
+                                    : "text-white hover:bg-white/5"
                               )}
                             >
                               <span className="text-lg">{item.icon}</span>
                               <span className="text-base">{item.label}</span>
+                              {(item as NavItemWithVIP).vipOnly && (
+                                <span className="ml-auto text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded-full">
+                                  VIP
+                                </span>
+                              )}
                             </Link>
                           </motion.li>
                         ))}

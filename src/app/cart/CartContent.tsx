@@ -5,17 +5,19 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/stores";
 import { useRewardsStore } from "@/stores/rewardsStore";
+import { useShippingThreshold } from "@/hooks";
 import { Button, FreeDeliveryIndicator } from "@/components/ui";
 import { RewardSelector } from "@/components/cart/RewardSelector";
 import { formatPrice } from "@/lib/utils";
-import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from "@/lib/constants";
+import { STANDARD_SHIPPING_FEE } from "@/lib/constants";
 
 export function CartContent() {
   const { items, removeItem, updateQuantity, subtotal, clearCart } = useCartStore();
   const { appliedReward, appliedVIPPrize, getDiscountAmount, getShippingDiscount } = useRewardsStore();
+  const { threshold: freeShippingThreshold, isVIP } = useShippingThreshold();
 
   const total = subtotal();
-  const baseShippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+  const baseShippingCost = total >= freeShippingThreshold ? 0 : STANDARD_SHIPPING_FEE;
   
   // Calculate reward discounts
   const discountAmount = getDiscountAmount(total);
@@ -381,15 +383,16 @@ export function CartContent() {
             </div>
           </div>
 
-          {!isFreeShipping && total < FREE_SHIPPING_THRESHOLD && !appliedReward && !appliedVIPPrize && (
+          {!isFreeShipping && total < freeShippingThreshold && !appliedReward && !appliedVIPPrize && (
             <div className="mb-6 p-4 bg-[var(--color-main-1)]/10 border border-[var(--color-main-1)]/30 rounded-lg">
               <p className="text-sm text-center">
                 Add{" "}
                 <span className="font-bold text-[var(--color-main-1)]">
-                  {formatPrice(FREE_SHIPPING_THRESHOLD - total)}
+                  {formatPrice(freeShippingThreshold - total)}
                 </span>{" "}
                 more for{" "}
                 <span className="font-bold text-green-500">FREE</span> delivery!
+                {isVIP && <span className="text-amber-400 ml-1">(VIP Perk!)</span>}
               </p>
             </div>
           )}

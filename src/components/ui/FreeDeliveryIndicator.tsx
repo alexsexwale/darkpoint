@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from "@/lib/constants";
+import { STANDARD_SHIPPING_FEE } from "@/lib/constants";
+import { useShippingThreshold } from "@/hooks/useShippingThreshold";
 import { formatPrice } from "@/lib/utils";
 
 interface FreeDeliveryIndicatorProps {
@@ -11,6 +12,8 @@ interface FreeDeliveryIndicatorProps {
 }
 
 export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDeliveryIndicatorProps) {
+  const { threshold: FREE_SHIPPING_THRESHOLD, isVIP } = useShippingThreshold();
+  
   const { progress, amountRemaining, isFreeShipping } = useMemo(() => {
     const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
     const progressPercent = Math.min((subtotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
@@ -20,7 +23,7 @@ export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDel
       amountRemaining: Math.max(0, remaining),
       isFreeShipping: subtotal >= FREE_SHIPPING_THRESHOLD,
     };
-  }, [subtotal]);
+  }, [subtotal, FREE_SHIPPING_THRESHOLD]);
 
   if (variant === "compact") {
     return (
@@ -122,7 +125,11 @@ export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDel
                 <span className="text-[var(--color-main-1)]">{formatPrice(amountRemaining)}</span> away from FREE delivery
               </p>
               <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                Orders over {formatPrice(FREE_SHIPPING_THRESHOLD)} ship free!
+                {isVIP ? (
+                  <span className="text-amber-400">👑 VIP: Orders over {formatPrice(FREE_SHIPPING_THRESHOLD)} ship free!</span>
+                ) : (
+                  <>Orders over {formatPrice(FREE_SHIPPING_THRESHOLD)} ship free!</>
+                )}
               </p>
             </>
           )}

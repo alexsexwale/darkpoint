@@ -13,7 +13,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useGamificationStore } from "@/stores/gamificationStore";
 import { cn } from "@/lib/utils";
-import { FREE_SHIPPING_THRESHOLD } from "@/lib/constants";
+import { useShippingThreshold } from "@/hooks/useShippingThreshold";
 
 interface RewardSelectorProps {
   subtotal: number;
@@ -53,6 +53,7 @@ export function RewardSelector({
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { toggleSignIn } = useUIStore();
   const { addNotification, hasAnyBadge } = useGamificationStore();
+  const { threshold: FREE_SHIPPING_THRESHOLD } = useShippingThreshold();
   const [isExpanded, setIsExpanded] = useState(false);
   const [removedRewardMessage, setRemovedRewardMessage] = useState<string | null>(null);
   const prevSubtotalRef = useRef(subtotal);
