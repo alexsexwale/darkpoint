@@ -10,7 +10,7 @@ import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 export function DailyRewardModal() {
-  const { showDailyRewardModal, userProfile, setDailyRewardModal } = useGamificationStore();
+  const { showDailyRewardModal, userProfile, setDailyRewardModal, dailyRewardData } = useGamificationStore();
   const { claimDailyReward } = useGamification();
   const [claimed, setClaimed] = useState(false);
   const [claimedReward, setClaimedReward] = useState<DailyReward | null>(null);
@@ -46,18 +46,23 @@ export function DailyRewardModal() {
     setClaimError(null);
     const success = await claimDailyReward();
     if (success) {
-      const cycleDay = ((userProfile?.current_streak || 1) - 1) % 7;
-      const reward = DAILY_REWARDS[cycleDay] || DAILY_REWARDS[0];
-      
-      setClaimed(true);
-      setClaimedReward(reward);
-      if (reward.reward) {
-        setTimeout(() => setShowBonusReveal(true), 800);
-      }
+      // Use the actual backend response from dailyRewardData (set by claimDailyReward)
+      // Wait a tick for the store to update
+      setTimeout(() => {
+        const storeData = useGamificationStore.getState().dailyRewardData;
+        const actualCycleDay = storeData?.cycleDay || 1;
+        const reward = DAILY_REWARDS.find(r => r.day === actualCycleDay) || DAILY_REWARDS[0];
+        
+        setClaimed(true);
+        setClaimedReward(reward);
+        if (reward.reward || storeData?.freeSpinEarned) {
+          setTimeout(() => setShowBonusReveal(true), 800);
+        }
+      }, 50);
     } else {
       setClaimError(
-        "Couldn’t claim your reward due to a server/database configuration issue. " +
-          "If this keeps happening, it usually means a required Supabase migration hasn’t been applied."
+        "Couldn't claim your reward due to a server/database configuration issue. " +
+          "If this keeps happening, it usually means a required Supabase migration hasn't been applied."
       );
     }
   };
@@ -71,8 +76,21 @@ export function DailyRewardModal() {
 
   if (!userProfile) return null;
 
-  const currentStreak = userProfile.current_streak;
-  const cycleDay = currentStreak > 0 ? ((currentStreak - 1) % 7) + 1 : 1;
+  // Calculate what day they're ABOUT to claim (not their current streak)
+  const currentStreak = userProfile.current_streak || 0;
+  const lastLoginDate = userProfile.last_login_date;
+  
+  // Check if last login was yesterday (continuing streak)
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const isConsecutive = lastLoginDate === yesterday;
+  const alreadyClaimedToday = lastLoginDate === today;
+  
+  // Calculate the day they're about to claim:
+  // - If consecutive (last login yesterday): they're claiming day currentStreak + 1
+  // - If streak broken or first time: they're claiming day 1
+  const upcomingStreak = isConsecutive ? currentStreak + 1 : 1;
+  const cycleDay = ((upcomingStreak - 1) % 7) + 1;
   const todayReward = DAILY_REWARDS.find((r) => r.day === cycleDay) || DAILY_REWARDS[0];
 
   return (
@@ -146,7 +164,7 @@ export function DailyRewardModal() {
                   className="text-sm text-white/60 mb-6"
                 >
                   {claimed ? (
-                    <>Your streak: {currentStreak} days 🔥</>
+                    <>Your streak: {dailyRewardData?.streak || upcomingStreak} day{(dailyRewardData?.streak || upcomingStreak) !== 1 ? 's' : ''} 🔥</>
                   ) : (
                     <>Day {cycleDay} of your weekly rewards</>
                   )}
@@ -182,7 +200,7 @@ export function DailyRewardModal() {
                   </motion.div>
                 ) : (
                   <div className="space-y-4 mb-6">
-                    {/* XP Claimed */}
+                    {/* XP Claimed - use actual backend response */}
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
@@ -190,13 +208,13 @@ export function DailyRewardModal() {
                       className="bg-green-500/10 border border-green-500/50 p-4"
                     >
                       <p className="text-3xl font-heading text-green-500 mb-1">
-                        +{claimedReward?.xp || todayReward.xp} XP
+                        +{dailyRewardData?.xpEarned || claimedReward?.xp || todayReward.xp} XP
                       </p>
                       <p className="text-xs text-white/40">Added to your account</p>
                     </motion.div>
 
                     {/* Bonus Reward Reveal */}
-                    {claimedReward?.reward && (
+                    {(claimedReward?.reward || dailyRewardData?.freeSpinEarned) && (
                       <AnimatePresence>
                         {showBonusReveal && (
                           <motion.div
@@ -209,13 +227,15 @@ export function DailyRewardModal() {
                               Bonus Reward!
                             </p>
                             <div className="text-4xl mb-2">
-                              {claimedReward.reward.icon}
+                              {dailyRewardData?.freeSpinEarned ? "🎰" : claimedReward?.reward?.icon}
                             </div>
                             <p className="text-lg font-heading text-white">
-                              {claimedReward.reward.description}
+                              {dailyRewardData?.freeSpinEarned ? "Free Spin Earned!" : claimedReward?.reward?.description}
                             </p>
                             <p className="text-xs text-white/40 mt-2">
-                              {getBonusDescription(claimedReward.reward.type)}
+                              {dailyRewardData?.freeSpinEarned 
+                                ? "Head to the Spin Wheel to use your free spin!"
+                                : claimedReward?.reward ? getBonusDescription(claimedReward.reward.type) : ""}
                             </p>
                           </motion.div>
                         )}
