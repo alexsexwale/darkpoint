@@ -54,7 +54,7 @@ export const CURRENCY_LOCALE = "en-ZA";
 // Pagination
 export const PRODUCTS_PER_PAGE = 12;
 
-// Shipping
-export const FREE_SHIPPING_THRESHOLD = 500; // R500 for regular users
-export const VIP_FREE_SHIPPING_THRESHOLD = 300; // R300 for VIP badge holders
-export const STANDARD_SHIPPING_FEE = 65; // R65
+// Shipping - configurable via environment variables
+export const FREE_SHIPPING_THRESHOLD = Number(process.env.NEXT_PUBLIC_FREE_SHIPPING_THRESHOLD) || 500;
+export const VIP_FREE_SHIPPING_THRESHOLD = Number(process.env.NEXT_PUBLIC_VIP_FREE_SHIPPING_THRESHOLD) || 300;
+export const STANDARD_SHIPPING_FEE = Number(process.env.NEXT_PUBLIC_STANDARD_SHIPPING_FEE) || 65;
