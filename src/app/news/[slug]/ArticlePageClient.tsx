@@ -115,37 +115,26 @@ export function ArticlePageClient({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Award XP when reading requirements are met
+  // Track article read for quest progress (XP only awarded via quest completion)
   const awardReadingReward = useCallback(async () => {
     if (hasAwardedRef.current || !isAuthenticated) return;
     
     hasAwardedRef.current = true;
     setHasEarnedReward(true);
 
-    // Save to session storage
+    // Save to session storage to prevent duplicate tracking
     const readArticles = JSON.parse(sessionStorage.getItem("readArticles") || "[]");
     if (!readArticles.includes(article.id)) {
       readArticles.push(article.id);
       sessionStorage.setItem("readArticles", JSON.stringify(readArticles));
     }
 
-    // Update quest progress
+    // Update quest progress - XP is awarded when quest completes, not here
     updateQuestProgress("read_article", 1);
-
-    // Award XP
-    await addXP(20, "read_article", `Read article: ${article.title}`);
-
-    // Show notification
-    addNotification({
-      type: "xp_gain",
-      title: "+20 XP",
-      message: "Article read! Keep exploring.",
-      icon: "📰",
-    });
 
     // Hide progress after a delay
     setTimeout(() => setShowReadingProgress(false), 2000);
-  }, [isAuthenticated, article.id, article.title, updateQuestProgress, addXP, addNotification]);
+  }, [isAuthenticated, article.id, updateQuestProgress]);
 
   // Check if requirements are met
   useEffect(() => {
