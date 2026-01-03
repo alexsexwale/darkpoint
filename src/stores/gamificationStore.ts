@@ -1390,13 +1390,15 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             // Refresh active multiplier
             await get().fetchActiveMultiplier();
             
-            // Show notification
-            get().addNotification({
-              type: "reward",
-              title: `⚡ ${multiplier}x XP Boost Activated!`,
-              message: `All XP earned for the next ${durationHours} hours will be multiplied by ${multiplier}x!`,
-              icon: "⚡",
-            });
+            // Show notification (skip for spin_wheel - the modal handles prize reveal)
+            if (source !== "spin_wheel") {
+              get().addNotification({
+                type: "reward",
+                title: `⚡ ${multiplier}x XP Boost Activated!`,
+                message: `All XP earned for the next ${durationHours} hours will be multiplied by ${multiplier}x!`,
+                icon: "⚡",
+              });
+            }
             
             return true;
           }
