@@ -1,74 +1,17 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { MysteryBoxCard, MysteryBoxOpening } from "@/components/gamification";
+import { MysteryBoxCard } from "@/components/gamification";
 import { useGamificationStore, useAuthStore } from "@/stores";
-import type { MysteryBox, Rarity } from "@/types/gamification";
-
-// Sample mystery box data (would come from Supabase in production)
-const SAMPLE_BOXES: MysteryBox[] = [
-  {
-    id: "starter_crate",
-    name: "Starter Crate",
-    description: "Perfect for beginners - guaranteed value!",
-    price: 199,
-    min_value: 200,
-    max_value: 400,
-    image_url: null,
-    rarity_weights: { common: 60, rare: 30, epic: 10 },
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "pro_crate",
-    name: "Pro Crate",
-    description: "Higher stakes, better rewards",
-    price: 499,
-    min_value: 500,
-    max_value: 1000,
-    image_url: null,
-    rarity_weights: { common: 40, rare: 40, epic: 18, legendary: 2 },
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "elite_crate",
-    name: "Elite Crate",
-    description: "Premium loot for serious collectors",
-    price: 999,
-    min_value: 1000,
-    max_value: 2500,
-    image_url: null,
-    rarity_weights: { rare: 20, epic: 50, legendary: 25, mythic: 5 },
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-];
-
-// Sample items for reveal
-const SAMPLE_ITEMS = [
-  { name: "Gaming Mouse", rarity: "common" as Rarity, value: 250 },
-  { name: "RGB Mousepad", rarity: "common" as Rarity, value: 180 },
-  { name: "Mechanical Keyboard", rarity: "rare" as Rarity, value: 450 },
-  { name: "Gaming Headset", rarity: "rare" as Rarity, value: 600 },
-  { name: "Wireless Controller", rarity: "epic" as Rarity, value: 850 },
-  { name: "Gaming Monitor Stand", rarity: "epic" as Rarity, value: 750 },
-  { name: "Premium Headset Pro", rarity: "legendary" as Rarity, value: 1500 },
-  { name: "Elite Gaming Chair", rarity: "mythic" as Rarity, value: 2500 },
-];
+import { useMysteryBoxStore, MYSTERY_BOXES } from "@/stores/mysteryBoxStore";
+import type { MysteryBox } from "@/types/gamification";
 
 export function MysteryBoxesPageClient() {
-  const [isOpening, setIsOpening] = useState(false);
-  const [selectedBox, setSelectedBox] = useState<MysteryBox | null>(null);
-  const [revealedItem, setRevealedItem] = useState<{
-    name: string;
-    value: number;
-    rarity: Rarity;
-    imageUrl?: string;
-  } | null>(null);
-
+  const router = useRouter();
+  const { setPendingOrder } = useMysteryBoxStore();
   const { updateQuestProgress, initDailyQuests, logActivity } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const hasTrackedVisit = useRef(false);
@@ -89,43 +32,12 @@ export function MysteryBoxesPageClient() {
     }
   }, [authInitialized, isAuthenticated, initDailyQuests, logActivity, updateQuestProgress]);
 
-  // Use sample data for now (mystery boxes will be fetched from DB when fully integrated)
-  const boxes = SAMPLE_BOXES;
-
   const handlePurchase = (box: MysteryBox) => {
-    setSelectedBox(box);
-
-    // Simulate rarity roll
-    const weights = box.rarity_weights as Record<Rarity, number>;
-    const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
-    let random = Math.random() * totalWeight;
-
-    let rolledRarity: Rarity = "common";
-    for (const [rarity, weight] of Object.entries(weights)) {
-      random -= weight;
-      if (random <= 0) {
-        rolledRarity = rarity as Rarity;
-        break;
-      }
-    }
-
-    // Get random item of that rarity
-    const possibleItems = SAMPLE_ITEMS.filter((i) => i.rarity === rolledRarity);
-    const item = possibleItems[Math.floor(Math.random() * possibleItems.length)] || SAMPLE_ITEMS[0];
-
-    setRevealedItem({
-      name: item.name,
-      value: item.value,
-      rarity: item.rarity,
-    });
-
-    setIsOpening(true);
-  };
-
-  const handleClose = () => {
-    setIsOpening(false);
-    setSelectedBox(null);
-    setRevealedItem(null);
+    // Store the selected box in state
+    setPendingOrder(box);
+    
+    // Navigate to mystery box checkout
+    router.push("/checkout/mystery-box");
   };
 
   return (
@@ -166,7 +78,7 @@ export function MysteryBoxesPageClient() {
 
           {/* Boxes grid */}
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
-            {boxes.map((box, index) => (
+            {MYSTERY_BOXES.map((box, index) => (
               <motion.div
                 key={box.id}
                 initial={{ opacity: 0, y: 30 }}
@@ -208,8 +120,8 @@ export function MysteryBoxesPageClient() {
                 <div className="w-16 h-16 mx-auto mb-4 bg-[var(--color-main-1)]/20 rounded-full flex items-center justify-center text-3xl">
                   3️⃣
                 </div>
-                <h3 className="font-heading text-sm mb-2">Open</h3>
-                <p className="text-xs text-white/50">Watch the exciting reveal animation</p>
+                <h3 className="font-heading text-sm mb-2">Reveal</h3>
+                <p className="text-xs text-white/50">See what amazing item you won!</p>
               </div>
 
               <div className="text-center">
@@ -236,17 +148,23 @@ export function MysteryBoxesPageClient() {
               </Link>
             </div>
           </motion.div>
+
+          {/* Important Notice */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-8 max-w-4xl mx-auto"
+          >
+            <div className="bg-[var(--color-main-1)]/10 border border-[var(--color-main-1)]/30 p-6 text-center">
+              <p className="text-sm text-[var(--color-main-1)]">
+                <strong>Note:</strong> Mystery Box purchases cannot be combined with discount codes or rewards. 
+                All sales are final - no returns on mystery boxes.
+              </p>
+            </div>
+          </motion.div>
         </div>
       </section>
-
-      {/* Opening animation */}
-      <MysteryBoxOpening
-        isOpen={isOpening}
-        onClose={handleClose}
-        boxName={selectedBox?.name || "Mystery Box"}
-        revealedItem={revealedItem}
-      />
     </div>
   );
 }
-
