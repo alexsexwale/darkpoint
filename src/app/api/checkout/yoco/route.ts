@@ -100,7 +100,11 @@ export async function POST(request: NextRequest) {
     if (orderError) {
       console.error("Error creating order:", orderError);
       return NextResponse.json(
-        { error: "Failed to create order" },
+        { 
+          success: false,
+          error: orderError.message || "Failed to create order",
+          details: orderError
+        },
         { status: 500 }
       );
     }

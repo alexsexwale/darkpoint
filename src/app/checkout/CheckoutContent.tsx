@@ -17,7 +17,6 @@ import { STANDARD_SHIPPING_FEE } from "@/lib/constants";
 interface BillingDetails {
   firstName: string;
   lastName: string;
-  company: string;
   email: string;
   phone: string;
   country: string;
@@ -92,7 +91,6 @@ export function CheckoutContent() {
   const [billing, setBilling] = useState<BillingDetails>({
     firstName: "",
     lastName: "",
-    company: "",
     email: user?.email || "",
     phone: "",
     country: "ZA",
@@ -147,7 +145,6 @@ export function CheckoutContent() {
         ...prev,
         firstName: addressNameParts[0] || defaultFirstName,
         lastName: addressNameParts.slice(1).join(" ") || defaultLastName,
-        company: billingAddress.company || "",
         email: user.email || prev.email,
         phone: billingAddress.phone || userProfile?.phone || "",
         country: billingAddress.country || "ZA",
@@ -255,7 +252,6 @@ export function CheckoutContent() {
         billing: {
           firstName: billing.firstName,
           lastName: billing.lastName,
-          company: billing.company || null,
           email: billing.email,
           phone: billing.phone,
           country: billing.country,
@@ -298,7 +294,8 @@ export function CheckoutContent() {
       const result = await response.json();
       
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to create checkout");
+        console.error("Checkout API error:", result);
+        throw new Error(result.error || result.details?.message || "Failed to create checkout");
       }
       
       // Redirect to Yoco payment page

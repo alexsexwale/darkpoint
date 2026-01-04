@@ -3,14 +3,13 @@
 import { useState, useEffect } from "react";
 import { AccountLayout } from "@/components/account";
 import { Button, PhoneInput, formatPhoneForDisplay } from "@/components/ui";
-import { useAccountStore, useAuthStore } from "@/stores";
+import { useAccountStore, useAuthStore, useGamificationStore } from "@/stores";
 import { motion, AnimatePresence } from "framer-motion";
 import type { UserAddress } from "@/stores/accountStore";
 import type { AddressType } from "@/types/database";
 
 interface AddressFormData {
   name: string;
-  company: string;
   address_line1: string;
   address_line2: string;
   city: string;
@@ -22,7 +21,6 @@ interface AddressFormData {
 
 const emptyFormData: AddressFormData = {
   name: "",
-  company: "",
   address_line1: "",
   address_line2: "",
   city: "",
@@ -57,7 +55,6 @@ function AddressCard({
       </div>
       <div className="text-white/70 space-y-1 mb-6">
         <p className="text-white">{address.name}</p>
-        {address.company && <p>{address.company}</p>}
         <p>{address.address_line1}</p>
         {address.address_line2 && <p>{address.address_line2}</p>}
         <p>
@@ -99,13 +96,14 @@ function AddressEditModal({
   onSave: (data: AddressFormData) => Promise<void>;
   isLoading: boolean;
 }) {
+  const { userProfile } = useGamificationStore();
   const [formData, setFormData] = useState<AddressFormData>(emptyFormData);
 
   useEffect(() => {
     if (address) {
+      // Editing existing address - use address data
       setFormData({
         name: address.name,
-        company: address.company || "",
         address_line1: address.address_line1,
         address_line2: address.address_line2 || "",
         city: address.city,
@@ -115,9 +113,14 @@ function AddressEditModal({
         phone: address.phone || "",
       });
     } else {
-      setFormData(emptyFormData);
+      // Adding new address - pre-fill name from user profile
+      setFormData({
+        ...emptyFormData,
+        name: userProfile?.display_name || "",
+        phone: userProfile?.phone || "",
+      });
     }
-  }, [address, isOpen]);
+  }, [address, isOpen, userProfile]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -193,17 +196,6 @@ function AddressEditModal({
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-white/70 mb-2">Company (optional)</label>
-                  <input
-                    type="text"
-                    name="company"
-                    value={formData.company}
-                    onChange={handleChange}
                     className="w-full px-4 py-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white placeholder-[var(--muted-foreground)] focus:border-[var(--color-main-1)] focus:outline-none transition-colors"
                   />
                 </div>
@@ -380,7 +372,7 @@ export function AddressesPageClient() {
         // Update existing
         const result = await updateAddress(editModal.address.id, {
           name: formData.name,
-          company: formData.company || null,
+          company: null,
           address_line1: formData.address_line1,
           address_line2: formData.address_line2 || null,
           city: formData.city,
@@ -398,7 +390,7 @@ export function AddressesPageClient() {
           user_id: user.id,
           type: editModal.type,
           name: formData.name,
-          company: formData.company || null,
+          company: null,
           address_line1: formData.address_line1,
           address_line2: formData.address_line2 || null,
           city: formData.city,
