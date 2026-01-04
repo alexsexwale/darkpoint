@@ -13,6 +13,7 @@ export function DailyRewardModal() {
   const { showDailyRewardModal, userProfile, setDailyRewardModal, dailyRewardData } = useGamificationStore();
   const { claimDailyReward } = useGamification();
   const [claimed, setClaimed] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const [claimedReward, setClaimedReward] = useState<DailyReward | null>(null);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [showBonusReveal, setShowBonusReveal] = useState(false);
@@ -31,6 +32,7 @@ export function DailyRewardModal() {
     if (showDailyRewardModal) {
       document.body.style.overflow = "hidden";
       setClaimed(false);
+      setClaiming(false);
       setClaimedReward(null);
       setShowBonusReveal(false);
       setClaimError(null);
@@ -43,27 +45,35 @@ export function DailyRewardModal() {
   }, [showDailyRewardModal]);
 
   const handleClaim = async () => {
+    if (claiming) return;
+    
     setClaimError(null);
-    const success = await claimDailyReward();
-    if (success) {
-      // Use the actual backend response from dailyRewardData (set by claimDailyReward)
-      // Wait a tick for the store to update
-      setTimeout(() => {
-        const storeData = useGamificationStore.getState().dailyRewardData;
-        const actualCycleDay = storeData?.cycleDay || 1;
-        const reward = DAILY_REWARDS.find(r => r.day === actualCycleDay) || DAILY_REWARDS[0];
-        
-        setClaimed(true);
-        setClaimedReward(reward);
-        if (reward.reward || storeData?.freeSpinEarned) {
-          setTimeout(() => setShowBonusReveal(true), 800);
-        }
-      }, 50);
-    } else {
-      setClaimError(
-        "Couldn't claim your reward due to a server/database configuration issue. " +
-          "If this keeps happening, it usually means a required Supabase migration hasn't been applied."
-      );
+    setClaiming(true);
+    
+    try {
+      const success = await claimDailyReward();
+      if (success) {
+        // Use the actual backend response from dailyRewardData (set by claimDailyReward)
+        // Wait a tick for the store to update
+        setTimeout(() => {
+          const storeData = useGamificationStore.getState().dailyRewardData;
+          const actualCycleDay = storeData?.cycleDay || 1;
+          const reward = DAILY_REWARDS.find(r => r.day === actualCycleDay) || DAILY_REWARDS[0];
+          
+          setClaimed(true);
+          setClaimedReward(reward);
+          if (reward.reward || storeData?.freeSpinEarned) {
+            setTimeout(() => setShowBonusReveal(true), 800);
+          }
+        }, 50);
+      } else {
+        setClaimError(
+          "Couldn't claim your reward due to a server/database configuration issue. " +
+            "If this keeps happening, it usually means a required Supabase migration hasn't been applied."
+        );
+      }
+    } finally {
+      setClaiming(false);
     }
   };
 
@@ -291,8 +301,23 @@ export function DailyRewardModal() {
                       Continue
                     </Button>
                   ) : (
-                    <Button variant="primary" onClick={handleClaim}>
-                      Claim Reward
+                    <Button 
+                      variant="primary" 
+                      onClick={handleClaim}
+                      disabled={claiming}
+                      className="min-w-[160px]"
+                    >
+                      {claiming ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Claiming...
+                        </span>
+                      ) : (
+                        "Claim Reward"
+                      )}
                     </Button>
                   )}
                 </motion.div>
