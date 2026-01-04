@@ -30,7 +30,7 @@ END $$;
 DO $$ BEGIN
   ALTER TABLE public.daily_logins ADD COLUMN IF NOT EXISTS bonus_reward TEXT;
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END$$;
 
 -- Create/replace the claim function
 CREATE OR REPLACE FUNCTION public.claim_daily_reward_v2(p_user_id UUID)

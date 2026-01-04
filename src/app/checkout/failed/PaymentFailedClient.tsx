@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -51,6 +51,20 @@ export function PaymentFailedClient() {
   const errorInfo = useMemo(() => {
     return failureReasons[reason] || failureReasons.failed;
   }, [reason]);
+
+  // Delete cancelled orders from the database
+  useEffect(() => {
+    if (orderNumber && reason === "cancelled") {
+      // Call API to delete the cancelled order
+      fetch("/api/checkout/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber }),
+      }).catch(err => {
+        console.error("Failed to delete cancelled order:", err);
+      });
+    }
+  }, [orderNumber, reason]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
