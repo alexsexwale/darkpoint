@@ -157,7 +157,8 @@ export function DetailsPageClient() {
       if (result.success) {
         setAvatarUrl(publicUrl);
         setAvatarMessage({ type: "success", text: "Profile picture updated!" });
-        await fetchUserProfile();
+        // Note: Don't call fetchUserProfile() here as it may overwrite the avatar 
+        // before the DB update propagates. The URL is already set locally.
       } else {
         throw new Error(result.error || "Failed to update profile");
       }

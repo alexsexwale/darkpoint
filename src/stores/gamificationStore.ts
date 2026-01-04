@@ -381,19 +381,22 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .rpc("get_gamification_stats", { p_user_id: user.id } as never);
+      // Fetch both gamification stats and profile details in parallel
+      const [rpcResult, profileResult] = await Promise.all([
+        supabase.rpc("get_gamification_stats", { p_user_id: user.id } as never),
+        supabase.from("user_profiles").select("avatar_url, display_name, username, phone").eq("id", user.id).single()
+      ]);
 
-      if (error) throw error;
-
-      const result = data as unknown as GamificationStatsResponse;
+      const result = rpcResult.data as unknown as GamificationStatsResponse;
+      const profileDetails = profileResult.data as { avatar_url: string | null; display_name: string | null; username: string | null; phone: string | null } | null;
+      
       if (result?.success && result.profile) {
         set({
           userProfile: {
             id: user.id,
-            username: null,
-            display_name: null,
-            avatar_url: null,
+            username: profileDetails?.username || null,
+            display_name: profileDetails?.display_name || null,
+            avatar_url: profileDetails?.avatar_url || null,
             total_spent: 0,
             total_orders: 0,
             total_reviews: 0,
@@ -405,6 +408,29 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           levelInfo: result.level_info || null,
           nextLevelXP: result.next_level?.xp_required || null,
           achievementStats: result.achievements || { total: 0, unlocked: 0, legendary: 0, xpEarned: 0 },
+        });
+      } else if (profileDetails) {
+        // RPC failed but we got profile details
+        set({
+          userProfile: {
+            id: user.id,
+            ...profileDetails,
+            total_xp: 0,
+            current_level: 1,
+            current_streak: 0,
+            longest_streak: 0,
+            last_login_date: null,
+            total_spent: 0,
+            total_orders: 0,
+            total_reviews: 0,
+            referral_code: null,
+            referred_by: null,
+            referral_count: 0,
+            available_spins: 0,
+            store_credit: 0,
+            created_at: "",
+            updated_at: "",
+          } as UserProfile,
         });
       }
     } catch (error) {

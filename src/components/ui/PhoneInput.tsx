@@ -15,19 +15,19 @@ interface PhoneInputProps {
 }
 
 /**
- * Formats local digits (without country code) to display format
- * Input: "721231234" -> Output: "72 123 1234"
+ * Formats digits to display format with brackets
+ * Input: "0721231234" -> Output: "(072) 123 1234"
  */
-function formatLocalNumber(digits: string): string {
+function formatWithBrackets(digits: string): string {
   if (digits.length === 0) return "";
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 5) return `${digits.slice(0, 2)} ${digits.slice(2)}`;
-  return `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 9)}`;
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6, 10)}`;
 }
 
 /**
  * Formats a raw phone number (digits only) to display format
- * Input: "27721231234" -> Output: "+27 72 123 1234"
+ * Input: "27721231234" -> Output: "+27 (072) 123 1234"
  */
 export function formatPhoneForDisplay(rawPhone: string): string {
   if (!rawPhone) return "";
@@ -41,22 +41,22 @@ export function formatPhoneForDisplay(rawPhone: string): string {
   if (digits.startsWith("27")) {
     const rest = digits.slice(2);
     if (rest.length === 0) return "+27";
-    return `+27 ${formatLocalNumber(rest)}`;
+    // Add leading 0 for display
+    return `+27 ${formatWithBrackets("0" + rest)}`;
   }
   
   // Handle numbers starting with 0 (local format)
   if (digits.startsWith("0")) {
-    const rest = digits.slice(1);
-    return `+27 ${formatLocalNumber(rest)}`;
+    return `+27 ${formatWithBrackets(digits)}`;
   }
   
-  // For other formats, assume SA number
-  return `+27 ${formatLocalNumber(digits)}`;
+  // For other formats, assume SA number - add 0 prefix
+  return `+27 ${formatWithBrackets("0" + digits)}`;
 }
 
 /**
  * Converts display format to raw digits for database storage
- * Input: "+27 (072) 123 1234" -> Output: "27721231234"
+ * Input: "(072) 123 1234" -> Output: "27721231234"
  */
 export function parsePhoneToRaw(displayPhone: string): string {
   if (!displayPhone) return "";
@@ -77,36 +77,58 @@ export function parsePhoneToRaw(displayPhone: string): string {
   return digits;
 }
 
+/**
+ * Validates if a phone number is a valid SA mobile number
+ */
+export function isValidSAPhone(rawPhone: string): boolean {
+  if (!rawPhone) return false;
+  const digits = rawPhone.replace(/\D/g, "");
+  // Should be 27 + 9 digits = 11 digits total
+  return digits.length === 11 && digits.startsWith("27");
+}
+
 export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
-  ({ value, onChange, placeholder = "72 123 4567", required, disabled, className, name, id }, ref) => {
-    const [localDigits, setLocalDigits] = useState("");
+  ({ value, onChange, placeholder = "072 123 1234", required, disabled, className, name, id }, ref) => {
+    const [displayDigits, setDisplayDigits] = useState("");
     
-    // Initialize from raw value (e.g., "27721231234" -> "721231234")
+    // Initialize from raw value (e.g., "27721231234" -> "0721231234")
     useEffect(() => {
       if (value) {
         const digits = value.replace(/\D/g, "");
-        if (digits.startsWith("27")) {
-          setLocalDigits(digits.slice(2));
+        if (digits.startsWith("27") && digits.length > 2) {
+          // Convert 27XXXXXXXXX to 0XXXXXXXXX for display
+          setDisplayDigits("0" + digits.slice(2));
         } else if (digits.startsWith("0")) {
-          setLocalDigits(digits.slice(1));
+          setDisplayDigits(digits);
+        } else if (digits.length > 0) {
+          setDisplayDigits(digits);
         } else {
-          setLocalDigits(digits);
+          setDisplayDigits("");
         }
       } else {
-        setLocalDigits("");
+        setDisplayDigits("");
       }
     }, [value]);
     
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      const input = e.target as HTMLInputElement;
-      
       // Handle backspace
       if (e.key === "Backspace") {
         e.preventDefault();
-        if (localDigits.length > 0) {
-          const newDigits = localDigits.slice(0, -1);
-          setLocalDigits(newDigits);
-          onChange(newDigits.length > 0 ? "27" + newDigits : "");
+        if (displayDigits.length > 0) {
+          const newDigits = displayDigits.slice(0, -1);
+          setDisplayDigits(newDigits);
+          // Store as 27XXXXXXXXX (remove leading 0 if present)
+          if (newDigits.length > 0) {
+            if (newDigits.startsWith("0") && newDigits.length > 1) {
+              onChange("27" + newDigits.slice(1));
+            } else if (newDigits.startsWith("0")) {
+              onChange("");
+            } else {
+              onChange("27" + newDigits);
+            }
+          } else {
+            onChange("");
+          }
         }
         return;
       }
@@ -114,7 +136,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
       // Handle delete
       if (e.key === "Delete") {
         e.preventDefault();
-        setLocalDigits("");
+        setDisplayDigits("");
         onChange("");
         return;
       }
@@ -137,12 +159,17 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
         return;
       }
       
-      // Only allow digits and limit to 9 digits
-      if (/^\d$/.test(e.key) && localDigits.length < 9) {
+      // Only allow digits and limit to 10 digits
+      if (/^\d$/.test(e.key) && displayDigits.length < 10) {
         e.preventDefault();
-        const newDigits = localDigits + e.key;
-        setLocalDigits(newDigits);
-        onChange("27" + newDigits);
+        const newDigits = displayDigits + e.key;
+        setDisplayDigits(newDigits);
+        // Store as 27XXXXXXXXX (remove leading 0 if present)
+        if (newDigits.startsWith("0") && newDigits.length > 1) {
+          onChange("27" + newDigits.slice(1));
+        } else if (!newDigits.startsWith("0")) {
+          onChange("27" + newDigits);
+        }
         return;
       }
       
@@ -156,18 +183,23 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
       const pastedText = e.clipboardData.getData("text");
       let digits = pastedText.replace(/\D/g, "");
       
-      // Remove leading 27 or 0 if present
-      if (digits.startsWith("27")) {
-        digits = digits.slice(2);
-      } else if (digits.startsWith("0")) {
-        digits = digits.slice(1);
+      // Convert from storage format (27XXXXXXXXX) to display format (0XXXXXXXXX)
+      if (digits.startsWith("27") && digits.length > 2) {
+        digits = "0" + digits.slice(2);
       }
       
-      // Limit to 9 digits
-      digits = digits.slice(0, 9);
+      // Limit to 10 digits
+      digits = digits.slice(0, 10);
       
-      setLocalDigits(digits);
-      onChange(digits.length > 0 ? "27" + digits : "");
+      setDisplayDigits(digits);
+      // Store as 27XXXXXXXXX
+      if (digits.startsWith("0") && digits.length > 1) {
+        onChange("27" + digits.slice(1));
+      } else if (digits.length > 0 && !digits.startsWith("0")) {
+        onChange("27" + digits);
+      } else {
+        onChange("");
+      }
     };
     
     return (
@@ -185,7 +217,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
           type="tel"
           name={name}
           id={id}
-          value={formatLocalNumber(localDigits)}
+          value={formatWithBrackets(displayDigits)}
           onChange={() => {}} // Handled by keydown
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}

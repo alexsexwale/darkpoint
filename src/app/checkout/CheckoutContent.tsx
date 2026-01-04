@@ -378,7 +378,6 @@ export function CheckoutContent() {
               <PhoneInput
                 value={billing.phone}
                 onChange={(rawPhone) => updateBilling("phone", rawPhone)}
-                placeholder="72 123 4567"
                 required
               />
             </div>
