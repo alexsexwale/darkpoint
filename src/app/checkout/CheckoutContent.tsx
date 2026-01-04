@@ -149,7 +149,7 @@ export function CheckoutContent() {
         lastName: addressNameParts.slice(1).join(" ") || defaultLastName,
         company: billingAddress.company || "",
         email: user.email || prev.email,
-        phone: billingAddress.phone || "",
+        phone: billingAddress.phone || userProfile?.phone || "",
         country: billingAddress.country || "ZA",
         address: billingAddress.address_line1 + (billingAddress.address_line2 ? `, ${billingAddress.address_line2}` : ""),
         city: billingAddress.city,
@@ -157,12 +157,13 @@ export function CheckoutContent() {
         postalCode: billingAddress.postal_code,
       }));
     } else {
-      // No saved billing address - just fill in what we know from user data
+      // No saved billing address - fill in what we know from user data and profile
       setBilling(prev => ({
         ...prev,
         firstName: prev.firstName || defaultFirstName,
         lastName: prev.lastName || defaultLastName,
         email: user.email || prev.email,
+        phone: prev.phone || userProfile?.phone || "",
       }));
     }
 
@@ -360,13 +361,6 @@ export function CheckoutContent() {
               />
             </div>
 
-            <Input
-              type="text"
-              placeholder="Company Name (optional)"
-              value={billing.company}
-              onChange={(e) => updateBilling("company", e.target.value)}
-            />
-
             <div className="grid sm:grid-cols-2 gap-6">
               <Input
                 type="email"
@@ -378,24 +372,17 @@ export function CheckoutContent() {
               <PhoneInput
                 value={billing.phone}
                 onChange={(rawPhone) => updateBilling("phone", rawPhone)}
+                placeholder="(072) 123 1234"
+                variant="underline"
                 required
               />
             </div>
 
             <div className="nk-form-group">
-              <select
-                className="nk-form-control"
-                value={billing.country}
-                onChange={(e) => updateBilling("country", e.target.value)}
-                required
-              >
-                <option value="">Select a country *</option>
-                <option value="ZA">South Africa</option>
-                <option value="US">United States</option>
-                <option value="CA">Canada</option>
-                <option value="GB">United Kingdom</option>
-                <option value="AU">Australia</option>
-              </select>
+              <div className="nk-form-control bg-[var(--color-dark-4)] cursor-not-allowed text-white/70">
+                🇿🇦 South Africa
+              </div>
+              <input type="hidden" name="country" value="ZA" />
             </div>
 
             <Input

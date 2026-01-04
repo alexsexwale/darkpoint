@@ -12,6 +12,7 @@ interface PhoneInputProps {
   className?: string;
   name?: string;
   id?: string;
+  variant?: "default" | "underline";
 }
 
 /**
@@ -88,7 +89,7 @@ export function isValidSAPhone(rawPhone: string): boolean {
 }
 
 export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
-  ({ value, onChange, placeholder = "072 123 1234", required, disabled, className, name, id }, ref) => {
+  ({ value, onChange, placeholder = "072 123 1234", required, disabled, className, name, id, variant = "default" }, ref) => {
     const [displayDigits, setDisplayDigits] = useState("");
     
     // Initialize from raw value (e.g., "27721231234" -> "0721231234")
@@ -202,6 +203,36 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
       }
     };
     
+    // Underline variant (for checkout page - matches nk-form-control style)
+    if (variant === "underline") {
+      return (
+        <div className="nk-form-group">
+          <div className={cn(
+            "nk-form-control flex items-center gap-1",
+            disabled && "opacity-50 cursor-not-allowed",
+            className
+          )}>
+            <span className="text-white/60 select-none">+27</span>
+            <input
+              ref={ref}
+              type="tel"
+              name={name}
+              id={id}
+              value={formatWithBrackets(displayDigits)}
+              onChange={() => {}} // Handled by keydown
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={placeholder}
+              required={required}
+              disabled={disabled}
+              className="flex-1 bg-transparent text-white placeholder-[var(--muted-foreground)] focus:outline-none"
+            />
+          </div>
+        </div>
+      );
+    }
+    
+    // Default variant (boxed style)
     return (
       <div className={cn(
         "flex items-center w-full bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] focus-within:border-[var(--color-main-1)] transition-colors",

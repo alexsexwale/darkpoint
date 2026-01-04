@@ -141,6 +141,7 @@ interface UserProfile {
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  phone: string | null;
   total_xp: number;
   current_level: number;
   current_streak: number;
@@ -397,6 +398,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             username: profileDetails?.username || null,
             display_name: profileDetails?.display_name || null,
             avatar_url: profileDetails?.avatar_url || null,
+            phone: profileDetails?.phone || null,
             total_spent: 0,
             total_orders: 0,
             total_reviews: 0,
@@ -970,6 +972,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           username: null,
           display_name: null,
           avatar_url: null,
+          phone: null,
           total_xp: amount,
           current_level: 1,
           available_spins: 0,

@@ -58,7 +58,7 @@ export function DetailsPageClient() {
         displayName: userProfile?.display_name || metadata.full_name || "",
         username: userProfile?.username || "",
         email: user.email || "",
-        phone: (userProfile as { phone?: string })?.phone || metadata.phone || "",
+        phone: userProfile?.phone || metadata.phone || "",
       });
 
       // Set avatar URL from profile or metadata
@@ -97,9 +97,9 @@ export function DetailsPageClient() {
       return;
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setAvatarMessage({ type: "error", text: "Image must be less than 2MB" });
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setAvatarMessage({ type: "error", text: "Image must be less than 10MB" });
       return;
     }
 
@@ -355,7 +355,7 @@ export function DetailsPageClient() {
               </button>
             )}
             <p className="text-xs text-white/50">
-              JPG, PNG or GIF. Max 2MB.
+              JPG, PNG or GIF. Max 10MB.
             </p>
           </div>
         </div>
