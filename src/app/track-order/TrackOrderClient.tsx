@@ -2,20 +2,45 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Input, Button } from "@/components/ui";
+import { formatPrice } from "@/lib/utils";
+
+interface OrderItem {
+  id: string;
+  product_name: string;
+  product_image: string | null;
+  variant_name: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
 
 interface TrackingResult {
   orderNumber: string;
   status: string;
   statusColor: string;
   estimatedDelivery: string;
+  trackingNumber: string | null;
+  total: number;
+  currency: string;
+  shippingAddress: {
+    name: string;
+    address: string;
+    city: string;
+    province: string;
+    postalCode: string;
+    country: string;
+  };
+  items: OrderItem[];
   timeline: {
     date: string;
     status: string;
     description: string;
     completed: boolean;
   }[];
+  createdAt: string;
 }
 
 export function TrackOrderClient() {
@@ -42,60 +67,30 @@ export function TrackOrderClient() {
 
     setIsLoading(true);
 
-    // Simulate API call - in production, this would call a real tracking API
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    // Demo tracking result
-    if (orderNumber.toLowerCase().includes("demo") || orderNumber === "DP-2024-001") {
-      setTrackingResult({
-        orderNumber: orderNumber.toUpperCase(),
-        status: "In Transit",
-        statusColor: "text-blue-400",
-        estimatedDelivery: "December 28, 2024",
-        timeline: [
-          {
-            date: "Dec 24, 2024 - 10:30 AM",
-            status: "Order Placed",
-            description: "Your order has been confirmed and is being processed",
-            completed: true,
-          },
-          {
-            date: "Dec 24, 2024 - 2:15 PM",
-            status: "Payment Confirmed",
-            description: "Payment successfully processed",
-            completed: true,
-          },
-          {
-            date: "Dec 25, 2024 - 9:00 AM",
-            status: "Shipped",
-            description: "Package has been handed to the courier",
-            completed: true,
-          },
-          {
-            date: "Dec 26, 2024 - 11:45 AM",
-            status: "In Transit",
-            description: "Package is on its way to your location",
-            completed: true,
-          },
-          {
-            date: "Estimated: Dec 28, 2024",
-            status: "Out for Delivery",
-            description: "Package will be delivered today",
-            completed: false,
-          },
-          {
-            date: "Pending",
-            status: "Delivered",
-            description: "Package delivered successfully",
-            completed: false,
-          },
-        ],
+    try {
+      const response = await fetch("/api/orders/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          orderNumber: orderNumber.trim(), 
+          email: email.trim() 
+        }),
       });
-    } else {
-      setError("No order found with the provided details. Please check your order number and email address, or try using the demo order number: DP-2024-001");
-    }
 
-    setIsLoading(false);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setError(result.error || "Failed to track order");
+        return;
+      }
+
+      setTrackingResult(result.order);
+    } catch (err) {
+      console.error("Track order error:", err);
+      setError("An error occurred while tracking your order. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -145,7 +140,7 @@ export function TrackOrderClient() {
                   </label>
                   <Input
                     type="text"
-                    placeholder="e.g., DP-2024-001 or EX123456789ZA"
+                    placeholder="e.g., DP-XXXXXXXX-XXXX"
                     value={orderNumber}
                     onChange={(e) => setOrderNumber(e.target.value)}
                   />
@@ -204,73 +199,153 @@ export function TrackOrderClient() {
       {/* Tracking Result */}
       {trackingResult && (
         <section className="py-12">
-          <div className="container max-w-3xl">
+          <div className="container max-w-4xl">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8"
+              className="space-y-6"
             >
               {/* Order Status Header */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 pb-6 border-b border-[var(--color-dark-3)]">
-                <div>
-                  <p className="text-sm text-[var(--muted-foreground)] mb-1">Order Number</p>
-                  <p className="text-xl font-heading text-[var(--color-main-1)]">{trackingResult.orderNumber}</p>
+              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 pb-6 border-b border-[var(--color-dark-3)]">
+                  <div>
+                    <p className="text-sm text-[var(--muted-foreground)] mb-1">Order Number</p>
+                    <p className="text-xl font-heading text-[var(--color-main-1)]">{trackingResult.orderNumber}</p>
+                  </div>
+                  <div className="mt-4 md:mt-0 md:text-right">
+                    <p className="text-sm text-[var(--muted-foreground)] mb-1">Status</p>
+                    <p className={`text-xl font-heading ${trackingResult.statusColor}`}>{trackingResult.status}</p>
+                  </div>
                 </div>
-                <div className="mt-4 md:mt-0 md:text-right">
-                  <p className="text-sm text-[var(--muted-foreground)] mb-1">Status</p>
-                  <p className={`text-xl font-heading ${trackingResult.statusColor}`}>{trackingResult.status}</p>
+
+                {/* Tracking Number */}
+                {trackingResult.trackingNumber && (
+                  <div className="mb-6 p-4 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)]">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-[var(--muted-foreground)]">Tracking Number</p>
+                        <p className="font-mono text-white">{trackingResult.trackingNumber}</p>
+                      </div>
+                      <button 
+                        onClick={() => navigator.clipboard.writeText(trackingResult.trackingNumber || "")}
+                        className="text-[var(--color-main-1)] hover:text-white transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Estimated Delivery */}
+                <div className="mb-6 p-4 bg-[var(--color-main-1)]/10 border border-[var(--color-main-1)]/30">
+                  <div className="flex items-center gap-3">
+                    <svg className="w-6 h-6 text-[var(--color-main-1)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm text-[var(--muted-foreground)]">Estimated Delivery</p>
+                      <p className="font-medium text-white">{trackingResult.estimatedDelivery}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shipping Address */}
+                <div className="p-4 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)]">
+                  <p className="text-sm text-[var(--muted-foreground)] mb-2">Shipping To</p>
+                  <p className="text-white font-medium">{trackingResult.shippingAddress.name}</p>
+                  <p className="text-white/70 text-sm">
+                    {trackingResult.shippingAddress.address}<br />
+                    {trackingResult.shippingAddress.city}, {trackingResult.shippingAddress.province} {trackingResult.shippingAddress.postalCode}<br />
+                    {trackingResult.shippingAddress.country}
+                  </p>
                 </div>
               </div>
 
-              {/* Estimated Delivery */}
-              <div className="mb-8 p-4 bg-[var(--color-main-1)]/10 border border-[var(--color-main-1)]/30">
-                <div className="flex items-center gap-3">
-                  <svg className="w-6 h-6 text-[var(--color-main-1)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <div>
-                    <p className="text-sm text-[var(--muted-foreground)]">Estimated Delivery</p>
-                    <p className="font-medium text-white">{trackingResult.estimatedDelivery}</p>
+              {/* Order Items */}
+              {trackingResult.items && trackingResult.items.length > 0 && (
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8">
+                  <h3 className="text-lg font-heading mb-6">Order Items</h3>
+                  <div className="space-y-4">
+                    {trackingResult.items.map((item) => (
+                      <div key={item.id} className="flex items-center gap-4 p-4 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)]">
+                        <div className="w-16 h-16 bg-[var(--color-dark-4)] flex-shrink-0 relative overflow-hidden">
+                          {item.product_image ? (
+                            <Image
+                              src={item.product_image}
+                              alt={item.product_name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white/30">
+                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium truncate">{item.product_name}</p>
+                          {item.variant_name && (
+                            <p className="text-sm text-[var(--muted-foreground)]">{item.variant_name}</p>
+                          )}
+                          <p className="text-sm text-[var(--muted-foreground)]">Qty: {item.quantity}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white font-medium">{formatPrice(item.total_price)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 pt-6 border-t border-[var(--color-dark-4)] flex justify-between items-center">
+                    <span className="text-[var(--muted-foreground)]">Total</span>
+                    <span className="text-xl font-heading text-[var(--color-main-1)]">
+                      {formatPrice(trackingResult.total)}
+                    </span>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Timeline */}
-              <div className="space-y-0">
+              <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8">
                 <h3 className="text-lg font-heading mb-6">Tracking History</h3>
-                {trackingResult.timeline.map((event, index) => (
-                  <div key={index} className="relative pl-8 pb-8 last:pb-0">
-                    {/* Timeline line */}
-                    {index < trackingResult.timeline.length - 1 && (
-                      <div 
-                        className={`absolute left-[11px] top-6 w-0.5 h-full ${
-                          event.completed ? "bg-[var(--color-main-1)]" : "bg-[var(--color-dark-4)]"
-                        }`} 
-                      />
-                    )}
-                    {/* Timeline dot */}
-                    <div 
-                      className={`absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center ${
-                        event.completed 
-                          ? "bg-[var(--color-main-1)]" 
-                          : "bg-[var(--color-dark-4)] border-2 border-[var(--color-dark-3)]"
-                      }`}
-                    >
-                      {event.completed && (
-                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
+                <div className="space-y-0">
+                  {trackingResult.timeline.map((event, index) => (
+                    <div key={index} className="relative pl-8 pb-8 last:pb-0">
+                      {/* Timeline line */}
+                      {index < trackingResult.timeline.length - 1 && (
+                        <div 
+                          className={`absolute left-[11px] top-6 w-0.5 h-full ${
+                            event.completed ? "bg-[var(--color-main-1)]" : "bg-[var(--color-dark-4)]"
+                          }`} 
+                        />
                       )}
+                      {/* Timeline dot */}
+                      <div 
+                        className={`absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center ${
+                          event.completed 
+                            ? "bg-[var(--color-main-1)]" 
+                            : "bg-[var(--color-dark-4)] border-2 border-[var(--color-dark-3)]"
+                        }`}
+                      >
+                        {event.completed && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      {/* Content */}
+                      <div>
+                        <p className="text-xs text-[var(--muted-foreground)] mb-1">{event.date}</p>
+                        <p className={`font-medium ${event.completed ? "text-white" : "text-white/50"}`}>{event.status}</p>
+                        <p className={`text-sm ${event.completed ? "text-[var(--muted-foreground)]" : "text-white/30"}`}>{event.description}</p>
+                      </div>
                     </div>
-                    {/* Content */}
-                    <div>
-                      <p className="text-xs text-[var(--muted-foreground)] mb-1">{event.date}</p>
-                      <p className={`font-medium ${event.completed ? "text-white" : "text-white/50"}`}>{event.status}</p>
-                      <p className={`text-sm ${event.completed ? "text-[var(--muted-foreground)]" : "text-white/30"}`}>{event.description}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </motion.div>
           </div>
@@ -303,7 +378,7 @@ export function TrackOrderClient() {
                   </li>
                   <li className="flex gap-2">
                     <span className="text-[var(--color-main-1)]">2.</span>
-                    Enter your order number or tracking number
+                    Enter your order number (e.g., DP-XXXXXXXX-XXXX)
                   </li>
                   <li className="flex gap-2">
                     <span className="text-[var(--color-main-1)]">3.</span>
@@ -381,20 +456,6 @@ export function TrackOrderClient() {
           </motion.div>
         </div>
       </section>
-
-      {/* Demo Note */}
-      <section className="pb-16">
-        <div className="container max-w-2xl">
-          <div className="bg-[var(--color-dark-2)] border border-[var(--color-main-1)]/30 p-6 text-center">
-            <p className="text-sm text-[var(--muted-foreground)]">
-              <span className="text-[var(--color-main-1)] font-medium">Demo Mode:</span> Try tracking with order number{" "}
-              <code className="bg-[var(--color-dark-3)] px-2 py-1 text-white">DP-2024-001</code>{" "}
-              and any email to see a sample tracking result.
-            </p>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
-
