@@ -477,7 +477,7 @@ export function DetailsPageClient() {
               setFormData((prev) => ({ ...prev, phone: rawPhone }));
               setMessage(null);
             }}
-            placeholder="+27 (072) 123 1234"
+            placeholder="(072) 123 1234"
           />
           <p className="text-xs text-white/50 mt-1">
             Used for order updates and delivery notifications
