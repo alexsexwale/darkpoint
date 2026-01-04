@@ -2,7 +2,7 @@ export { Button } from "./Button";
 export { Input } from "./Input";
 export { TextArea } from "./TextArea";
 export { Rating } from "./Rating";
-export { PhoneInput, formatPhoneForDisplay, formatPhoneForStorage, isValidSAPhone } from "./PhoneInput";
+export { PhoneInput, formatPhoneForDisplay, parsePhoneToRaw } from "./PhoneInput";
 export { ProductCard } from "./ProductCard";
 export { CartDrawer } from "./CartDrawer";
 export { SearchModal } from "./SearchModal";

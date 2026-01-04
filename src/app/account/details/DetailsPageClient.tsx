@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { AccountLayout } from "@/components/account";
-import { Button } from "@/components/ui";
+import { Button, PhoneInput, formatPhoneForDisplay } from "@/components/ui";
 import { useAuthStore, useGamificationStore, useAccountStore } from "@/stores";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -22,6 +22,7 @@ export function DetailsPageClient() {
     displayName: "",
     username: "",
     email: "",
+    phone: "",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -57,6 +58,7 @@ export function DetailsPageClient() {
         displayName: userProfile?.display_name || metadata.full_name || "",
         username: userProfile?.username || "",
         email: user.email || "",
+        phone: (userProfile as { phone?: string })?.phone || metadata.phone || "",
       });
 
       // Set avatar URL from profile or metadata
@@ -109,47 +111,44 @@ export function DetailsPageClient() {
         throw new Error("Storage not configured");
       }
 
-      // Create unique filename
-      const fileExt = file.name.split(".").pop();
+      // Create unique filename - store in Assets bucket under avatars folder
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
-      // Upload to Supabase Storage
+      // Delete old avatar if it exists in storage
+      if (avatarUrl && avatarUrl.includes("/storage/") && avatarUrl.includes("/Assets/")) {
+        try {
+          const oldPath = avatarUrl.split("/Assets/")[1];
+          if (oldPath) {
+            await supabase.storage.from("Assets").remove([oldPath]);
+          }
+        } catch {
+          // Ignore errors when deleting old avatar
+        }
+      }
+
+      // Upload to Supabase Storage (Assets bucket)
       const { error: uploadError } = await supabase.storage
-        .from("avatars")
+        .from("Assets")
         .upload(filePath, file, {
           cacheControl: "3600",
           upsert: true,
         });
 
       if (uploadError) {
-        // If bucket doesn't exist, create it
-        if (uploadError.message.includes("not found")) {
-          // Try direct URL instead
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            const base64 = reader.result as string;
-            
-            // Update profile with base64 (fallback)
-            const result = await updateProfile({ avatar_url: base64 });
-            
-            if (result.success) {
-              setAvatarUrl(base64);
-              setAvatarMessage({ type: "success", text: "Profile picture updated!" });
-              await fetchUserProfile();
-            } else {
-              throw new Error(result.error || "Failed to update avatar");
-            }
-          };
-          reader.readAsDataURL(file);
-          return;
-        }
-        throw uploadError;
+        console.error("Storage upload error:", uploadError);
+        setAvatarMessage({ 
+          type: "error", 
+          text: `Upload failed: ${uploadError.message}. Make sure Storage policies allow uploads.` 
+        });
+        setIsUploadingAvatar(false);
+        return;
       }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
+        .from("Assets")
         .getPublicUrl(filePath);
 
       // Update user profile with avatar URL
@@ -212,6 +211,7 @@ export function DetailsPageClient() {
       const result = await updateProfile({
         display_name: formData.displayName || `${formData.firstName} ${formData.lastName}`.trim(),
         username: formData.username.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+        phone: formData.phone || null,
       });
 
       if (result.success) {
@@ -461,6 +461,25 @@ export function DetailsPageClient() {
           />
           <p className="text-xs text-white/50 mt-1">
             Contact support to change your email address
+          </p>
+        </div>
+
+        {/* Phone Number */}
+        <div>
+          <label className="block text-sm text-white/70 mb-2">
+            Phone number
+          </label>
+          <PhoneInput
+            name="phone"
+            value={formData.phone}
+            onChange={(rawPhone) => {
+              setFormData((prev) => ({ ...prev, phone: rawPhone }));
+              setMessage(null);
+            }}
+            placeholder="+27 (072) 123 1234"
+          />
+          <p className="text-xs text-white/50 mt-1">
+            Used for order updates and delivery notifications
           </p>
         </div>
 

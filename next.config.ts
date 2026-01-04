@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
         hostname: 'img.cjdropshipping.com',
         pathname: '/**',
       },
+      // Supabase Storage for avatars and assets
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/**',
+      },
     ],
   },
   // Headers for PS2 emulator - SharedArrayBuffer requires cross-origin isolation

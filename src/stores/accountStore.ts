@@ -81,6 +81,7 @@ interface AccountState {
     display_name?: string;
     username?: string;
     avatar_url?: string | null;
+    phone?: string | null;
   }) => Promise<{ success: boolean; error?: string }>;
   
   updatePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
@@ -465,13 +466,54 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
       
-      const { error } = await supabase
-        .from("user_profiles")
-        // @ts-expect-error - Supabase type inference issue, types are correct
-        .update(updates)
-        .eq("id", user.id);
+      // Log what we're updating (without the full base64 data)
+      const logUpdates = { ...updates };
+      if (logUpdates.avatar_url && logUpdates.avatar_url.length > 100) {
+        logUpdates.avatar_url = `[base64 image, ${logUpdates.avatar_url.length} chars]`;
+      }
+      console.log("Updating profile for user:", user.id, "with:", logUpdates);
       
-      if (error) throw error;
+      // First check if profile exists
+      const { data: existingProfile } = await supabase
+        .from("user_profiles")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+      
+      let error;
+      let data;
+      
+      if (!existingProfile) {
+        // Profile doesn't exist, create it with upsert
+        console.log("Profile doesn't exist, creating with upsert...");
+        const result = await supabase
+          .from("user_profiles")
+          .upsert({
+            id: user.id,
+            email: user.email,
+            ...updates,
+          } as never)
+          .select();
+        error = result.error;
+        data = result.data;
+      } else {
+        // Profile exists, just update
+        const result = await supabase
+          .from("user_profiles")
+          // @ts-expect-error - Supabase type inference issue, types are correct
+          .update(updates)
+          .eq("id", user.id)
+          .select();
+        error = result.error;
+        data = result.data;
+      }
+      
+      if (error) {
+        console.error("Supabase update error:", error);
+        throw new Error(`${error.message} (Code: ${error.code})`);
+      }
+      
+      console.log("Profile updated successfully:", data);
       
       // Also update auth user metadata if display_name changed
       if (updates.display_name) {
@@ -482,6 +524,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       
       return { success: true };
     } catch (error) {
+      console.error("updateProfile error:", error);
       const message = error instanceof Error ? error.message : "Failed to update profile";
       return { success: false, error: message };
     }

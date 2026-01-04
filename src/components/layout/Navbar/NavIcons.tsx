@@ -54,11 +54,12 @@ export function NavIcons() {
   };
 
   // Get user display info
-  const userDisplayName = user?.user_metadata?.full_name || 
+  const userDisplayName = userProfile?.display_name ||
+    user?.user_metadata?.full_name || 
     user?.user_metadata?.username || 
     user?.email?.split("@")[0] || 
     "User";
-  const userAvatar = user?.user_metadata?.avatar_url;
+  const userAvatar = userProfile?.avatar_url || user?.user_metadata?.avatar_url;
   const userInitial = userDisplayName.charAt(0).toUpperCase();
 
   return (

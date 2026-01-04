@@ -1,252 +1,202 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
+import { cn } from "@/lib/utils";
 
 interface PhoneInputProps {
-  value: string; // Stored as: 27XXXXXXXXX (no + or spaces)
-  onChange: (value: string) => void; // Returns storage format
+  value: string;
+  onChange: (rawValue: string) => void;
   placeholder?: string;
-  disabled?: boolean;
   required?: boolean;
+  disabled?: boolean;
   className?: string;
   name?: string;
+  id?: string;
 }
 
 /**
- * South African Phone Input with mask
- * Display format: +27 XX XXX XXXX
- * Storage format: 27XXXXXXXXX (digits only)
- * 
- * User enters the 9-digit local number (e.g., 72 123 4567)
- * The +27 prefix is always shown and auto-prepended
+ * Formats local digits (without country code) to display format
+ * Input: "721231234" -> Output: "72 123 1234"
  */
-export function PhoneInput({
-  value,
-  onChange,
-  placeholder = "+27 XX XXX XXXX",
-  disabled = false,
-  required = false,
-  className = "",
-  name,
-}: PhoneInputProps) {
-  const [localNumber, setLocalNumber] = useState("");
-
-  // Extract local number (9 digits after 27) from storage value
-  const extractLocalNumber = (storage: string): string => {
-    if (!storage) return "";
-    const digits = storage.replace(/\D/g, "");
-    
-    // If it starts with 27, extract the rest
-    if (digits.startsWith("27")) {
-      return digits.slice(2);
-    }
-    // If it starts with 0, remove it
-    if (digits.startsWith("0")) {
-      return digits.slice(1);
-    }
-    return digits;
-  };
-
-  // Format local number for display: XX XXX XXXX
-  const formatLocalNumber = (local: string): string => {
-    if (!local) return "";
-    
-    if (local.length <= 2) {
-      return local;
-    } else if (local.length <= 5) {
-      return `${local.slice(0, 2)} ${local.slice(2)}`;
-    } else {
-      return `${local.slice(0, 2)} ${local.slice(2, 5)} ${local.slice(5, 9)}`;
-    }
-  };
-
-  // Build display value with +27 prefix
-  const buildDisplayValue = (local: string): string => {
-    if (!local) return "";
-    return `+27 ${formatLocalNumber(local)}`;
-  };
-
-  // Initialize from stored value
-  useEffect(() => {
-    setLocalNumber(extractLocalNumber(value));
-  }, [value]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value;
-    
-    // Remove the "+27 " prefix if present, then get only digits
-    let cleaned = input;
-    if (cleaned.startsWith("+27")) {
-      cleaned = cleaned.slice(3);
-    }
-    let digits = cleaned.replace(/\D/g, "");
-    
-    // If they typed with leading 0, remove it
-    if (digits.startsWith("0")) {
-      digits = digits.slice(1);
-    }
-    
-    // Limit to 9 digits (local number)
-    if (digits.length > 9) {
-      digits = digits.slice(0, 9);
-    }
-    
-    setLocalNumber(digits);
-    
-    // Store with 27 prefix if we have digits
-    if (digits) {
-      onChange("27" + digits);
-    } else {
-      onChange("");
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Handle backspace
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      
-      if (localNumber.length > 0) {
-        const newLocal = localNumber.slice(0, -1);
-        setLocalNumber(newLocal);
-        onChange(newLocal ? "27" + newLocal : "");
-      }
-      return;
-    }
-
-    // Allow: delete, tab, escape, enter, and navigation
-    if (
-      e.key === "Delete" ||
-      e.key === "Tab" ||
-      e.key === "Escape" ||
-      e.key === "Enter" ||
-      e.key === "ArrowLeft" ||
-      e.key === "ArrowRight" ||
-      e.key === "ArrowUp" ||
-      e.key === "ArrowDown" ||
-      e.key === "Home" ||
-      e.key === "End" ||
-      (e.key === "a" && (e.ctrlKey || e.metaKey)) ||
-      (e.key === "c" && (e.ctrlKey || e.metaKey)) ||
-      (e.key === "v" && (e.ctrlKey || e.metaKey)) ||
-      (e.key === "x" && (e.ctrlKey || e.metaKey))
-    ) {
-      return;
-    }
-
-    // Only allow digits
-    if (!/^\d$/.test(e.key)) {
-      e.preventDefault();
-      return;
-    }
-
-    // Prevent if already at max length
-    if (localNumber.length >= 9) {
-      e.preventDefault();
-      return;
-    }
-
-    // Handle digit input manually for better control
-    e.preventDefault();
-    let digit = e.key;
-    
-    // If first digit is 0, skip it (convert local to international)
-    if (localNumber.length === 0 && digit === "0") {
-      return;
-    }
-    
-    const newLocal = localNumber + digit;
-    setLocalNumber(newLocal);
-    onChange("27" + newLocal);
-  };
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pastedText = e.clipboardData.getData("text");
-    
-    // Extract only digits
-    let digits = pastedText.replace(/\D/g, "");
-    
-    // Handle various formats
-    if (digits.startsWith("27")) {
-      digits = digits.slice(2);
-    } else if (digits.startsWith("0")) {
-      digits = digits.slice(1);
-    }
-    
-    // Limit to 9 digits
-    if (digits.length > 9) {
-      digits = digits.slice(0, 9);
-    }
-    
-    if (digits) {
-      setLocalNumber(digits);
-      onChange("27" + digits);
-    }
-  };
-
-  // Display value
-  const displayValue = localNumber ? buildDisplayValue(localNumber) : "";
-
-  return (
-    <input
-      type="tel"
-      name={name}
-      value={displayValue}
-      onChange={handleChange}
-      onKeyDown={handleKeyDown}
-      onPaste={handlePaste}
-      placeholder={placeholder}
-      disabled={disabled}
-      required={required}
-      autoComplete="tel"
-      className={className}
-    />
-  );
+function formatLocalNumber(digits: string): string {
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)} ${digits.slice(2)}`;
+  return `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 9)}`;
 }
 
-// Utility functions for use elsewhere
-export const formatPhoneForDisplay = (storage: string): string => {
-  if (!storage) return "";
+/**
+ * Formats a raw phone number (digits only) to display format
+ * Input: "27721231234" -> Output: "+27 72 123 1234"
+ */
+export function formatPhoneForDisplay(rawPhone: string): string {
+  if (!rawPhone) return "";
   
-  const digits = storage.replace(/\D/g, "");
+  // Remove any non-digit characters
+  let digits = rawPhone.replace(/\D/g, "");
   
-  if (digits.length < 3) return "";
+  if (digits.length === 0) return "";
   
-  // Extract local number
-  let local = digits;
+  // Handle South African numbers (starting with 27)
   if (digits.startsWith("27")) {
-    local = digits.slice(2);
-  } else if (digits.startsWith("0")) {
-    local = digits.slice(1);
+    const rest = digits.slice(2);
+    if (rest.length === 0) return "+27";
+    return `+27 ${formatLocalNumber(rest)}`;
   }
   
-  if (!local) return "";
-  
-  // Format: +27 XX XXX XXXX
-  if (local.length <= 2) {
-    return `+27 ${local}`;
-  } else if (local.length <= 5) {
-    return `+27 ${local.slice(0, 2)} ${local.slice(2)}`;
-  } else {
-    return `+27 ${local.slice(0, 2)} ${local.slice(2, 5)} ${local.slice(5, 9)}`;
-  }
-};
-
-export const formatPhoneForStorage = (display: string): string => {
-  const digits = display.replace(/\D/g, "");
-  
+  // Handle numbers starting with 0 (local format)
   if (digits.startsWith("0")) {
-    return "27" + digits.slice(1);
+    const rest = digits.slice(1);
+    return `+27 ${formatLocalNumber(rest)}`;
   }
+  
+  // For other formats, assume SA number
+  return `+27 ${formatLocalNumber(digits)}`;
+}
+
+/**
+ * Converts display format to raw digits for database storage
+ * Input: "+27 (072) 123 1234" -> Output: "27721231234"
+ */
+export function parsePhoneToRaw(displayPhone: string): string {
+  if (!displayPhone) return "";
+  
+  // Remove all non-digit characters
+  let digits = displayPhone.replace(/\D/g, "");
+  
+  // If starts with 0, convert to 27
+  if (digits.startsWith("0")) {
+    digits = "27" + digits.slice(1);
+  }
+  
+  // If doesn't start with country code, assume SA
   if (!digits.startsWith("27") && digits.length > 0) {
-    return "27" + digits;
+    digits = "27" + digits;
   }
   
   return digits;
-};
+}
 
-export const isValidSAPhone = (storage: string): boolean => {
-  const digits = storage.replace(/\D/g, "");
-  return digits.length === 11 && digits.startsWith("27");
-};
+export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
+  ({ value, onChange, placeholder = "72 123 4567", required, disabled, className, name, id }, ref) => {
+    const [localDigits, setLocalDigits] = useState("");
+    
+    // Initialize from raw value (e.g., "27721231234" -> "721231234")
+    useEffect(() => {
+      if (value) {
+        const digits = value.replace(/\D/g, "");
+        if (digits.startsWith("27")) {
+          setLocalDigits(digits.slice(2));
+        } else if (digits.startsWith("0")) {
+          setLocalDigits(digits.slice(1));
+        } else {
+          setLocalDigits(digits);
+        }
+      } else {
+        setLocalDigits("");
+      }
+    }, [value]);
+    
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      const input = e.target as HTMLInputElement;
+      
+      // Handle backspace
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        if (localDigits.length > 0) {
+          const newDigits = localDigits.slice(0, -1);
+          setLocalDigits(newDigits);
+          onChange(newDigits.length > 0 ? "27" + newDigits : "");
+        }
+        return;
+      }
+      
+      // Handle delete
+      if (e.key === "Delete") {
+        e.preventDefault();
+        setLocalDigits("");
+        onChange("");
+        return;
+      }
+      
+      // Allow: tab, escape, enter, arrows
+      if (
+        e.key === "Tab" ||
+        e.key === "Escape" ||
+        e.key === "Enter" ||
+        e.key === "ArrowLeft" ||
+        e.key === "ArrowRight" ||
+        e.key === "ArrowUp" ||
+        e.key === "ArrowDown" ||
+        e.key === "Home" ||
+        e.key === "End" ||
+        // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+        (e.ctrlKey && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) ||
+        (e.metaKey && ["a", "c", "v", "x"].includes(e.key.toLowerCase()))
+      ) {
+        return;
+      }
+      
+      // Only allow digits and limit to 9 digits
+      if (/^\d$/.test(e.key) && localDigits.length < 9) {
+        e.preventDefault();
+        const newDigits = localDigits + e.key;
+        setLocalDigits(newDigits);
+        onChange("27" + newDigits);
+        return;
+      }
+      
+      // Block everything else
+      e.preventDefault();
+    };
+    
+    // Handle paste
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+      e.preventDefault();
+      const pastedText = e.clipboardData.getData("text");
+      let digits = pastedText.replace(/\D/g, "");
+      
+      // Remove leading 27 or 0 if present
+      if (digits.startsWith("27")) {
+        digits = digits.slice(2);
+      } else if (digits.startsWith("0")) {
+        digits = digits.slice(1);
+      }
+      
+      // Limit to 9 digits
+      digits = digits.slice(0, 9);
+      
+      setLocalDigits(digits);
+      onChange(digits.length > 0 ? "27" + digits : "");
+    };
+    
+    return (
+      <div className={cn(
+        "flex items-center w-full bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] focus-within:border-[var(--color-main-1)] transition-colors",
+        disabled && "bg-[var(--color-dark-4)] cursor-not-allowed",
+        className
+      )}>
+        {/* Fixed +27 prefix */}
+        <span className="pl-4 pr-1 text-white/60 select-none">+27</span>
+        
+        {/* Input for the rest of the number */}
+        <input
+          ref={ref}
+          type="tel"
+          name={name}
+          id={id}
+          value={formatLocalNumber(localDigits)}
+          onChange={() => {}} // Handled by keydown
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          placeholder={placeholder}
+          required={required}
+          disabled={disabled}
+          className="flex-1 py-3 pr-4 bg-transparent text-white placeholder-[var(--muted-foreground)] focus:outline-none"
+        />
+      </div>
+    );
+  }
+);
+
+PhoneInput.displayName = "PhoneInput";

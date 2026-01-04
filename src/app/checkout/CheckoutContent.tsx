@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCartStore, useAuthStore } from "@/stores";
+import { useAccountStore } from "@/stores/accountStore";
+import { useGamificationStore } from "@/stores/gamificationStore";
 import { useRewardsStore, getRewardDisplayInfo, type VIPWeeklyPrize } from "@/stores/rewardsStore";
 import { useShippingThreshold } from "@/hooks";
-import { Button, Input, TextArea, FreeDeliveryIndicator } from "@/components/ui";
+import { Button, Input, TextArea, FreeDeliveryIndicator, PhoneInput, parsePhoneToRaw, formatPhoneForDisplay } from "@/components/ui";
 import { VerificationRequired } from "@/components/auth";
 import { RewardSelector } from "@/components/cart/RewardSelector";
 import { formatPrice } from "@/lib/utils";
@@ -78,10 +80,14 @@ export function CheckoutContent() {
       </div>
     );
   }
+  const { addresses, fetchAddresses } = useAccountStore();
+  const { userProfile } = useGamificationStore();
+  
   const [sameAsBilling, setSameAsBilling] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customerNotes, setCustomerNotes] = useState("");
+  const [hasLoadedSavedData, setHasLoadedSavedData] = useState(false);
   
   const [billing, setBilling] = useState<BillingDetails>({
     firstName: "",
@@ -104,6 +110,76 @@ export function CheckoutContent() {
     province: "",
     postalCode: "",
   });
+
+  // Fetch addresses and pre-fill form if user is logged in
+  useEffect(() => {
+    if (isAuthenticated && user && !hasLoadedSavedData) {
+      fetchAddresses();
+      setHasLoadedSavedData(true);
+    }
+  }, [isAuthenticated, user, hasLoadedSavedData, fetchAddresses]);
+
+  // Pre-fill billing details from saved addresses and user data
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    // Get default billing address or first billing address
+    const billingAddress = addresses.find(a => a.type === "billing" && a.is_default) 
+      || addresses.find(a => a.type === "billing");
+    
+    // Get default shipping address or first shipping address
+    const shippingAddress = addresses.find(a => a.type === "shipping" && a.is_default)
+      || addresses.find(a => a.type === "shipping");
+
+    // Extract name parts from user metadata or profile
+    const fullName = userProfile?.display_name 
+      || user.user_metadata?.full_name 
+      || user.user_metadata?.name 
+      || "";
+    const nameParts = fullName.split(" ");
+    const defaultFirstName = nameParts[0] || "";
+    const defaultLastName = nameParts.slice(1).join(" ") || "";
+
+    // Pre-fill billing from saved address or user data
+    if (billingAddress) {
+      const addressNameParts = billingAddress.name.split(" ");
+      setBilling(prev => ({
+        ...prev,
+        firstName: addressNameParts[0] || defaultFirstName,
+        lastName: addressNameParts.slice(1).join(" ") || defaultLastName,
+        company: billingAddress.company || "",
+        email: user.email || prev.email,
+        phone: billingAddress.phone || "",
+        country: billingAddress.country || "ZA",
+        address: billingAddress.address_line1 + (billingAddress.address_line2 ? `, ${billingAddress.address_line2}` : ""),
+        city: billingAddress.city,
+        province: billingAddress.province,
+        postalCode: billingAddress.postal_code,
+      }));
+    } else {
+      // No saved billing address - just fill in what we know from user data
+      setBilling(prev => ({
+        ...prev,
+        firstName: prev.firstName || defaultFirstName,
+        lastName: prev.lastName || defaultLastName,
+        email: user.email || prev.email,
+      }));
+    }
+
+    // Pre-fill shipping from saved address
+    if (shippingAddress) {
+      const addressNameParts = shippingAddress.name.split(" ");
+      setShipping(prev => ({
+        ...prev,
+        firstName: addressNameParts[0] || defaultFirstName,
+        lastName: addressNameParts.slice(1).join(" ") || defaultLastName,
+        address: shippingAddress.address_line1 + (shippingAddress.address_line2 ? `, ${shippingAddress.address_line2}` : ""),
+        city: shippingAddress.city,
+        province: shippingAddress.province,
+        postalCode: shippingAddress.postal_code,
+      }));
+    }
+  }, [addresses, user, userProfile, isAuthenticated]);
 
   const total = subtotal();
   const baseShippingCost = total >= freeShippingThreshold ? 0 : STANDARD_SHIPPING_FEE;
@@ -299,11 +375,10 @@ export function CheckoutContent() {
                 onChange={(e) => updateBilling("email", e.target.value)}
                 required
               />
-              <Input
-                type="tel"
-                placeholder="Phone *"
+              <PhoneInput
                 value={billing.phone}
-                onChange={(e) => updateBilling("phone", e.target.value)}
+                onChange={(rawPhone) => updateBilling("phone", rawPhone)}
+                placeholder="72 123 4567"
                 required
               />
             </div>
