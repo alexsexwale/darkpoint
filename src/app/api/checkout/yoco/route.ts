@@ -164,8 +164,6 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    console.log("Creating Yoco checkout:", { orderNumber, total, transactionId });
-
     const yocoResponse = await fetch(`${yocoApiUrl}/checkouts`, {
       method: "POST",
       headers: {
