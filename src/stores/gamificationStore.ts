@@ -1127,7 +1127,16 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
       // Log final result
       if (error || !data) {
-        console.error("All achievement check functions failed. Please run the fix_achievements.sql migration.");
+        console.error("All achievement check functions failed. Please run the fix_achievements_comprehensive.sql migration.", error);
+        pendingAchievementCheck.forEach(p => p.resolve([]));
+        pendingAchievementCheck = [];
+        return [];
+      }
+
+      // Check if the response indicates an error
+      const responseData = data as unknown as { success?: boolean; error?: string };
+      if (responseData?.success === false) {
+        console.error("Achievement check returned error:", responseData.error);
         pendingAchievementCheck.forEach(p => p.resolve([]));
         pendingAchievementCheck = [];
         return [];

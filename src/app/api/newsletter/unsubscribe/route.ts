@@ -28,9 +28,9 @@ export async function POST(request: Request) {
     if (supabaseUrl && supabaseServiceKey) {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
       
-      // Try to update in newsletter_subscribers table
+      // Try to update in newsletter_subscriptions table
       const { error: subscriberError } = await supabase
-        .from("newsletter_subscribers")
+        .from("newsletter_subscriptions")
         .update({ 
           is_subscribed: false,
           unsubscribed_at: new Date().toISOString()
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         .eq("email", email.toLowerCase());
 
       if (subscriberError) {
-        console.error("Error updating newsletter_subscribers:", subscriberError);
+        console.error("Error updating newsletter_subscriptions:", subscriberError);
       }
 
       // Also update user profile if exists

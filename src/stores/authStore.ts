@@ -66,9 +66,9 @@ async function subscribeToNewsletter(userId: string, email: string) {
       } as never)
       .eq("id", userId);
 
-    // Also add to newsletter_subscribers table for tracking
+    // Also add to newsletter_subscriptions table for tracking
     await supabase
-      .from("newsletter_subscribers")
+      .from("newsletter_subscriptions")
       .upsert([{
         email: email.toLowerCase(),
         is_subscribed: true,

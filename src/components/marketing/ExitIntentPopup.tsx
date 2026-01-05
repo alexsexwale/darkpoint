@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
+import { useAuthStore } from "@/stores";
 
 interface ExitIntentPopupProps {
   discount?: number;
@@ -18,6 +19,7 @@ const EXCLUDED_PATHS = [
   "/reset-password",
   "/forgot-password",
   "/checkout",
+  "/account",
 ];
 
 export function ExitIntentPopup({
@@ -26,6 +28,7 @@ export function ExitIntentPopup({
   className,
 }: ExitIntentPopupProps) {
   const pathname = usePathname();
+  const { isAuthenticated } = useAuthStore();
   const [isVisible, setIsVisible] = useState(false);
   const [hasShown, setHasShown] = useState(false);
   const [email, setEmail] = useState("");
@@ -45,6 +48,9 @@ export function ExitIntentPopup({
   // Exit intent detection
   const handleMouseLeave = useCallback(
     (e: MouseEvent) => {
+      // Never show for logged-in users (they're already subscribed)
+      if (isAuthenticated) return;
+      
       // Don't show on excluded pages
       if (isExcludedPage) return;
       
@@ -55,7 +61,7 @@ export function ExitIntentPopup({
         sessionStorage.setItem("exitIntentShown", "true");
       }
     },
-    [hasShown, isVisible, isExcludedPage]
+    [hasShown, isVisible, isExcludedPage, isAuthenticated]
   );
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { AccountLayout } from "@/components/account";
@@ -44,6 +44,30 @@ export function AchievementsPageClient() {
   const { openSignIn } = useUIStore();
   const [isFetching, setIsFetching] = useState(false);
   const [hasCheckedAchievements, setHasCheckedAchievements] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Manual refresh function
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      // First refresh user profile
+      await fetchUserProfile();
+      // Then check achievements
+      const unlocked = await checkAchievements();
+      // Finally refresh the list
+      await fetchAchievements();
+      
+      if (unlocked && unlocked.length > 0) {
+        console.log("Achievements unlocked:", unlocked);
+      }
+    } catch (error) {
+      console.error("Error refreshing achievements:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, fetchUserProfile, checkAchievements, fetchAchievements]);
 
   // Fetch achievements when component mounts
   useEffect(() => {
@@ -62,11 +86,19 @@ export function AchievementsPageClient() {
       fetchUserProfile().then(() => {
         // Then check for achievements
         checkAchievements().then((unlocked) => {
-          // If any achievements were unlocked, refresh the achievements list
+          // Always refresh the achievements list to show current progress
+          fetchAchievements();
+          
           if (unlocked && unlocked.length > 0) {
-            fetchAchievements();
+            console.log("Achievements unlocked on load:", unlocked);
           }
+        }).catch(err => {
+          console.error("Error checking achievements:", err);
+          // Still try to fetch achievements even if check fails
+          fetchAchievements();
         });
+      }).catch(err => {
+        console.error("Error fetching user profile:", err);
       });
     }
   }, [isInitialized, isAuthenticated, hasCheckedAchievements, isFetching, fetchUserProfile, checkAchievements, fetchAchievements]);
@@ -271,7 +303,33 @@ export function AchievementsPageClient() {
 
         {/* Stats card */}
         <div className="bg-[var(--color-dark-2)] p-6 border border-[var(--color-dark-3)]">
-          <h3 className="font-heading text-lg mb-4">Achievement Stats</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading text-lg">Achievement Stats</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="text-xs"
+            >
+              {isRefreshing ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-1 h-3 w-3" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </>
+              )}
+            </Button>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               {showSkeleton ? (
