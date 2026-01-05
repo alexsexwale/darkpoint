@@ -19,7 +19,7 @@ export async function generateMetadata({
 
   return {
     title: productName || "Product",
-    description: `Check out ${productName} at Dark Point - Your destination for elite gaming gear and tech.`,
+    description: `Check out ${productName} at Darkpoint - Your destination for elite gaming gear and tech.`,
   };
 }
 

@@ -19,7 +19,7 @@ const REVIEWS_PER_PAGE = 5;
 // Mock specifications based on product category
 const getSpecifications = (product: Product) => {
   const commonSpecs = [
-    { label: "Brand", value: "Dark Point" },
+    { label: "Brand", value: "Darkpoint" },
     { label: "SKU", value: product.id.toUpperCase().slice(0, 12) },
   ];
 
@@ -416,10 +416,10 @@ export function ProductTabs({ product }: ProductTabsProps) {
 
             <div className="mt-8 pt-8 border-t border-[var(--color-dark-3)]">
               <h4 className="text-lg font-heading uppercase tracking-wider mb-4">
-                Why Choose Dark Point?
+                Why Choose Darkpoint?
               </h4>
               <p className="text-[var(--muted-foreground)] mb-4">
-                At Dark Point, we pride ourselves on offering only the highest quality gaming
+                At Darkpoint, we pride ourselves on offering only the highest quality gaming
                 products. Each item is carefully selected to ensure it meets the standards that
                 gamers expect and deserve.
               </p>

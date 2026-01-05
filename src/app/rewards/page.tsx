@@ -1,7 +1,7 @@
 import { RewardsPageClient } from "./RewardsPageClient";
 
 export const metadata = {
-  title: "Rewards | Dark Point",
+  title: "Rewards | Darkpoint",
   description: "Earn XP, unlock achievements, and redeem amazing rewards!",
 };
 

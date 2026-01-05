@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS news_articles (
   excerpt TEXT NOT NULL,
   content TEXT NOT NULL,
   category VARCHAR(100) NOT NULL DEFAULT 'News',
-  author VARCHAR(255) NOT NULL DEFAULT 'Dark Point Team',
+  author VARCHAR(255) NOT NULL DEFAULT 'Darkpoint Team',
   type VARCHAR(50) NOT NULL DEFAULT 'image', -- image, video, audio, gallery
   image_url VARCHAR(500),
   views INTEGER NOT NULL DEFAULT 0,
@@ -121,7 +121,7 @@ VALUES
 <h3>Our Top Picks</h3>
 <p>After testing over 20 keyboards, here are our recommendations for different gaming styles and budgets. Whether you''re a casual gamer or aspiring esports pro, there''s a perfect keyboard waiting for you.</p>',
     'Reviews',
-    'Dark Point Tech Team',
+    'Darkpoint Tech Team',
     'image',
     '/images/news/gaming-keyboard.jpg',
     2847,
@@ -157,7 +157,7 @@ VALUES
   <li>Q4 2025: Holiday blockbuster</li>
 </ul>
 
-<p>Stay tuned to Dark Point for in-depth coverage, reviews, and exclusive interviews as these titles approach their release dates.</p>',
+<p>Stay tuned to Darkpoint for in-depth coverage, reviews, and exclusive interviews as these titles approach their release dates.</p>',
     'Gaming',
     'Gaming Editorial Team',
     'image',
@@ -188,7 +188,7 @@ VALUES
 
 <blockquote>
   <p>"You don''t need to spend R5000 to get excellent gaming audio. These budget options deliver surprisingly good performance."</p>
-  <footer>Dark Point Audio Specialist</footer>
+  <footer>Darkpoint Audio Specialist</footer>
 </blockquote>
 
 <h3>Our Top Recommendations</h3>
@@ -199,7 +199,7 @@ VALUES
 
 <p>Remember to check our store for competitive pricing on all featured products!</p>',
     'Reviews',
-    'Dark Point Reviews',
+    'Darkpoint Reviews',
     'image',
     '/images/news/gaming-headsets.jpg',
     3156,

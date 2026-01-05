@@ -66,7 +66,7 @@ export default function FAQPage() {
           Frequently Asked Questions
         </h1>
         <p className="text-center text-white/60 mb-8">
-          Everything you need to know about shopping at Dark Point
+          Everything you need to know about shopping at Darkpoint
         </p>
         
         <div className="h-px bg-[var(--color-main-1)]/30 mb-12" />

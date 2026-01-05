@@ -1,4 +1,4 @@
-# 🎮 Dark Point
+# 🎮 Darkpoint
 
 > Your ultimate destination for cutting-edge gaming gear, high-performance tech, and exclusive merchandise.
 
@@ -178,5 +178,5 @@ This is a private project. Please contact the owner for contribution guidelines.
 ---
 
 <p align="center">
-  <strong>Dark Point</strong> - Level up your gaming experience 🎮
+  <strong>Darkpoint</strong> - Level up your gaming experience 🎮
 </p>

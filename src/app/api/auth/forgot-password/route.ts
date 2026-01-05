@@ -28,7 +28,7 @@ function buildResetEmailHTML(resetLink: string, displayName: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset Your Password - Dark Point</title>
+  <title>Reset Your Password - Darkpoint</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0a0a0a;">
@@ -39,7 +39,7 @@ function buildResetEmailHTML(resetLink: string, displayName: string): string {
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; border-bottom: 2px solid #c9a227;">
-              <h1 style="margin: 0; color: #c9a227; font-size: 32px; letter-spacing: 3px;">⚔️ DARK POINT ⚔️</h1>
+              <h1 style="margin: 0; color: #c9a227; font-size: 32px; letter-spacing: 3px;">⚔️ Darkpoint ⚔️</h1>
               <p style="margin: 10px 0 0; color: #888; font-size: 14px;">Elite Gaming Gear & Tech</p>
             </td>
           </tr>
@@ -111,7 +111,7 @@ function buildResetEmailHTML(resetLink: string, displayName: string): string {
           <tr>
             <td style="padding: 30px 40px; border-top: 1px solid #333; text-align: center;">
               <p style="margin: 0 0 10px; color: #666; font-size: 12px;">
-                This is an automated security email from Dark Point.
+                This is an automated security email from Darkpoint.
               </p>
               <p style="margin: 0 0 20px;">
                 <a href="${SITE_URL}" style="color: #c9a227; text-decoration: none; margin: 0 10px;">Website</a>
@@ -119,7 +119,7 @@ function buildResetEmailHTML(resetLink: string, displayName: string): string {
                 <a href="${SITE_URL}/contact" style="color: #c9a227; text-decoration: none; margin: 0 10px;">Support</a>
               </p>
               <p style="margin: 0; color: #444; font-size: 11px;">
-                © ${new Date().getFullYear()} Dark Point. All rights reserved.<br>
+                © ${new Date().getFullYear()} Darkpoint. All rights reserved.<br>
                 This email was sent because a password reset was requested for your account.
               </p>
             </td>
@@ -136,7 +136,7 @@ function buildResetEmailHTML(resetLink: string, displayName: string): string {
 
 function buildResetEmailText(resetLink: string, displayName: string): string {
   return `
-DARK POINT - Password Reset Request
+Darkpoint - Password Reset Request
 ====================================
 
 Hey ${displayName},
@@ -154,7 +154,7 @@ If you didn't request this password reset, you can safely ignore this email. You
 Need help? Contact us at support@darkpoint.co.za
 
 ---
-© ${new Date().getFullYear()} Dark Point. All rights reserved.
+© ${new Date().getFullYear()} Darkpoint. All rights reserved.
   `;
 }
 
@@ -292,7 +292,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         From: FROM_EMAIL,
         To: normalizedEmail,
-        Subject: "🔐 Reset Your Dark Point Password",
+        Subject: "🔐 Reset Your Darkpoint Password",
         HtmlBody: buildResetEmailHTML(resetLink, displayName),
         TextBody: buildResetEmailText(resetLink, displayName),
         MessageStream: "outbound",

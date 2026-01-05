@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
           <!-- Header with gradient -->
           <div style="background: linear-gradient(135deg, #e08821 0%, #c47418 100%); padding: 30px 20px; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;">
-              🎮 Dark Point
+              🎮 Darkpoint
             </h1>
             <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">
               Your Gaming Gear Destination
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
               Need help? Contact us at <a href="mailto:support@darkpoint.co.za" style="color: #e08821;">support@darkpoint.co.za</a>
             </p>
             <p style="color: #666; font-size: 12px; margin: 0;">
-              © ${new Date().getFullYear()} Dark Point. All rights reserved.
+              © ${new Date().getFullYear()} Darkpoint. All rights reserved.
             </p>
           </div>
         </div>
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         From: postmarkFromEmail,
         To: email,
-        Subject: `👋 Welcome Back to Dark Point, ${firstName}!`,
+        Subject: `👋 Welcome Back to Darkpoint, ${firstName}!`,
         HtmlBody: emailHtml,
         TextBody: `
 Welcome Back, ${firstName}!
@@ -136,7 +136,7 @@ Browse store: https://darkpoint.co.za/store
 
 Need help? Contact us at support@darkpoint.co.za
 
-© ${new Date().getFullYear()} Dark Point. All rights reserved.
+© ${new Date().getFullYear()} Darkpoint. All rights reserved.
         `.trim(),
         MessageStream: "outbound",
       }),

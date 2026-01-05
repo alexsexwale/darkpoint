@@ -65,7 +65,7 @@ export async function POST(request: Request) {
           body: JSON.stringify({
             From: FROM_EMAIL,
             To: email,
-            Subject: "🎮 Welcome to Dark Point! Your Gaming Journey Starts Here",
+            Subject: "🎮 Welcome to Darkpoint! Your Gaming Journey Starts Here",
             HtmlBody: generateNewsletterWelcomeEmail(email),
             TextBody: generateNewsletterWelcomeText(email),
             MessageStream: "outbound",
@@ -105,7 +105,7 @@ function generateNewsletterWelcomeEmail(email: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to Dark Point!</title>
+  <title>Welcome to Darkpoint!</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0a0a0a;">
@@ -116,7 +116,7 @@ function generateNewsletterWelcomeEmail(email: string): string {
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; border-bottom: 1px solid #333;">
-              <img src="${baseUrl}/images/logo.png" alt="Dark Point" style="max-width: 200px; height: auto;" />
+              <img src="${baseUrl}/images/logo.png" alt="Darkpoint" style="max-width: 200px; height: auto;" />
             </td>
           </tr>
           
@@ -128,7 +128,7 @@ function generateNewsletterWelcomeEmail(email: string): string {
                 You're In, Gamer!
               </h1>
               <p style="color: #c9a227; font-size: 18px; margin: 0; font-weight: bold;">
-                Welcome to the Dark Point Newsletter
+                Welcome to the Darkpoint Newsletter
               </p>
             </td>
           </tr>
@@ -207,7 +207,7 @@ function generateNewsletterWelcomeEmail(email: string): string {
               </p>
               <p style="color: #666666; font-size: 12px; margin: 0;">
                 <a href="${baseUrl}/unsubscribe?email=${encodeURIComponent(email)}" style="color: #888888;">Unsubscribe</a> • 
-                <a href="${baseUrl}" style="color: #888888;">Dark Point</a>
+                <a href="${baseUrl}" style="color: #888888;">Darkpoint</a>
               </p>
             </td>
           </tr>
@@ -227,7 +227,7 @@ function generateNewsletterWelcomeText(email: string): string {
   return `
 🎮 You're In, Gamer!
 
-Welcome to the Dark Point Newsletter!
+Welcome to the Darkpoint Newsletter!
 
 Thanks for joining our gaming community! You're now on the inside track for:
 
@@ -250,7 +250,7 @@ Create your account now: ${baseUrl}/rewards
 
 Get ready for legendary deals and epic gaming content!
 
-- The Dark Point Team
+- The Darkpoint Team
 
 Unsubscribe: ${baseUrl}/unsubscribe?email=${encodeURIComponent(email)}
 `;

@@ -122,10 +122,10 @@ export async function POST(request: NextRequest) {
               <!-- Footer -->
               <div style="padding: 20px; text-align: center; background-color: #1a1a1a;">
                 <p style="color: #666; font-size: 12px; margin: 0;">
-                  This is an automated notification from Dark Point Reviews System
+                  This is an automated notification from Darkpoint Reviews System
                 </p>
                 <p style="color: #666; font-size: 12px; margin: 10px 0 0 0;">
-                  © ${new Date().getFullYear()} Dark Point. All rights reserved.
+                  © ${new Date().getFullYear()} Darkpoint. All rights reserved.
                 </p>
               </div>
             </div>
@@ -158,7 +158,7 @@ Actions Required
 - Update the report status in the database
 
 ---
-This is an automated notification from Dark Point Reviews System
+This is an automated notification from Darkpoint Reviews System
         `.trim(),
         MessageStream: "outbound",
       }),

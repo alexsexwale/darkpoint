@@ -122,7 +122,7 @@ BEGIN
   
   -- Log the XP transaction
   INSERT INTO xp_transactions (user_id, amount, action, description)
-  VALUES (p_user_id, 100, 'welcome', 'Welcome bonus for joining Dark Point!')
+  VALUES (p_user_id, 100, 'welcome', 'Welcome bonus for joining Darkpoint!')
   ON CONFLICT DO NOTHING;
   
   -- Subscribe to newsletter
@@ -196,7 +196,7 @@ BEGIN
   
   -- Log the welcome XP
   INSERT INTO xp_transactions (user_id, amount, action, description)
-  VALUES (NEW.id, 100, 'welcome', '🎮 Welcome to Dark Point! Here''s 100 XP to start your journey!')
+  VALUES (NEW.id, 100, 'welcome', '🎮 Welcome to Darkpoint! Here''s 100 XP to start your journey!')
   ON CONFLICT DO NOTHING;
   
   -- Auto-subscribe to newsletter

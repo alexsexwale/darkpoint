@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { WishlistPageClient } from "./WishlistPageClient";
 
 export const metadata: Metadata = {
-  title: "My Wishlist | Dark Point",
+  title: "My Wishlist | Darkpoint",
   description: "View and manage your saved items.",
 };
 

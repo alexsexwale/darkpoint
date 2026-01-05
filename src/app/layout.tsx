@@ -32,14 +32,14 @@ const robotoCondensed = Roboto_Condensed({
 
 export const metadata: Metadata = {
   title: {
-    default: "Dark Point | Elite Gaming Gear, Tech & Merchandise",
-    template: "%s | Dark Point",
+    default: "Darkpoint | Elite Gaming Gear, Tech & Merchandise",
+    template: "%s | Darkpoint",
   },
   description:
-    "Your ultimate destination for elite gaming equipment, cutting-edge tech, and exclusive merchandise. Level up your setup with premium gear from Dark Point.",
+    "Your ultimate destination for elite gaming equipment, cutting-edge tech, and exclusive merchandise. Level up your setup with premium gear from Darkpoint.",
   keywords: ["gaming", "gaming gear", "hardware", "tech", "gadgets", "merchandise", "gaming accessories", "peripherals", "audio", "electronics", "esports"],
-  authors: [{ name: "Dark Point" }],
-  creator: "Dark Point",
+  authors: [{ name: "Darkpoint" }],
+  creator: "Darkpoint",
   icons: {
     icon: "/images/favicon.png",
     shortcut: "/images/favicon.png",
@@ -48,13 +48,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    siteName: "Dark Point",
-    title: "Dark Point | Elite Gaming Gear, Tech & Merchandise",
+    siteName: "Darkpoint",
+    title: "Darkpoint | Elite Gaming Gear, Tech & Merchandise",
     description: "Your ultimate destination for gaming equipment, tech gadgets, hardware, and merchandise.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Dark Point | Elite Gaming Gear, Tech & Merchandise",
+    title: "Darkpoint | Elite Gaming Gear, Tech & Merchandise",
     description: "Your ultimate destination for elite gaming equipment, cutting-edge tech, and exclusive merchandise.",
   },
   robots: {

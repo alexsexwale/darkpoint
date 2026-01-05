@@ -123,7 +123,7 @@ BEGIN
   -- XP transaction (non-critical)
   BEGIN
     INSERT INTO public.xp_transactions (user_id, amount, action, description)
-    VALUES (NEW.id, 100, 'signup', '🎮 Welcome to Dark Point!')
+    VALUES (NEW.id, 100, 'signup', '🎮 Welcome to Darkpoint!')
     ON CONFLICT DO NOTHING;
   EXCEPTION WHEN OTHERS THEN
     NULL;

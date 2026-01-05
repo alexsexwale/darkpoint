@@ -456,7 +456,7 @@ export function VIPPageClient() {
               <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg">
                 <span className="text-amber-400">💡</span>
                 <p>
-                  <span className="text-amber-400">Hint 2:</span> Click the Dark Point logo 5 times quickly for a surprise...
+                  <span className="text-amber-400">Hint 2:</span> Click the Darkpoint logo 5 times quickly for a surprise...
                 </p>
               </div>
               

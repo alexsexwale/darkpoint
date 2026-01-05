@@ -15,7 +15,7 @@ export const env = {
   // App Configuration
   app: {
     url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-    name: process.env.NEXT_PUBLIC_APP_NAME || 'Dark Point',
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'Darkpoint',
   },
 } as const;
 

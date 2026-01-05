@@ -2,8 +2,8 @@ import { Metadata } from "next";
 import { ForgotPasswordPageClient } from "./ForgotPasswordPageClient";
 
 export const metadata: Metadata = {
-  title: "Forgot Password | Dark Point",
-  description: "Reset your Dark Point account password",
+  title: "Forgot Password | Darkpoint",
+  description: "Reset your Darkpoint account password",
 };
 
 export default function ForgotPasswordPage() {

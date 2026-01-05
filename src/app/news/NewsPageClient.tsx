@@ -234,7 +234,7 @@ export function NewsPageClient() {
           <div className="text-6xl mb-6">📰</div>
           <h2 className="text-2xl font-heading mb-4">No Articles Yet</h2>
           <p className="text-white/60">
-            Check back soon for the latest news, reviews, and updates from Dark Point.
+            Check back soon for the latest news, reviews, and updates from Darkpoint.
           </p>
         </motion.div>
       ) : (

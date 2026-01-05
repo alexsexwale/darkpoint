@@ -344,7 +344,7 @@ function TriviaGame({ onWin }: { onWin: (xp: number) => void }) {
   return (
     <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-heading text-xl">Dark Point Trivia</h3>
+        <h3 className="font-heading text-xl">Darkpoint Trivia</h3>
         <span className="text-white/60 text-sm">
           {currentQuestion + 1}/{TRIVIA_QUESTIONS.length}
         </span>

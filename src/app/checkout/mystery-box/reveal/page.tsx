@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { MysteryBoxRevealClient } from "./MysteryBoxRevealClient";
 
 export const metadata: Metadata = {
-  title: "Reveal Your Mystery Box | Dark Point",
+  title: "Reveal Your Mystery Box | Darkpoint",
   description: "See what amazing item you won!",
 };
 

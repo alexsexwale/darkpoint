@@ -1,5 +1,5 @@
 // Site configuration
-export const SITE_NAME = "Dark Point";
+export const SITE_NAME = "Darkpoint";
 export const SITE_DESCRIPTION = "Your ultimate destination for elite gaming gear, cutting-edge tech & exclusive merchandise";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://darkpoint.co.za";
 

@@ -245,7 +245,7 @@ BEGIN
   -- Log welcome XP if new user
   IF NOT v_is_returning AND v_welcome_xp > 0 THEN
     INSERT INTO xp_transactions (user_id, amount, action, description)
-    VALUES (NEW.id, v_welcome_xp, 'signup', '🎮 Welcome to Dark Point! Here''s 100 XP to start your journey!')
+    VALUES (NEW.id, v_welcome_xp, 'signup', '🎮 Welcome to Darkpoint! Here''s 100 XP to start your journey!')
     ON CONFLICT DO NOTHING;
     
     -- Create welcome coupon for new users

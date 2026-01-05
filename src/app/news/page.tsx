@@ -1,8 +1,8 @@
 import { NewsPageClient } from "./NewsPageClient";
 
 export const metadata = {
-  title: "News | Dark Point",
-  description: "Latest tech news, reviews, and updates from Dark Point.",
+  title: "News | Darkpoint",
+  description: "Latest tech news, reviews, and updates from Darkpoint.",
 };
 
 export default function NewsPage() {

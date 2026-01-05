@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to Dark Point!</title>
+  <title>Welcome to Darkpoint!</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0a0a0a;">
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; border-bottom: 2px solid #c9a227;">
-              <h1 style="margin: 0; color: #c9a227; font-size: 32px; letter-spacing: 3px;">⚔️ DARK POINT ⚔️</h1>
+              <h1 style="margin: 0; color: #c9a227; font-size: 32px; letter-spacing: 3px;">⚔️ Darkpoint ⚔️</h1>
               <p style="margin: 10px 0 0; color: #888; font-size: 14px;">Elite Gaming Gear & Tech</p>
             </td>
           </tr>
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
                 <a href="#" style="color: #c9a227; text-decoration: none; margin: 0 10px;">Instagram</a>
               </p>
               <p style="margin: 0; color: #444; font-size: 11px;">
-                © ${new Date().getFullYear()} Dark Point. All rights reserved.<br>
+                © ${new Date().getFullYear()} Darkpoint. All rights reserved.<br>
                 You're receiving this because you signed up at darkpoint.co.za
               </p>
             </td>
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
     `;
 
     const textBody = `
-Welcome to Dark Point, ${displayName}! 🎮
+Welcome to Darkpoint, ${displayName}! 🎮
 
 You've just joined the most epic gaming community! We're thrilled to have you.
 
@@ -199,7 +199,7 @@ Your discount is automatically added to your "My Rewards" section! Just select i
 Ready to gear up? Visit our store: ${storeUrl}
 
 Game on!
-The Dark Point Team
+The Darkpoint Team
     `;
 
     // Send via Postmark
@@ -213,7 +213,7 @@ The Dark Point Team
       body: JSON.stringify({
         From: FROM_EMAIL,
         To: email,
-        Subject: "🎮 Welcome to Dark Point! Your 100 XP & Free Spin Await!",
+        Subject: "🎮 Welcome to Darkpoint! Your 100 XP & Free Spin Await!",
         HtmlBody: htmlBody,
         TextBody: textBody,
         MessageStream: "outbound",

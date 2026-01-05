@@ -1,6 +1,6 @@
-# Supabase Setup Guide for Dark Point
+# Supabase Setup Guide for Darkpoint
 
-This guide will help you set up Supabase authentication and database for the Dark Point website.
+This guide will help you set up Supabase authentication and database for the Darkpoint website.
 
 ## 1. Create a Supabase Project
 
@@ -8,7 +8,7 @@ This guide will help you set up Supabase authentication and database for the Dar
 2. Click "New Project"
 3. Choose your organization
 4. Enter project details:
-   - **Name**: Dark Point (or your preferred name)
+   - **Name**: Darkpoint (or your preferred name)
    - **Database Password**: Generate a strong password (save this!)
    - **Region**: Choose the closest to your users
 5. Click "Create new project" and wait for it to be ready
@@ -74,7 +74,7 @@ Example templates:
 
 **Confirm Signup:**
 ```html
-<h2>Welcome to Dark Point!</h2>
+<h2>Welcome to Darkpoint!</h2>
 <p>Thanks for signing up. Click the link below to confirm your account:</p>
 <p><a href="{{ .ConfirmationURL }}">Confirm your email</a></p>
 ```
@@ -82,7 +82,7 @@ Example templates:
 **Reset Password:**
 ```html
 <h2>Reset Your Password</h2>
-<p>Click the link below to reset your Dark Point password:</p>
+<p>Click the link below to reset your Darkpoint password:</p>
 <p><a href="{{ .ConfirmationURL }}">Reset Password</a></p>
 <p>If you didn't request this, you can safely ignore this email.</p>
 ```
@@ -109,7 +109,7 @@ Example templates:
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
 2. Click "New OAuth App"
 3. Configure:
-   - **Application name**: Dark Point
+   - **Application name**: Darkpoint
    - **Homepage URL**: `https://your-domain.com`
    - **Authorization callback URL**: `https://your-project-id.supabase.co/auth/v1/callback`
 4. Click "Register application"

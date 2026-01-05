@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Shipping Information",
-  description: "Shipping rates, delivery times, and policies for Dark Point orders.",
+  description: "Shipping rates, delivery times, and policies for Darkpoint orders.",
 };
 
 export default function ShippingPage() {

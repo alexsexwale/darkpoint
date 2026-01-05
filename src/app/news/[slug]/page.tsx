@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: ArticlePageProps) {
   const supabase = getSupabase();
   
   if (!supabase) {
-    return { title: "Article | Dark Point" };
+    return { title: "Article | Darkpoint" };
   }
 
   const { data: article } = await supabase
@@ -31,11 +31,11 @@ export async function generateMetadata({ params }: ArticlePageProps) {
     .single();
 
   if (!article) {
-    return { title: "Article Not Found | Dark Point" };
+    return { title: "Article Not Found | Darkpoint" };
   }
 
   return {
-    title: `${article.title} | Dark Point`,
+    title: `${article.title} | Darkpoint`,
     description: article.excerpt,
   };
 }

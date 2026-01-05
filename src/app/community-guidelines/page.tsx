@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Community Guidelines",
   description:
-    "Our community guidelines outline the expectations for reviews, comments, and interactions on Dark Point. We believe in creating a respectful and helpful environment for all gamers.",
+    "Our community guidelines outline the expectations for reviews, comments, and interactions on Darkpoint. We believe in creating a respectful and helpful environment for all gamers.",
 };
 
 const guidelines = [
@@ -69,7 +69,7 @@ const guidelines = [
     ),
     content: [
       "Do not share personal information about yourself or others, including names, addresses, phone numbers, or email addresses.",
-      "Respect the privacy of Dark Point staff and other customers.",
+      "Respect the privacy of Darkpoint staff and other customers.",
       "Do not post private communications or confidential information.",
     ],
   },
@@ -133,10 +133,10 @@ export default function CommunityGuidelinesPage() {
           {/* Introduction */}
           <div className="nk-box-3">
             <h2 className="text-2xl font-heading uppercase tracking-wider mb-4">
-              Welcome to the Dark Point Community
+              Welcome to the Darkpoint Community
             </h2>
             <p className="text-white/80 leading-relaxed mb-4">
-              At Dark Point, we&apos;re passionate about gaming and building a community of like-minded 
+              At Darkpoint, we&apos;re passionate about gaming and building a community of like-minded 
               enthusiasts. Whether you&apos;re sharing your experience with a product, helping fellow 
               gamers make purchasing decisions, or engaging with our content, we ask that you follow 
               these guidelines to ensure a positive experience for everyone.

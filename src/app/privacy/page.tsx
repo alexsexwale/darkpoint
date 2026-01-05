@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Privacy Policy for Dark Point - how we collect, use, and protect your data.",
+  description: "Privacy Policy for Darkpoint - how we collect, use, and protect your data.",
 };
 
 export default function PrivacyPage() {

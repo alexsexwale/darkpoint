@@ -35,7 +35,7 @@ export function Footer() {
 
         {/* Partner/Payment Logos Row - Godlike style */}
         <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10 mb-10 pb-8 border-b border-white/10">
-          {/* Dark Point Logo */}
+          {/* Darkpoint Logo */}
           <Link href="/" className="opacity-80 hover:opacity-100 transition-opacity">
             <Image
               src="/images/logo.png"

@@ -67,7 +67,7 @@ function GuestWelcome() {
         </h2>
         
         <p className="text-white/70 max-w-xl mx-auto mb-8 text-lg">
-          Join the Dark Point community to earn XP, complete daily quests, 
+          Join the Darkpoint community to earn XP, complete daily quests, 
           unlock achievements, and get exclusive discounts on gaming gear!
         </p>
 

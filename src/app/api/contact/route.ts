@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
               </div>
             </div>
             <p style="color: #666; font-size: 12px; margin-top: 20px;">
-              This email was sent from the Dark Point contact form.
+              This email was sent from the Darkpoint contact form.
             </p>
           </div>
         `,
@@ -75,7 +75,7 @@ Message:
 ${message}
 
 ---
-This email was sent from the Dark Point contact form.
+This email was sent from the Darkpoint contact form.
         `.trim(),
         ReplyTo: email,
         MessageStream: "outbound",

@@ -728,7 +728,7 @@ export function GamesPageClient() {
             transition={{ duration: 0.6 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-heading mb-4">Why Play on Dark Point?</h2>
+            <h2 className="text-3xl font-heading mb-4">Why Play on Darkpoint?</h2>
             <div className="w-16 h-1 bg-[var(--color-main-1)] mx-auto rounded-full" />
           </motion.div>
 

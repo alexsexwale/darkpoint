@@ -2,7 +2,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "Terms of Service for Dark Point - rules and guidelines for using our platform.",
+  description: "Terms of Service for Darkpoint - rules and guidelines for using our platform.",
 };
 
 export default function TermsPage() {
@@ -19,7 +19,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-heading text-white mb-4">1. Acceptance of Terms</h2>
             <p className="text-white/70 leading-relaxed">
-              By accessing and using Dark Point, you accept and agree to be bound by the terms 
+              By accessing and using Darkpoint, you accept and agree to be bound by the terms 
               and provision of this agreement. If you do not agree to abide by these terms, 
               please do not use this service.
             </p>
@@ -56,7 +56,7 @@ export default function TermsPage() {
             <h2 className="text-2xl font-heading text-white mb-4">5. Intellectual Property</h2>
             <p className="text-white/70 leading-relaxed">
               All content on this website, including text, graphics, logos, images, and software, 
-              is the property of Dark Point and is protected by South African and international 
+              is the property of Darkpoint and is protected by South African and international 
               copyright laws.
             </p>
           </section>
@@ -64,7 +64,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-heading text-white mb-4">6. Limitation of Liability</h2>
             <p className="text-white/70 leading-relaxed">
-              Dark Point shall not be liable for any indirect, incidental, special, consequential, 
+              Darkpoint shall not be liable for any indirect, incidental, special, consequential, 
               or punitive damages resulting from your use of or inability to use the service.
             </p>
           </section>
