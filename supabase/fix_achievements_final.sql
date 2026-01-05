@@ -20,10 +20,15 @@ ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS single_order_max_items INTEGE
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS newsletter_subscribed BOOLEAN DEFAULT false;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS total_xp INTEGER DEFAULT 0;
 
--- Step 2: Fix user_achievements table
+-- Step 2: Fix user_achievements table - add ALL potentially missing columns
+ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;
-ALTER TABLE user_achievements ALTER COLUMN unlocked_at DROP NOT NULL;
+-- Allow NULL for unlocked_at (achievements not yet unlocked)
+DO $$ BEGIN
+  ALTER TABLE user_achievements ALTER COLUMN unlocked_at DROP NOT NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- Step 3: Drop all existing achievement functions
 DROP FUNCTION IF EXISTS check_achievements(UUID);
@@ -204,14 +209,12 @@ BEGIN
     END CASE;
 
     -- Upsert progress to user_achievements
-    INSERT INTO user_achievements (user_id, achievement_id, progress, unlocked_at, created_at, updated_at)
+    INSERT INTO user_achievements (user_id, achievement_id, progress, unlocked_at)
     VALUES (
       p_user_id, 
       v_achievement.id, 
       LEAST(v_progress, v_requirement),
-      CASE WHEN v_progress >= v_requirement AND v_requirement > 0 THEN NOW() ELSE NULL END,
-      NOW(),
-      NOW()
+      CASE WHEN v_progress >= v_requirement AND v_requirement > 0 THEN NOW() ELSE NULL END
     )
     ON CONFLICT (user_id, achievement_id) DO UPDATE SET
       progress = LEAST(EXCLUDED.progress, v_requirement),
@@ -219,8 +222,7 @@ BEGIN
         WHEN user_achievements.unlocked_at IS NOT NULL THEN user_achievements.unlocked_at
         WHEN EXCLUDED.progress >= v_requirement AND v_requirement > 0 THEN NOW()
         ELSE NULL 
-      END,
-      updated_at = NOW();
+      END;
 
     -- Check if newly unlocked (must have actual progress meeting requirement)
     IF v_progress >= v_requirement AND v_requirement > 0 THEN
