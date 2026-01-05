@@ -58,11 +58,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if payment is complete
-    if (order.payment_status !== "paid" && order.payment_status !== "completed") {
+    // Allow reveal if payment is pending but order was created recently (webhook might be processing)
+    const orderAge = Date.now() - new Date(order.created_at).getTime();
+    const isRecentOrder = orderAge < 60000; // Less than 1 minute old
+    
+    if (order.payment_status !== "paid" && order.payment_status !== "completed" && !isRecentOrder) {
       return NextResponse.json(
         { success: false, error: "Payment not yet confirmed. Please wait a moment and refresh." },
         { status: 400 }
       );
+    }
+    
+    // If order is recent but payment not confirmed, wait a bit and retry once
+    if (order.payment_status === "pending" && isRecentOrder) {
+      // Wait 2 seconds for webhook to process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Re-fetch order to check if payment was confirmed
+      const { data: updatedOrder } = await supabase
+        .from("orders")
+        .select("payment_status")
+        .eq("id", order.id)
+        .single();
+      
+      if (updatedOrder && updatedOrder.payment_status !== "paid" && updatedOrder.payment_status !== "completed") {
+        // Still pending, but allow reveal for recent orders (webhook might be delayed)
+        console.log("[Mystery Box] Payment still pending, but allowing reveal for recent order");
+      } else if (updatedOrder) {
+        order.payment_status = updatedOrder.payment_status;
+      }
     }
 
     // Check if product is already revealed
