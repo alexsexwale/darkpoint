@@ -217,6 +217,319 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     openCart();
   };
 
+  const handleDownloadReceipt = () => {
+    if (!order) return;
+
+    // Create receipt HTML
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Receipt - Order #${order.orderNumber}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d0d0d;
+            color: #ffffff;
+            padding: 40px;
+            min-height: 100vh;
+          }
+          .receipt {
+            max-width: 800px;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            border: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+          }
+          .receipt::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #e08821, #f5a623, #e08821);
+          }
+          .header {
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            background: linear-gradient(180deg, rgba(224, 136, 33, 0.1) 0%, transparent 100%);
+          }
+          .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #e08821;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+          }
+          .logo-subtitle {
+            font-size: 12px;
+            color: #888;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+          }
+          .receipt-title {
+            margin-top: 24px;
+            font-size: 14px;
+            color: #666;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+          }
+          .order-number {
+            font-size: 24px;
+            color: #fff;
+            margin-top: 8px;
+            font-family: monospace;
+          }
+          .order-date {
+            font-size: 14px;
+            color: #888;
+            margin-top: 8px;
+          }
+          .section {
+            padding: 30px 40px;
+            border-bottom: 1px solid #333;
+          }
+          .section-title {
+            font-size: 12px;
+            color: #e08821;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+          }
+          .items-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .items-table th {
+            text-align: left;
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 0;
+            border-bottom: 1px solid #333;
+          }
+          .items-table th:last-child {
+            text-align: right;
+          }
+          .items-table td {
+            padding: 16px 0;
+            border-bottom: 1px solid #222;
+            vertical-align: top;
+          }
+          .items-table td:last-child {
+            text-align: right;
+          }
+          .item-name {
+            font-weight: 500;
+            color: #fff;
+          }
+          .item-variant {
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+          }
+          .item-qty {
+            color: #888;
+          }
+          .item-price {
+            font-weight: 600;
+            color: #fff;
+          }
+          .summary {
+            background: rgba(224, 136, 33, 0.05);
+          }
+          .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            color: #888;
+          }
+          .summary-row.total {
+            border-top: 1px solid #333;
+            margin-top: 12px;
+            padding-top: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+          }
+          .summary-row.total .amount {
+            color: #e08821;
+          }
+          .addresses {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+          }
+          .address-block h4 {
+            font-size: 12px;
+            color: #e08821;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+          }
+          .address-block p {
+            color: #888;
+            line-height: 1.6;
+            font-size: 14px;
+          }
+          .address-block .name {
+            color: #fff;
+            font-weight: 500;
+          }
+          .footer {
+            padding: 30px 40px;
+            text-align: center;
+            background: linear-gradient(180deg, transparent 0%, rgba(224, 136, 33, 0.05) 100%);
+          }
+          .footer-text {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 12px;
+          }
+          .footer-contact {
+            font-size: 12px;
+            color: #888;
+          }
+          .footer-contact a {
+            color: #e08821;
+            text-decoration: none;
+          }
+          .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 16px;
+            background: ${order.status === "Delivered" ? "rgba(34, 197, 94, 0.2)" : order.status === "Processing" ? "rgba(234, 179, 8, 0.2)" : "rgba(59, 130, 246, 0.2)"};
+            color: ${order.status === "Delivered" ? "#22c55e" : order.status === "Processing" ? "#eab308" : "#3b82f6"};
+            border: 1px solid ${order.status === "Delivered" ? "rgba(34, 197, 94, 0.3)" : order.status === "Processing" ? "rgba(234, 179, 8, 0.3)" : "rgba(59, 130, 246, 0.3)"};
+          }
+          @media print {
+            body { background: #0d0d0d; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .receipt { border: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="receipt">
+          <div class="header">
+            <div class="logo">🔥 Darkpoint</div>
+            <div class="logo-subtitle">Elite Gaming Gear</div>
+            <div class="receipt-title">Order Receipt</div>
+            <div class="order-number">#${order.orderNumber}</div>
+            <div class="order-date">${new Date(order.date).toLocaleDateString("en-ZA", { 
+              weekday: "long",
+              day: "numeric", 
+              month: "long", 
+              year: "numeric"
+            })}</div>
+            <div class="status-badge">${order.status}</div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Order Items</div>
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${order.items.map(item => `
+                  <tr>
+                    <td>
+                      <div class="item-name">${item.name}</div>
+                      ${item.variant ? `<div class="item-variant">${item.variant}</div>` : ''}
+                    </td>
+                    <td class="item-qty">${item.quantity}</td>
+                    <td class="item-price">R${(item.price * item.quantity).toFixed(2)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section summary">
+            <div class="section-title">Order Summary</div>
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <span>R${order.subtotal.toFixed(2)}</span>
+            </div>
+            <div class="summary-row">
+              <span>Shipping</span>
+              <span>${order.shipping === 0 ? 'Free' : `R${order.shipping.toFixed(2)}`}</span>
+            </div>
+            <div class="summary-row total">
+              <span>Total Paid</span>
+              <span class="amount">R${order.total.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="addresses">
+              <div class="address-block">
+                <h4>Shipping Address</h4>
+                <p>
+                  <span class="name">${order.shippingAddress.name}</span><br>
+                  ${order.shippingAddress.address1}<br>
+                  ${order.shippingAddress.address2 ? `${order.shippingAddress.address2}<br>` : ''}
+                  ${order.shippingAddress.city}, ${order.shippingAddress.province} ${order.shippingAddress.postalCode}<br>
+                  ${order.shippingAddress.country}
+                  ${order.shippingAddress.phone ? `<br>${order.shippingAddress.phone}` : ''}
+                </p>
+              </div>
+              <div class="address-block">
+                <h4>Billing Address</h4>
+                <p>
+                  <span class="name">${order.billingAddress.name}</span><br>
+                  ${order.billingAddress.address1}<br>
+                  ${order.billingAddress.address2 ? `${order.billingAddress.address2}<br>` : ''}
+                  ${order.billingAddress.city}, ${order.billingAddress.province} ${order.billingAddress.postalCode}<br>
+                  ${order.billingAddress.country}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p class="footer-text">Thank you for shopping with Darkpoint!</p>
+            <p class="footer-contact">
+              Questions? Contact us at <a href="mailto:support@darkpoint.co.za">support@darkpoint.co.za</a>
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Create blob and download
+    const blob = new Blob([receiptHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    
+    // Open in new window for printing/saving
+    const printWindow = window.open(url, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
+    
+    // Clean up
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   if (isLoading) {
     return (
       <AccountLayout title="Loading Order">
@@ -357,10 +670,6 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <span>Shipping</span>
               <span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</span>
             </div>
-            <div className="flex justify-between text-white/70">
-              <span>VAT (15%)</span>
-              <span>{formatPrice(order.tax)}</span>
-            </div>
             <div className="h-px bg-white/10 my-2" />
             <div className="flex justify-between text-lg font-semibold">
               <span>Total</span>
@@ -449,26 +758,26 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
 
       {/* Actions */}
       <div className="flex flex-wrap gap-4">
-        <Button variant="outline" className="cursor-pointer" onClick={() => window.print()}>
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        <Button variant="outline" className="cursor-pointer inline-flex items-center" onClick={handleDownloadReceipt}>
+          <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          Print Order
+          <span>Download Receipt</span>
         </Button>
         <Link href={`/contact?subject=Order%20%23${order.orderNumber}%20Inquiry`}>
-          <Button variant="outline" className="cursor-pointer">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Button variant="outline" className="cursor-pointer inline-flex items-center">
+            <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Need Help?
+            <span>Need Help?</span>
           </Button>
         </Link>
         {order.status === "Delivered" && (
-          <Button variant="primary" className="cursor-pointer" onClick={handleReorder}>
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Button variant="primary" className="cursor-pointer inline-flex items-center" onClick={handleReorder}>
+            <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Reorder
+            <span>Reorder</span>
           </Button>
         )}
       </div>

@@ -168,6 +168,9 @@ select.nk-form-control {
 .nk-btn-content {
   position: relative;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 // Button Variants
