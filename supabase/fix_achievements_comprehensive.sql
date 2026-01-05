@@ -40,6 +40,13 @@ CREATE TABLE IF NOT EXISTS user_achievements (
   UNIQUE(user_id, achievement_id)
 );
 
+-- Add missing columns if table already exists
+ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;
+
+-- Fix: Allow NULL in unlocked_at column (achievements that aren't unlocked yet should have NULL)
+ALTER TABLE user_achievements ALTER COLUMN unlocked_at DROP NOT NULL;
+
 -- Ensure indexes exist
 CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement_id ON user_achievements(achievement_id);
