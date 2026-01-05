@@ -68,11 +68,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const htmlClassName = [marcellusSC.variable, robotoCondensed.variable].filter(Boolean).join(" ");
-  
   return (
-    <html lang="en" className={htmlClassName}>
-      <body className="min-h-screen flex flex-col antialiased">
+    <html 
+      lang="en" 
+      className={`${marcellusSC.variable} ${robotoCondensed.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="min-h-screen flex flex-col antialiased" suppressHydrationWarning>
         <AuthProvider>
           {/* Preloader */}
           <Preloader />

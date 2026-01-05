@@ -1073,37 +1073,61 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       const { questRewardedActions } = get();
       const typesToSkip = skipXPTypes || Array.from(questRewardedActions);
 
-      // Try v2 function first (with XP deduplication)
+      // Try the main check_achievements function first
       let data, error;
-      if (typesToSkip.length > 0) {
-        const result = await supabase
+      
+      // First try: check_achievements (the main function)
+      const result1 = await supabase
+        .rpc("check_achievements", { p_user_id: user.id } as never);
+      data = result1.data;
+      error = result1.error;
+      
+      if (error) {
+        console.warn("check_achievements failed:", error.message);
+      }
+
+      // Fallback to v2 if main function failed
+      if (error || !data) {
+        const result2 = await supabase
           .rpc("check_achievements_v2", { 
             p_user_id: user.id,
             p_skip_xp_types: typesToSkip
           } as never);
-        data = result.data;
-        error = result.error;
+        data = result2.data;
+        error = result2.error;
+        
+        if (error) {
+          console.warn("check_achievements_v2 failed:", error.message);
+        }
       }
 
-      // Fallback to original function if v2 not available
+      // Fallback to v3 function
       if (error || !data) {
-        const result = await supabase
-          .rpc("check_achievements", { p_user_id: user.id } as never);
-        data = result.data;
-        error = result.error;
-      }
-
-      // If still failing, try v3 function
-      if (error || !data) {
-        const result = await supabase
+        const result3 = await supabase
           .rpc("check_achievements_v3", { p_user_id: user.id } as never);
-        data = result.data;
-        error = result.error;
+        data = result3.data;
+        error = result3.error;
+        
+        if (error) {
+          console.warn("check_achievements_v3 failed:", error.message);
+        }
       }
 
-      // Silently fail if no achievement functions are available
+      // Fallback to v4 function
       if (error || !data) {
-        console.warn("Achievement check skipped - functions not available");
+        const result4 = await supabase
+          .rpc("check_achievements_v4", { p_user_id: user.id } as never);
+        data = result4.data;
+        error = result4.error;
+        
+        if (error) {
+          console.warn("check_achievements_v4 failed:", error.message);
+        }
+      }
+
+      // Log final result
+      if (error || !data) {
+        console.error("All achievement check functions failed. Please run the fix_achievements.sql migration.");
         pendingAchievementCheck.forEach(p => p.resolve([]));
         pendingAchievementCheck = [];
         return [];
