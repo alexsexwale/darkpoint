@@ -34,47 +34,6 @@ const RARITY_LABELS: Record<Rarity, string> = {
   mythic: "Mythic",
 };
 
-// Particle background component to avoid hydration issues
-function ParticleBackground() {
-  const [particles, setParticles] = useState<Array<{ x: number; y: number; duration: number; delay: number }>>([]);
-
-  useEffect(() => {
-    // Only generate random values on client side
-    setParticles(
-      Array.from({ length: 30 }).map(() => ({
-        x: Math.random() * (typeof window !== "undefined" ? window.innerWidth : 1000),
-        y: Math.random() * (typeof window !== "undefined" ? window.innerHeight : 800),
-        duration: 3 + Math.random() * 2,
-        delay: Math.random() * 2,
-      }))
-    );
-  }, []);
-
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((particle, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-1 h-1 bg-[var(--color-main-1)]/30 rounded-full"
-          initial={{
-            x: particle.x,
-            y: particle.y,
-          }}
-          animate={{
-            y: [null, -100],
-            opacity: [0, 1, 0],
-          }}
-          transition={{
-            duration: particle.duration,
-            repeat: Infinity,
-            delay: particle.delay,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 interface RevealedProduct {
   id: string;
   name: string;
@@ -191,7 +150,27 @@ export function MysteryBoxRevealClient() {
       <div className="absolute inset-0 bg-gradient-radial from-[var(--color-dark-2)] to-[var(--color-dark-1)]" />
       
       {/* Animated particles background */}
-      <ParticleBackground />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {Array.from({ length: 30 }).map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 bg-[var(--color-main-1)]/30 rounded-full"
+            initial={{
+              x: Math.random() * (typeof window !== "undefined" ? window.innerWidth : 1000),
+              y: Math.random() * (typeof window !== "undefined" ? window.innerHeight : 800),
+            }}
+            animate={{
+              y: [null, -100],
+              opacity: [0, 1, 0],
+            }}
+            transition={{
+              duration: 3 + Math.random() * 2,
+              repeat: Infinity,
+              delay: Math.random() * 2,
+            }}
+          />
+        ))}
+      </div>
 
       <div className="relative z-10 container py-16">
         <AnimatePresence mode="wait">
