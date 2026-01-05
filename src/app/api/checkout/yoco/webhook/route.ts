@@ -174,184 +174,266 @@ async function sendAdminNotification(orderNumber: string, total: number, custome
 
 export async function POST(request: NextRequest) {
   console.log("----- Yoco Webhook Received -----");
+  console.log("Timestamp:", new Date().toISOString());
   
-  // Acknowledge immediately (webhook best practice)
-  const responsePromise = NextResponse.json({ received: true }, { status: 200 });
-
-  let bodyData: any = null;
+  let bodyData: unknown = null;
   
   try {
-    // Get raw body for signature verification (if needed)
+    // Get raw body for processing
     const rawBody = await request.text();
     bodyData = JSON.parse(rawBody);
 
     console.log("Webhook payload:", JSON.stringify(bodyData, null, 2));
 
     // Handle different webhook payload formats
-    let paymentData: any = null;
-    let metadata: any = null;
+    let paymentStatus: string = "";
+    let metadata: Record<string, string> | null = null;
     let amount: number = 0;
     let paymentId: string = "";
+    let checkoutId: string = "";
 
-    // Check if it's the standard Yoco webhook format
-    if (bodyData.type && bodyData.payload) {
-      const { type, payload } = bodyData;
+    const payload = bodyData as Record<string, unknown>;
+
+    // Check if it's the standard Yoco webhook format with type and payload
+    if (payload.type && payload.payload) {
+      const type = payload.type as string;
+      const innerPayload = payload.payload as Record<string, unknown>;
       
-      // Only process successful payment webhooks
-      if (type !== "payment.succeeded" || !payload || payload.status !== "succeeded") {
-        console.log("Ignoring non-succeeded webhook:", { type, status: payload?.status });
-        return responsePromise;
+      console.log("Webhook type:", type);
+      console.log("Inner payload status:", innerPayload?.status);
+      
+      // Handle payment.succeeded event
+      if (type === "payment.succeeded" && innerPayload?.status === "succeeded") {
+        paymentStatus = "paid";
+        metadata = (innerPayload.metadata || {}) as Record<string, string>;
+        amount = (innerPayload.amount || innerPayload.amountInCents || 0) as number;
+        paymentId = (innerPayload.id || "") as string;
+        checkoutId = (innerPayload.checkoutId || innerPayload.checkout_id || "") as string;
       }
-
-      paymentData = payload;
-      metadata = payload.metadata;
-      amount = payload.amount;
-      paymentId = payload.id;
+      // Handle checkout.completed event
+      else if (type === "checkout.completed" || type === "checkout.succeeded") {
+        paymentStatus = "paid";
+        metadata = (innerPayload.metadata || {}) as Record<string, string>;
+        amount = (innerPayload.amount || innerPayload.amountInCents || 0) as number;
+        paymentId = (innerPayload.paymentId || innerPayload.payment_id || "") as string;
+        checkoutId = (innerPayload.id || "") as string;
+      }
+      else {
+        console.log("Ignoring webhook type:", type, "with status:", innerPayload?.status);
+        return NextResponse.json({ received: true, ignored: true }, { status: 200 });
+      }
     } 
-    // Check if it's a direct payment object
-    else if (bodyData.status === "succeeded" || bodyData.state === "succeeded") {
-      paymentData = bodyData;
-      metadata = bodyData.metadata || bodyData.meta;
-      amount = bodyData.amount || bodyData.amountInCents;
-      paymentId = bodyData.id || bodyData.paymentId;
+    // Check if it's a direct payment/checkout object
+    else if (payload.status === "succeeded" || payload.state === "succeeded") {
+      paymentStatus = "paid";
+      metadata = (payload.metadata || payload.meta || {}) as Record<string, string>;
+      amount = (payload.amount || payload.amountInCents || 0) as number;
+      paymentId = (payload.id || payload.paymentId || "") as string;
+      checkoutId = (payload.checkoutId || payload.checkout_id || "") as string;
     }
     else {
-      console.log("Unknown webhook format:", bodyData);
-      return responsePromise;
+      console.log("Unknown webhook format or non-success status:", payload.type || payload.status);
+      return NextResponse.json({ received: true, ignored: true }, { status: 200 });
     }
 
-    console.log("Processing payment:", {
+    console.log("Extracted payment data:", {
+      paymentStatus,
       paymentId,
+      checkoutId,
       metadata,
-      amount: amount / 100,
+      amountInCents: amount,
+      amountInRands: amount / 100,
     });
 
     // Create Supabase admin client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    let order: any = null;
+    // Use the RPC function to find the order
+    const { data: findResult, error: findError } = await supabase.rpc("find_order_for_payment", {
+      p_order_id: metadata?.orderId || null,
+      p_order_number: metadata?.orderNumber || null,
+      p_yoco_checkout_id: checkoutId || null,
+      p_payment_reference: metadata?.transactionId || null,
+    });
 
-    // Try to find order by metadata first
-    if (metadata?.orderId) {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("id", metadata.orderId)
-        .single();
+    console.log("Find order result:", findResult, "Error:", findError);
+
+    // If RPC doesn't exist yet, fall back to direct queries
+    let order: Record<string, unknown> | null = null;
+    
+    if (findResult?.success && findResult?.order) {
+      order = findResult.order;
+    } else {
+      // Fallback: Direct queries
+      console.log("Falling back to direct queries...");
       
-      if (!error && data) {
-        order = data;
+      // Try by order ID from metadata
+      if (metadata?.orderId) {
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", metadata.orderId)
+          .single();
+        if (data) order = data;
       }
-    }
 
-    // Fallback: Try to find by order number
-    if (!order && metadata?.orderNumber) {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("order_number", metadata.orderNumber)
-        .single();
-      
-      if (!error && data) {
-        order = data;
+      // Try by order number from metadata
+      if (!order && metadata?.orderNumber) {
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("order_number", metadata.orderNumber)
+          .single();
+        if (data) order = data;
       }
-    }
 
-    // Fallback: Try to find by payment reference (checkout ID or payment ID)
-    if (!order && paymentId) {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .or(`yoco_checkout_id.eq.${paymentId},yoco_payment_id.eq.${paymentId},payment_reference.eq.${paymentId}`)
-        .eq("payment_status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      
-      if (!error && data) {
-        order = data;
+      // Try by checkout ID
+      if (!order && checkoutId) {
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("yoco_checkout_id", checkoutId)
+          .single();
+        if (data) order = data;
+      }
+
+      // Try by payment reference
+      if (!order && metadata?.transactionId) {
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("payment_reference", metadata.transactionId)
+          .single();
+        if (data) order = data;
+      }
+
+      // Last resort: Find most recent pending order with matching amount
+      if (!order && amount > 0) {
+        const expectedRands = amount / 100;
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("payment_status", "pending")
+          .gte("total", expectedRands - 1)
+          .lte("total", expectedRands + 1)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (data) {
+          order = data;
+          console.log("Found order by amount match:", data.order_number);
+        }
       }
     }
 
     if (!order) {
-      console.error("Order not found. Tried:", {
+      console.error("Order not found. Search criteria:", {
         orderId: metadata?.orderId,
         orderNumber: metadata?.orderNumber,
-        paymentId,
+        checkoutId,
+        transactionId: metadata?.transactionId,
+        amount: amount / 100,
       });
-      return responsePromise;
+      return NextResponse.json({ received: true, error: "Order not found" }, { status: 200 });
     }
+
+    console.log("Found order:", {
+      id: order.id,
+      order_number: order.order_number,
+      current_payment_status: order.payment_status,
+      total: order.total,
+    });
 
     // Check if already processed (idempotency)
     if (order.payment_status === "paid") {
       console.log("Order already marked as paid:", order.order_number);
-      return responsePromise;
+      return NextResponse.json({ received: true, already_processed: true }, { status: 200 });
     }
 
-    // Verify amount matches
-    const expectedCents = Math.round(order.total * 100);
-    if (Math.abs(expectedCents - amount) > 1) {
+    // Verify amount matches (within 1 rand tolerance)
+    const expectedCents = Math.round((order.total as number) * 100);
+    if (Math.abs(expectedCents - amount) > 100) {
       console.error("Amount mismatch:", { expected: expectedCents, received: amount });
-      return responsePromise;
+      return NextResponse.json({ received: true, error: "Amount mismatch" }, { status: 200 });
     }
 
-    // Update order status
-    const updateData: any = {
-      status: "processing",
-      payment_status: "paid",
-      paid_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    if (paymentId) {
-      updateData.yoco_payment_id = paymentId;
-    }
-
-    // Also update checkout ID if we have it
-    if (paymentData.checkoutId || paymentData.checkout_id) {
-      updateData.yoco_checkout_id = paymentData.checkoutId || paymentData.checkout_id;
-    }
-
-    const { error: updateError, data: updatedOrder } = await supabase
-      .from("orders")
-      .update(updateData)
-      .eq("id", order.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error("Failed to update order:", {
-        error: updateError,
-        orderId: order.id,
-        orderNumber: order.order_number,
-        updateData,
-      });
-      return responsePromise;
-    }
-
-    console.log("Order updated successfully:", {
-      orderNumber: order.order_number,
-      orderId: order.id,
-      paymentStatus: updatedOrder?.payment_status,
+    // Try to use the RPC function first
+    const { data: updateResult, error: updateRpcError } = await supabase.rpc("update_order_payment_status", {
+      p_order_id: order.id as string,
+      p_payment_status: paymentStatus,
+      p_yoco_payment_id: paymentId || null,
+      p_yoco_checkout_id: checkoutId || null,
     });
 
-    // Get user email for notification
-    let customerEmail = order.billing_email;
-    let customerName = order.billing_name || "Customer";
+    console.log("RPC update result:", updateResult, "Error:", updateRpcError);
 
-    if (order.user_id) {
-      const { data: userData } = await supabase
-        .from("user_profiles")
-        .select("email")
-        .eq("id", order.user_id)
-        .single();
+    // Fallback to direct update if RPC fails
+    if (updateRpcError || !updateResult?.success) {
+      console.log("RPC failed, falling back to direct update...");
       
-      if (userData?.email) {
-        customerEmail = userData.email;
-      }
+      const updateData = {
+        status: "processing",
+        payment_status: paymentStatus,
+        paid_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        yoco_payment_id: paymentId || order.yoco_payment_id,
+        yoco_checkout_id: checkoutId || order.yoco_checkout_id,
+      };
 
-      // Also get user from auth
-      const { data: authUser } = await supabase.auth.admin.getUserById(order.user_id);
+      console.log("Direct update data:", updateData);
+
+      const { error: directUpdateError, data: updatedOrder } = await supabase
+        .from("orders")
+        .update(updateData)
+        .eq("id", order.id)
+        .select()
+        .single();
+
+      if (directUpdateError) {
+        console.error("Failed to update order:", {
+          error: directUpdateError,
+          code: directUpdateError.code,
+          message: directUpdateError.message,
+          details: directUpdateError.details,
+          hint: directUpdateError.hint,
+          orderId: order.id,
+          orderNumber: order.order_number,
+        });
+        
+        // Try raw SQL as last resort
+        console.log("Attempting raw SQL update...");
+        const { error: rawError } = await supabase.rpc("update_order_payment_status", {
+          p_order_id: order.id as string,
+          p_payment_status: "paid",
+          p_yoco_payment_id: paymentId,
+          p_yoco_checkout_id: checkoutId,
+        });
+        
+        if (rawError) {
+          console.error("Raw SQL update also failed:", rawError);
+          return NextResponse.json({ 
+            received: true, 
+            error: "Failed to update order",
+            details: directUpdateError.message 
+          }, { status: 200 });
+        }
+      } else {
+        console.log("Direct update successful:", updatedOrder?.payment_status);
+      }
+    } else {
+      console.log("RPC update successful:", updateResult);
+    }
+
+    console.log("Order payment status updated to:", paymentStatus, "for order:", order.order_number);
+
+    // Get user email for notification
+    let customerEmail = order.billing_email as string;
+    let customerName = (order.billing_name as string) || "Customer";
+    const userId = order.user_id as string | null;
+
+    if (userId) {
+      // Get user email
+      const { data: authUser } = await supabase.auth.admin.getUserById(userId);
       if (authUser?.user?.email) {
         customerEmail = authUser.user.email;
       }
@@ -359,22 +441,24 @@ export async function POST(request: NextRequest) {
       // Update user stats
       try {
         await supabase.rpc("update_user_order_stats", {
-          p_user_id: order.user_id,
-          p_order_total: order.total - (order.discount_amount || 0),
+          p_user_id: userId,
+          p_order_total: (order.total as number) - ((order.discount_amount as number) || 0),
         });
+        console.log("User stats updated for:", userId);
       } catch (err) {
         console.warn("Failed to update user stats:", err);
       }
 
       // Award XP for purchase
       try {
-        const xpAmount = Math.floor((order.total - (order.discount_amount || 0)) / 10); // 1 XP per R10 spent
+        const xpAmount = Math.floor(((order.total as number) - ((order.discount_amount as number) || 0)) / 10);
         await supabase.rpc("add_xp", {
-          p_user_id: order.user_id,
+          p_user_id: userId,
           p_action: "purchase",
-          p_amount: Math.max(xpAmount, 10), // Minimum 10 XP per purchase
+          p_amount: Math.max(xpAmount, 10),
           p_description: `Purchase: Order ${order.order_number}`,
         });
+        console.log("XP awarded:", Math.max(xpAmount, 10));
       } catch (err) {
         console.warn("Failed to award XP:", err);
       }
@@ -382,7 +466,7 @@ export async function POST(request: NextRequest) {
       // Check and award achievements after purchase
       try {
         const achievementResult = await supabase.rpc("check_achievements", {
-          p_user_id: order.user_id,
+          p_user_id: userId,
         });
         if (achievementResult.data?.unlocked?.length > 0) {
           console.log("Achievements unlocked:", achievementResult.data.unlocked);
@@ -392,13 +476,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if user should get bonus spin (R1000+ contribution)
-      const contribution = order.total - (order.discount_amount || 0) - (order.shipping_cost || 0);
+      const contribution = (order.total as number) - ((order.discount_amount as number) || 0) - ((order.shipping_cost as number) || 0);
       if (contribution >= 1000) {
         try {
           await supabase.rpc("grant_bonus_spin", {
-            p_user_id: order.user_id,
+            p_user_id: userId,
             p_reason: `Big spender bonus: Order ${order.order_number}`,
           });
+          console.log("Bonus spin granted for big spender");
         } catch (err) {
           console.warn("Failed to grant bonus spin:", err);
         }
@@ -414,6 +499,7 @@ export async function POST(request: NextRequest) {
             used_on_order_id: order.id,
           } as never)
           .eq("id", order.applied_reward_id);
+        console.log("Reward marked as used:", order.applied_reward_id);
       }
     }
 
@@ -421,29 +507,38 @@ export async function POST(request: NextRequest) {
     if (customerEmail) {
       await sendOrderConfirmationEmail(
         customerEmail,
-        order.order_number,
-        order.total,
+        order.order_number as string,
+        order.total as number,
         customerName
       );
     }
 
     // Send admin notification
-    await sendAdminNotification(order.order_number, order.total, customerEmail || "Unknown");
+    await sendAdminNotification(order.order_number as string, order.total as number, customerEmail || "Unknown");
 
-    console.log("Payment processing complete:", order.order_number);
+    console.log("----- Payment processing complete -----");
+    console.log("Order:", order.order_number);
+    console.log("Status: paid");
+
+    return NextResponse.json({ 
+      received: true, 
+      success: true,
+      orderNumber: order.order_number 
+    }, { status: 200 });
 
   } catch (error) {
     console.error("Webhook processing error:", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      bodyData: bodyData ? JSON.stringify(bodyData).substring(0, 500) : "No body data",
+      bodyData: bodyData ? JSON.stringify(bodyData).substring(0, 1000) : "No body data",
     });
     
-    // Still return success to prevent Yoco from retrying if it's a permanent error
-    // But log it for debugging
+    // Still return 200 to prevent Yoco from retrying
+    return NextResponse.json({ 
+      received: true, 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    }, { status: 200 });
   }
-
-  return responsePromise;
 }
 
 // Handle GET requests (for webhook verification and debugging)
@@ -451,11 +546,11 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const orderNumber = searchParams.get("order");
   const orderId = searchParams.get("orderId");
+  const markPaid = searchParams.get("markPaid");
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   if (orderNumber || orderId) {
-    // Debug endpoint to check order payment status
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
     let query = supabase.from("orders").select("*");
     
     if (orderId) {
@@ -472,6 +567,36 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Debug endpoint to manually mark order as paid
+    if (markPaid === "true") {
+      const { data: updateResult, error: updateError } = await supabase.rpc("update_order_payment_status", {
+        p_order_id: order.id,
+        p_payment_status: "paid",
+        p_yoco_payment_id: null,
+        p_yoco_checkout_id: null,
+      });
+
+      if (updateError) {
+        // Fallback to direct update
+        await supabase
+          .from("orders")
+          .update({
+            payment_status: "paid",
+            status: "processing",
+            paid_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", order.id);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Order marked as paid",
+        orderNumber: order.order_number,
+        updateResult,
+      });
+    }
     
     return NextResponse.json({
       orderNumber: order.order_number,
@@ -484,12 +609,15 @@ export async function GET(request: NextRequest) {
       total: order.total,
       createdAt: order.created_at,
       paidAt: order.paid_at,
+      updatedAt: order.updated_at,
     });
   }
 
   return NextResponse.json({ 
     status: "Yoco webhook endpoint active",
-    message: "Add ?order=ORDER_NUMBER or ?orderId=ORDER_ID to check order status"
+    usage: {
+      checkOrder: "GET ?order=ORDER_NUMBER or ?orderId=ORDER_ID",
+      markPaid: "GET ?order=ORDER_NUMBER&markPaid=true (debug only)",
+    }
   });
 }
-
