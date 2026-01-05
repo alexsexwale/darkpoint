@@ -379,6 +379,18 @@ export async function POST(request: NextRequest) {
         console.warn("Failed to award XP:", err);
       }
 
+      // Check and award achievements after purchase
+      try {
+        const achievementResult = await supabase.rpc("check_achievements", {
+          p_user_id: order.user_id,
+        });
+        if (achievementResult.data?.unlocked?.length > 0) {
+          console.log("Achievements unlocked:", achievementResult.data.unlocked);
+        }
+      } catch (err) {
+        console.warn("Failed to check achievements:", err);
+      }
+
       // Check if user should get bonus spin (R1000+ contribution)
       const contribution = order.total - (order.discount_amount || 0) - (order.shipping_cost || 0);
       if (contribution >= 1000) {

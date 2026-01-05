@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import Confetti from "react-confetti";
 import { formatPrice } from "@/lib/utils";
+import { useGamificationStore } from "@/stores";
 
 interface OrderData {
   orderNumber: string;
@@ -31,14 +32,26 @@ export function PaymentSuccessClient() {
     shippingAddress: "",
   });
 
+  const { checkAchievements, fetchUserProfile } = useGamificationStore();
+
   useEffect(() => {
     // Set window size for confetti
     setWindowSize({ width: window.innerWidth, height: window.innerHeight });
 
     // Stop confetti after 5 seconds
     const timer = setTimeout(() => setShowConfetti(false), 5000);
-    return () => clearTimeout(timer);
-  }, []);
+    
+    // Check achievements after purchase (delayed to allow webhook to process)
+    const achievementTimer = setTimeout(async () => {
+      await fetchUserProfile(); // Refresh user stats first
+      await checkAchievements(); // Then check for new achievements
+    }, 2000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(achievementTimer);
+    };
+  }, [checkAchievements, fetchUserProfile]);
 
   // Fetch order details (optional - order details will be in the confirmation email)
   useEffect(() => {
