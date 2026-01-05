@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AccountLayout, ReturnRequestModal, type ReturnRequestData } from "@/components/account";
 import { Button } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
-import { useCartStore } from "@/stores";
+import { useCartStore, useAccountStore } from "@/stores";
 
 interface OrderItem {
   id: string;
@@ -51,130 +51,62 @@ interface OrderDetails {
   trackingUrl?: string;
 }
 
-// Mock order data - in a real app this would come from an API
-const mockOrders: Record<string, OrderDetails> = {
-  "24": {
-    id: "24",
-    orderNumber: "24",
-    date: "2024-12-15T10:30:00Z",
-    status: "Processing",
-    paymentMethod: "Credit Card (Visa ending in 4242)",
-    items: [
-      {
-        id: "1",
-        name: "Wireless Earbuds Pro",
-        image: "/images/product-1-sm.png",
-        quantity: 2,
-        price: 499.99,
-        variant: "Black",
-      },
-      {
-        id: "2",
-        name: "Smart Watch Ultra",
-        image: "/images/product-2-sm.png",
-        quantity: 1,
-        price: 50.01,
-      },
-    ],
-    subtotal: 1049.99,
-    shipping: 0,
-    tax: 157.50,
-    total: 1207.49,
+// Helper function to convert database order to OrderDetails format
+function convertOrderToDetails(order: any): OrderDetails | null {
+  if (!order) return null;
+
+  const statusMap: Record<string, OrderDetails["status"]> = {
+    pending: "Processing",
+    processing: "Processing",
+    shipped: "Shipped",
+    delivered: "Delivered",
+    cancelled: "Cancelled",
+    refunded: "Refunded",
+  };
+
+  return {
+    id: order.id,
+    orderNumber: order.order_number,
+    date: order.created_at,
+    status: statusMap[order.status] || "Processing",
+    paymentMethod: order.payment_method === "yoco" 
+      ? `Yoco (${order.payment_status === "paid" ? "Paid" : "Pending"})`
+      : order.payment_method || "Unknown",
+    items: (order.items || []).map((item: any) => ({
+      id: item.id,
+      name: item.product_name || "Unknown Product",
+      image: item.product_image || "/images/placeholder.png",
+      quantity: item.quantity || 1,
+      price: item.unit_price || 0,
+      variant: item.variant_name || undefined,
+    })),
+    subtotal: order.subtotal || 0,
+    shipping: order.shipping_cost || 0,
+    tax: order.tax_amount || 0,
+    total: order.total || 0,
     shippingAddress: {
-      name: "John Doe",
-      address1: "123 Main Street",
-      city: "Cape Town",
-      province: "Western Cape",
-      postalCode: "8001",
-      country: "South Africa",
-      phone: "+27 21 123 4567",
+      name: order.shipping_name || "",
+      address1: order.shipping_address_line1 || "",
+      address2: order.shipping_address_line2 || undefined,
+      city: order.shipping_city || "",
+      province: order.shipping_province || "",
+      postalCode: order.shipping_postal_code || "",
+      country: order.shipping_country || "South Africa",
+      phone: order.shipping_phone || undefined,
     },
     billingAddress: {
-      name: "John Doe",
-      address1: "123 Main Street",
-      city: "Cape Town",
-      province: "Western Cape",
-      postalCode: "8001",
-      country: "South Africa",
+      name: order.billing_name || "",
+      address1: order.billing_address_line1 || "",
+      address2: order.billing_address_line2 || undefined,
+      city: order.billing_city || "",
+      province: order.billing_province || "",
+      postalCode: order.billing_postal_code || "",
+      country: order.billing_country || "South Africa",
     },
-  },
-  "18": {
-    id: "18",
-    orderNumber: "18",
-    date: "2024-12-10T14:20:00Z",
-    status: "Shipped",
-    paymentMethod: "PayPal",
-    items: [
-      {
-        id: "3",
-        name: "Premium Bluetooth Speaker",
-        image: "/images/product-3-sm.png",
-        quantity: 1,
-        price: 2500.0,
-      },
-    ],
-    subtotal: 2500.0,
-    shipping: 0,
-    tax: 375.0,
-    total: 2875.0,
-    shippingAddress: {
-      name: "John Doe",
-      address1: "456 Delivery Lane",
-      address2: "Unit 5",
-      city: "Johannesburg",
-      province: "Gauteng",
-      postalCode: "2000",
-      country: "South Africa",
-    },
-    billingAddress: {
-      name: "John Doe",
-      address1: "123 Main Street",
-      city: "Cape Town",
-      province: "Western Cape",
-      postalCode: "8001",
-      country: "South Africa",
-    },
-    trackingNumber: "ZA123456789",
-    trackingUrl: "https://track.example.com/ZA123456789",
-  },
-  "12": {
-    id: "12",
-    orderNumber: "12",
-    date: "2024-11-28T09:15:00Z",
-    status: "Delivered",
-    paymentMethod: "Credit Card (Mastercard ending in 5555)",
-    items: [
-      {
-        id: "4",
-        name: "USB-C Charging Hub",
-        image: "/images/product-4-sm.png",
-        quantity: 2,
-        price: 449.50,
-      },
-    ],
-    subtotal: 899.0,
-    shipping: 50.0,
-    tax: 142.35,
-    total: 1091.35,
-    shippingAddress: {
-      name: "John Doe",
-      address1: "123 Main Street",
-      city: "Cape Town",
-      province: "Western Cape",
-      postalCode: "8001",
-      country: "South Africa",
-    },
-    billingAddress: {
-      name: "John Doe",
-      address1: "123 Main Street",
-      city: "Cape Town",
-      province: "Western Cape",
-      postalCode: "8001",
-      country: "South Africa",
-    },
-    trackingNumber: "ZA987654321",
-  },
-};
+    trackingNumber: order.tracking_number || undefined,
+    trackingUrl: order.tracking_url || undefined,
+  };
+}
 
 const statusConfig: Record<
   OrderDetails["status"],
@@ -232,9 +164,29 @@ interface OrderDetailClientProps {
 }
 
 export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
-  const order = mockOrders[orderId];
+  const { fetchOrderById } = useAccountStore();
+  const [order, setOrder] = useState<OrderDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const { openCart } = useCartStore();
+
+  useEffect(() => {
+    async function loadOrder() {
+      setIsLoading(true);
+      try {
+        const dbOrder = await fetchOrderById(orderId);
+        if (dbOrder) {
+          const convertedOrder = convertOrderToDetails(dbOrder);
+          setOrder(convertedOrder);
+        }
+      } catch (error) {
+        console.error("Error loading order:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadOrder();
+  }, [orderId, fetchOrderById]);
 
   // Check if return is eligible (within 30 days of delivery)
   const isReturnEligible = () => {
@@ -264,6 +216,18 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     alert("Items have been added to your cart!");
     openCart();
   };
+
+  if (isLoading) {
+    return (
+      <AccountLayout title="Loading Order">
+        <div className="space-y-4 animate-pulse">
+          <div className="h-8 bg-[var(--color-dark-3)] rounded w-48" />
+          <div className="h-32 bg-[var(--color-dark-2)] rounded" />
+          <div className="h-64 bg-[var(--color-dark-2)] rounded" />
+        </div>
+      </AccountLayout>
+    );
+  }
 
   if (!order) {
     return (

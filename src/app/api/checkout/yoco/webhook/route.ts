@@ -178,46 +178,107 @@ export async function POST(request: NextRequest) {
   // Acknowledge immediately (webhook best practice)
   const responsePromise = NextResponse.json({ received: true }, { status: 200 });
 
+  let bodyData: any = null;
+  
   try {
     // Get raw body for signature verification (if needed)
     const rawBody = await request.text();
-    const bodyData = JSON.parse(rawBody);
+    bodyData = JSON.parse(rawBody);
 
     console.log("Webhook payload:", JSON.stringify(bodyData, null, 2));
 
-    const { type, payload } = bodyData || {};
+    // Handle different webhook payload formats
+    let paymentData: any = null;
+    let metadata: any = null;
+    let amount: number = 0;
+    let paymentId: string = "";
 
-    // Only process successful payment webhooks
-    if (type !== "payment.succeeded" || !payload || payload.status !== "succeeded") {
-      console.log("Ignoring non-succeeded webhook:", { type, status: payload?.status });
+    // Check if it's the standard Yoco webhook format
+    if (bodyData.type && bodyData.payload) {
+      const { type, payload } = bodyData;
+      
+      // Only process successful payment webhooks
+      if (type !== "payment.succeeded" || !payload || payload.status !== "succeeded") {
+        console.log("Ignoring non-succeeded webhook:", { type, status: payload?.status });
+        return responsePromise;
+      }
+
+      paymentData = payload;
+      metadata = payload.metadata;
+      amount = payload.amount;
+      paymentId = payload.id;
+    } 
+    // Check if it's a direct payment object
+    else if (bodyData.status === "succeeded" || bodyData.state === "succeeded") {
+      paymentData = bodyData;
+      metadata = bodyData.metadata || bodyData.meta;
+      amount = bodyData.amount || bodyData.amountInCents;
+      paymentId = bodyData.id || bodyData.paymentId;
+    }
+    else {
+      console.log("Unknown webhook format:", bodyData);
       return responsePromise;
     }
 
-    const { metadata, amount } = payload;
-    
-    if (!metadata?.orderId || !metadata?.orderNumber) {
-      console.error("Missing metadata in webhook payload");
-      return responsePromise;
-    }
-
-    console.log("Processing successful payment:", {
-      orderId: metadata.orderId,
-      orderNumber: metadata.orderNumber,
+    console.log("Processing payment:", {
+      paymentId,
+      metadata,
       amount: amount / 100,
     });
 
     // Create Supabase admin client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch the order
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("id", metadata.orderId)
-      .single();
+    let order: any = null;
 
-    if (orderError || !order) {
-      console.error("Order not found:", metadata.orderId);
+    // Try to find order by metadata first
+    if (metadata?.orderId) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("id", metadata.orderId)
+        .single();
+      
+      if (!error && data) {
+        order = data;
+      }
+    }
+
+    // Fallback: Try to find by order number
+    if (!order && metadata?.orderNumber) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("order_number", metadata.orderNumber)
+        .single();
+      
+      if (!error && data) {
+        order = data;
+      }
+    }
+
+    // Fallback: Try to find by payment reference (checkout ID or payment ID)
+    if (!order && paymentId) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .or(`yoco_checkout_id.eq.${paymentId},yoco_payment_id.eq.${paymentId},payment_reference.eq.${paymentId}`)
+        .eq("payment_status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (!error && data) {
+        order = data;
+      }
+    }
+
+    if (!order) {
+      console.error("Order not found. Tried:", {
+        orderId: metadata?.orderId,
+        orderNumber: metadata?.orderNumber,
+        paymentId,
+      });
       return responsePromise;
     }
 
@@ -235,22 +296,44 @@ export async function POST(request: NextRequest) {
     }
 
     // Update order status
-    const { error: updateError } = await supabase
+    const updateData: any = {
+      status: "processing",
+      payment_status: "paid",
+      paid_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (paymentId) {
+      updateData.yoco_payment_id = paymentId;
+    }
+
+    // Also update checkout ID if we have it
+    if (paymentData.checkoutId || paymentData.checkout_id) {
+      updateData.yoco_checkout_id = paymentData.checkoutId || paymentData.checkout_id;
+    }
+
+    const { error: updateError, data: updatedOrder } = await supabase
       .from("orders")
-      .update({
-        status: "processing",
-        payment_status: "paid",
-        paid_at: new Date().toISOString(),
-        yoco_payment_id: payload.id,
-      } as never)
-      .eq("id", order.id);
+      .update(updateData)
+      .eq("id", order.id)
+      .select()
+      .single();
 
     if (updateError) {
-      console.error("Failed to update order:", updateError);
+      console.error("Failed to update order:", {
+        error: updateError,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        updateData,
+      });
       return responsePromise;
     }
 
-    console.log("Order updated successfully:", order.order_number);
+    console.log("Order updated successfully:", {
+      orderNumber: order.order_number,
+      orderId: order.id,
+      paymentStatus: updatedOrder?.payment_status,
+    });
 
     // Get user email for notification
     let customerEmail = order.billing_email;
@@ -338,14 +421,63 @@ export async function POST(request: NextRequest) {
     console.log("Payment processing complete:", order.order_number);
 
   } catch (error) {
-    console.error("Webhook processing error:", error);
+    console.error("Webhook processing error:", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      bodyData: bodyData ? JSON.stringify(bodyData).substring(0, 500) : "No body data",
+    });
+    
+    // Still return success to prevent Yoco from retrying if it's a permanent error
+    // But log it for debugging
   }
 
   return responsePromise;
 }
 
-// Handle GET requests (for webhook verification if needed)
-export async function GET() {
-  return NextResponse.json({ status: "Yoco webhook endpoint active" });
+// Handle GET requests (for webhook verification and debugging)
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const orderNumber = searchParams.get("order");
+  const orderId = searchParams.get("orderId");
+
+  if (orderNumber || orderId) {
+    // Debug endpoint to check order payment status
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    let query = supabase.from("orders").select("*");
+    
+    if (orderId) {
+      query = query.eq("id", orderId);
+    } else if (orderNumber) {
+      query = query.eq("order_number", orderNumber);
+    }
+    
+    const { data: order, error } = await query.single();
+    
+    if (error || !order) {
+      return NextResponse.json(
+        { error: "Order not found", orderNumber, orderId },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({
+      orderNumber: order.order_number,
+      orderId: order.id,
+      paymentStatus: order.payment_status,
+      status: order.status,
+      yocoCheckoutId: order.yoco_checkout_id,
+      yocoPaymentId: order.yoco_payment_id,
+      paymentReference: order.payment_reference,
+      total: order.total,
+      createdAt: order.created_at,
+      paidAt: order.paid_at,
+    });
+  }
+
+  return NextResponse.json({ 
+    status: "Yoco webhook endpoint active",
+    message: "Add ?order=ORDER_NUMBER or ?orderId=ORDER_ID to check order status"
+  });
 }
 
