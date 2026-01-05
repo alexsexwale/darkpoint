@@ -39,10 +39,11 @@ function AchievementCardSkeleton() {
 }
 
 export function AchievementsPageClient() {
-  const { userProfile, achievements, achievementStats, fetchAchievements, isInitialized, isLoading } = useGamificationStore();
+  const { userProfile, achievements, achievementStats, fetchAchievements, checkAchievements, fetchUserProfile, isInitialized, isLoading } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { openSignIn } = useUIStore();
   const [isFetching, setIsFetching] = useState(false);
+  const [hasCheckedAchievements, setHasCheckedAchievements] = useState(false);
 
   // Fetch achievements when component mounts
   useEffect(() => {
@@ -51,6 +52,24 @@ export function AchievementsPageClient() {
       fetchAchievements().finally(() => setIsFetching(false));
     }
   }, [isInitialized, isAuthenticated, achievements.length, fetchAchievements, isFetching]);
+
+  // Check and award achievements when page loads
+  useEffect(() => {
+    if (isInitialized && isAuthenticated && !hasCheckedAchievements && !isFetching) {
+      setHasCheckedAchievements(true);
+      
+      // First refresh user profile to get latest stats
+      fetchUserProfile().then(() => {
+        // Then check for achievements
+        checkAchievements().then((unlocked) => {
+          // If any achievements were unlocked, refresh the achievements list
+          if (unlocked && unlocked.length > 0) {
+            fetchAchievements();
+          }
+        });
+      });
+    }
+  }, [isInitialized, isAuthenticated, hasCheckedAchievements, isFetching, fetchUserProfile, checkAchievements, fetchAchievements]);
 
   // Determine if we're in a loading state
   const showSkeleton = !isInitialized || isLoading || isFetching || (isAuthenticated && achievements.length === 0);
