@@ -3,6 +3,14 @@
 -- Ensures new users receive their 10% off coupon
 -- ================================================
 
+-- Step 0: Create deleted_accounts table if not exists
+CREATE TABLE IF NOT EXISTS deleted_accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_deleted_accounts_email ON deleted_accounts(email);
+
 -- Step 1: Add description column to user_coupons if missing
 ALTER TABLE user_coupons ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE user_coupons ADD COLUMN IF NOT EXISTS is_used BOOLEAN DEFAULT FALSE;

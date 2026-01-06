@@ -94,14 +94,22 @@ interface AddXPResponse {
 }
 
 interface XPMultiplier {
-  id: string;
-  multiplier: number;
-  source: string;
-  source_description: string | null;
-  starts_at: string;
-  expires_at: string;
+  // New column names from updated function
+  multiplier_id: string;
+  multiplier_value: number;
+  multiplier_source: string;
+  multiplier_description: string | null;
+  multiplier_starts_at: string;
+  multiplier_expires_at: string;
   time_remaining_seconds: number;
   xp_earned_with_multiplier: number;
+  // Aliases for backwards compatibility
+  id?: string;
+  multiplier?: number;
+  source?: string;
+  source_description?: string | null;
+  starts_at?: string;
+  expires_at?: string;
 }
 
 interface GrantMultiplierResponse {
@@ -1431,19 +1439,31 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
           if (error) {
             console.warn("Could not fetch active multiplier:", error);
+            set({ activeMultiplier: null });
             return;
           }
 
           // RPC returns an array, get first result
-          const result = (data as XPMultiplier[] | null)?.[0] || null;
+          const rawResult = (data as XPMultiplier[] | null)?.[0] || null;
           
-          if (result && result.time_remaining_seconds > 0) {
+          if (rawResult && rawResult.time_remaining_seconds > 0) {
+            // Map new column names to interface (for backwards compatibility)
+            const result: XPMultiplier = {
+              ...rawResult,
+              id: rawResult.multiplier_id,
+              multiplier: rawResult.multiplier_value,
+              source: rawResult.multiplier_source,
+              source_description: rawResult.multiplier_description,
+              starts_at: rawResult.multiplier_starts_at,
+              expires_at: rawResult.multiplier_expires_at,
+            };
             set({ activeMultiplier: result });
           } else {
             set({ activeMultiplier: null });
           }
         } catch (error) {
           console.warn("Error fetching active multiplier:", error);
+          set({ activeMultiplier: null });
         }
       },
 
