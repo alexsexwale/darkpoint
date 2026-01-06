@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NavLinkEffect } from "@/components/ui/NavLinkEffect";
 import { useGamificationStore } from "@/stores";
@@ -51,8 +51,14 @@ interface NavLinksProps {
 
 export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { hasAnyBadge } = useGamificationStore();
   const isVIP = hasAnyBadge();
+
+  // Build current full URL for comparison
+  const currentUrl = searchParams.toString() 
+    ? `${pathname}?${searchParams.toString()}` 
+    : pathname;
 
   // Filter out VIP-only links if user doesn't have a badge
   const navLinks = baseNavLinks.map(link => ({
@@ -60,12 +66,20 @@ export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
     children: link.children?.filter(child => !child.vipOnly || isVIP),
   }));
 
-  // Check if a child link is active - use EXACT match only
-  // This prevents /rewards from being highlighted when on /rewards/spin
+  // Check if a child link is active - compare full URL including query params
   const isChildActive = (href: string) => {
-    const basePath = href.split("?")[0];
-    // Exact match only - each dropdown item should only highlight its own page
-    return pathname === basePath;
+    // For links with query params, compare the full URL
+    if (href.includes("?")) {
+      return currentUrl === href;
+    }
+    
+    // Special case for /store (All Products) - only highlight if no category filter is active
+    if (href === "/store") {
+      return pathname === "/store" && !searchParams.has("category");
+    }
+    
+    // For other paths without query params (like /store/mystery-boxes), just match the pathname
+    return pathname === href;
   };
 
   // Check if a parent link should be highlighted

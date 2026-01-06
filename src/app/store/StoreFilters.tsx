@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useCallback, useTransition, useEffect } from "react";
+import { useState, useCallback, useTransition, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useGamificationStore, useAuthStore } from "@/stores";
 
 interface Category {
   id: string;
@@ -38,6 +39,11 @@ export function StoreFilters({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   
+  // Quest tracking
+  const { updateQuestProgress, logActivity } = useGamificationStore();
+  const { isAuthenticated } = useAuthStore();
+  const trackedCategories = useRef<Set<string>>(new Set());
+  
   // Local state for controlled inputs
   const [searchValue, setSearchValue] = useState(currentSearch || "");
   const [priceRange, setPriceRange] = useState<[number, number]>([
@@ -51,6 +57,20 @@ export function StoreFilters({
     setSearchValue(currentSearch || "");
     setPriceRange([currentMinPrice ?? PRICE_MIN, currentMaxPrice ?? PRICE_MAX]);
   }, [currentSearch, currentMinPrice, currentMaxPrice]);
+
+  // Track category from URL on page load
+  useEffect(() => {
+    if (isAuthenticated && currentCategory && !trackedCategories.current.has(currentCategory)) {
+      trackedCategories.current.add(currentCategory);
+      
+      logActivity(`browse_category_${currentCategory}`).then((isNewActivity) => {
+        if (isNewActivity) {
+          console.log(`[Quest] Tracking category browse from URL: ${currentCategory}`);
+          updateQuestProgress("browse_category", 1);
+        }
+      });
+    }
+  }, [isAuthenticated, currentCategory, logActivity, updateQuestProgress]);
 
   // Create query string helper
   const createQueryString = useCallback(
@@ -88,6 +108,19 @@ export function StoreFilters({
 
   const handleCategoryChange = (categoryId: string) => {
     navigateWithParams({ category: categoryId === "all" ? undefined : categoryId });
+    
+    // Track category browsing for quest progress
+    if (isAuthenticated && categoryId !== "all" && !trackedCategories.current.has(categoryId)) {
+      trackedCategories.current.add(categoryId);
+      
+      // Log activity to track unique categories browsed
+      logActivity(`browse_category_${categoryId}`).then((isNewActivity) => {
+        if (isNewActivity) {
+          console.log(`[Quest] Tracking category browse: ${categoryId}`);
+          updateQuestProgress("browse_category", 1);
+        }
+      });
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {

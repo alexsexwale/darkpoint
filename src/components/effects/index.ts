@@ -6,4 +6,5 @@ export { ParallaxMouse, ParallaxItem } from "./ParallaxMouse";
 export { PageTransition } from "./PageTransition";
 export { ParticleEmitter, useConfettiBurst } from "./ParticleEmitter";
 export { EasterEggProvider, useEasterEgg, HiddenLink } from "./EasterEggProvider";
+export { ScrollToTop } from "./ScrollToTop";
 

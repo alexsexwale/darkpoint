@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Marcellus_SC, Roboto_Condensed } from "next/font/google";
 import { Header, Footer, PageBorder, SideNav, SocialShareButtons, SideButtons } from "@/components/layout";
-import { Preloader, BackgroundAudio, BackgroundVideo, PageTransition, EasterEggProvider } from "@/components/effects";
+import { Preloader, BackgroundAudio, BackgroundVideo, PageTransition, EasterEggProvider, ScrollToTop } from "@/components/effects";
 import { CartDrawer, SearchModal, SignInModal, ForgotPasswordModal } from "@/components/ui";
 import { EmailVerificationBanner } from "@/components/auth";
 import {
@@ -76,6 +76,9 @@ export default function RootLayout({
     >
       <body className="min-h-screen flex flex-col antialiased" suppressHydrationWarning>
         <AuthProvider>
+          {/* Scroll to top on route change */}
+          <ScrollToTop />
+
           {/* Preloader */}
           <Preloader />
 
