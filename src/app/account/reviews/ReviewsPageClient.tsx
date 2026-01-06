@@ -278,7 +278,7 @@ export function ReviewsPageClient() {
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "Failed to submit review",
+        text: "Unable to submit review. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -296,7 +296,7 @@ export function ReviewsPageClient() {
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "Failed to delete review",
+        text: "Unable to delete review. Please try again.",
       });
     } finally {
       setDeletingId(null);

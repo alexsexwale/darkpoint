@@ -190,14 +190,14 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => ({
       } else {
         return {
           success: false,
-          error: response?.error || "Failed to submit review",
+          error: "Unable to submit review. Please try again.",
         };
       }
     } catch (error) {
       console.error("Error submitting review:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to submit review",
+        error: "Unable to submit review. Please try again.",
       };
     } finally {
       set({ isSubmitting: false });
@@ -290,13 +290,13 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => ({
         set({ reviews });
         return { success: true };
       } else {
-        return { success: false, error: result?.error || "Failed to vote" };
+        return { success: false, error: "Unable to submit vote. Please try again." };
       }
     } catch (error) {
       console.error("Error voting:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to vote",
+        error: "Unable to submit vote. Please try again.",
       };
     }
   },
@@ -349,7 +349,7 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => ({
       console.error("Error reporting review:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to report review",
+        error: "Unable to report review. Please try again.",
       };
     }
   },

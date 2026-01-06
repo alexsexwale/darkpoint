@@ -144,7 +144,13 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to add address";
+      const err = error as { message?: string; code?: string };
+      let message = "Unable to save address. Please check your information and try again.";
+      if (err.message?.includes("duplicate") || err.code === "23505") {
+        message = "This address already exists. Please use a different address.";
+      } else if (err.message?.includes("required") || err.message?.includes("null")) {
+        message = "Please fill in all required fields.";
+      }
       return { success: false, error: message };
     }
   },
@@ -171,7 +177,11 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to update address";
+      const err = error as { message?: string; code?: string };
+      let message = "Unable to update address. Please try again.";
+      if (err.message?.includes("not found") || err.code === "PGRST116") {
+        message = "Address not found. It may have been deleted.";
+      }
       return { success: false, error: message };
     }
   },
@@ -195,7 +205,11 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete address";
+      const err = error as { message?: string; code?: string };
+      let message = "Unable to delete address. Please try again.";
+      if (err.message?.includes("not found") || err.code === "PGRST116") {
+        message = "Address not found. It may have already been deleted.";
+      }
       return { success: false, error: message };
     }
   },
@@ -355,8 +369,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to add review";
-      return { success: false, error: message };
+      return { success: false, error: "Unable to submit review. Please try again." };
     }
   },
   
@@ -382,8 +395,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to update review";
-      return { success: false, error: message };
+      return { success: false, error: "Unable to update review. Please try again." };
     }
   },
   
@@ -406,8 +418,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete review";
-      return { success: false, error: message };
+      return { success: false, error: "Unable to delete review. Please try again." };
     }
   },
   
@@ -525,7 +536,13 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       return { success: true };
     } catch (error) {
       console.error("updateProfile error:", error);
-      const message = error instanceof Error ? error.message : "Failed to update profile";
+      const err = error as { message?: string; code?: string };
+      let message = "Unable to update profile. Please try again.";
+      if (err.message?.includes("duplicate") || err.code === "23505") {
+        message = "This username or email is already taken. Please choose a different one.";
+      } else if (err.message?.includes("too long") || err.message?.includes("length")) {
+        message = "Some fields are too long. Please shorten them and try again.";
+      }
       return { success: false, error: message };
     }
   },
@@ -549,7 +566,15 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to update password";
+      const err = error as { message?: string; code?: string };
+      let message = "Unable to update password. Please try again.";
+      if (err.message?.includes("same") || err.message?.includes("identical")) {
+        message = "New password must be different from your current password.";
+      } else if (err.message?.includes("weak") || err.message?.includes("Password")) {
+        message = "Password is too weak. Please use at least 6 characters.";
+      } else if (err.message?.includes("current") || err.message?.includes("old")) {
+        message = "Current password is incorrect. Please try again.";
+      }
       return { success: false, error: message };
     }
   },

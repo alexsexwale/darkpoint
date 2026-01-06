@@ -140,7 +140,7 @@ export function DetailsPageClient() {
         console.error("Storage upload error:", uploadError);
         setAvatarMessage({ 
           type: "error", 
-          text: `Upload failed: ${uploadError.message}. Make sure Storage policies allow uploads.` 
+          text: "Unable to upload photo. Please make sure the file is under 10MB and try again." 
         });
         setIsUploadingAvatar(false);
         return;
@@ -166,7 +166,7 @@ export function DetailsPageClient() {
       console.error("Avatar upload error:", error);
       setAvatarMessage({ 
         type: "error", 
-        text: error instanceof Error ? error.message : "Failed to upload image" 
+        text: "Unable to upload photo. Please try again or use a different image." 
       });
     } finally {
       setIsUploadingAvatar(false);
@@ -196,7 +196,7 @@ export function DetailsPageClient() {
     } catch (error) {
       setAvatarMessage({ 
         type: "error", 
-        text: error instanceof Error ? error.message : "Failed to remove image" 
+        text: "Unable to remove photo. Please try again." 
       });
     } finally {
       setIsUploadingAvatar(false);
@@ -220,7 +220,7 @@ export function DetailsPageClient() {
         // Refresh profile data
         await fetchUserProfile();
       } else {
-        setMessage({ type: "error", text: result.error || "Failed to update profile" });
+        setMessage({ type: "error", text: result.error || "Unable to update profile. Please try again." });
       }
     } catch {
       setMessage({ type: "error", text: "An unexpected error occurred" });
@@ -257,7 +257,7 @@ export function DetailsPageClient() {
         setPasswordMessage({ type: "success", text: "Password updated successfully!" });
         setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
       } else {
-        setPasswordMessage({ type: "error", text: result.error || "Failed to update password" });
+        setPasswordMessage({ type: "error", text: result.error || "Unable to update password. Please try again." });
       }
     } catch {
       setPasswordMessage({ type: "error", text: "An unexpected error occurred" });
@@ -765,7 +765,7 @@ export function DetailsPageClient() {
                       await signOut();
                       router.push("/?deleted=true");
                     } catch (err) {
-                      setDeleteError(err instanceof Error ? err.message : "Failed to delete account");
+                      setDeleteError("Unable to delete account. Please try again or contact support.");
                       setIsDeleting(false);
                     }
                   }}

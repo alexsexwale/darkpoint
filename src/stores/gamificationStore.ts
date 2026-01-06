@@ -820,10 +820,10 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         // Handle specific error cases
         if (error.code === "PGRST202" || error.message?.includes("function") || error.message?.includes("does not exist")) {
           console.warn("purchase_reward RPC not available. Feature requires database setup.");
-          return { success: false, error: "This feature is not yet available. Database setup required." };
+          return { success: false, error: "This feature is temporarily unavailable. Please try again later." };
         }
         console.error("Supabase RPC error:", error);
-        return { success: false, error: error.message || "Purchase failed" };
+        return { success: false, error: "Unable to complete purchase. Please try again." };
       }
 
       const result = data as unknown as PurchaseRewardResponse;
@@ -862,9 +862,8 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       }
       return { success: false, error: errorMessage };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Purchase failed";
       console.error("Error purchasing reward:", error);
-      return { success: false, error: errorMessage };
+      return { success: false, error: "Unable to complete purchase. Please try again." };
     }
   },
 

@@ -3,6 +3,68 @@ import { persist } from "zustand/middleware";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
+// Helper function to format user-friendly error messages
+function formatUserFriendlyError(error: unknown, context: "signup" | "login" | "password" | "general" = "general"): string {
+  const anyErr = error as { status?: number; code?: string; message?: string };
+  const message = anyErr.message || "";
+  const code = anyErr.code || "";
+  const status = anyErr.status;
+
+  // Log full error for debugging (but don't show to user)
+  console.error(`[${context}] Error:`, error, { status, code });
+
+  // Signup errors
+  if (context === "signup") {
+    if (code === "user_already_exists" || message.includes("already exists") || message.includes("already registered")) {
+      return "An account with this email already exists. Please sign in instead.";
+    }
+    if (message.includes("Password") || message.includes("password") || code === "weak_password") {
+      return "Password is too weak. Please use at least 6 characters with a mix of letters and numbers.";
+    }
+    if (message.includes("Email") || message.includes("email") || code === "invalid_email") {
+      return "Please enter a valid email address.";
+    }
+    if (status === 500 || message.includes("Database error") || message.includes("Internal Server Error")) {
+      return "We're experiencing technical difficulties. Please try again in a few moments.";
+    }
+    return "Unable to create your account. Please check your information and try again.";
+  }
+
+  // Login errors
+  if (context === "login") {
+    if (message.includes("Invalid login credentials") || message.includes("Invalid") || code === "invalid_credentials") {
+      return "Incorrect email or password. Please check and try again.";
+    }
+    if (message.includes("Email not confirmed") || code === "email_not_confirmed") {
+      return "Please check your email and click the confirmation link before signing in.";
+    }
+    if (message.includes("too many requests") || code === "too_many_requests") {
+      return "Too many login attempts. Please wait a few minutes and try again.";
+    }
+    return "Unable to sign in. Please check your email and password.";
+  }
+
+  // Password errors
+  if (context === "password") {
+    if (message.includes("same") || message.includes("identical")) {
+      return "New password must be different from your current password.";
+    }
+    if (message.includes("weak") || message.includes("Password")) {
+      return "Password is too weak. Please use at least 6 characters.";
+    }
+    if (message.includes("expired") || code === "expired") {
+      return "This password reset link has expired. Please request a new one.";
+    }
+    if (message.includes("invalid") || code === "invalid") {
+      return "This password reset link is invalid. Please request a new one.";
+    }
+    return "Unable to reset password. Please try again or request a new reset link.";
+  }
+
+  // General errors
+  return "Something went wrong. Please try again.";
+}
+
 // Helper function to check if user is returning (previously deleted)
 async function checkIfReturningUser(email: string): Promise<boolean> {
   try {
@@ -255,10 +317,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           if (error) {
-            // Provide friendlier error message
-            const errorMessage = error.message.includes("Invalid login credentials")
-              ? "Invalid email/username or password"
-              : error.message;
+            const errorMessage = formatUserFriendlyError(error, "login");
             set({ error: errorMessage, isLoading: false });
             return { success: false, error: errorMessage };
           }
@@ -273,9 +332,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           return { success: true };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Sign in failed";
-          set({ error: message, isLoading: false });
-          return { success: false, error: message };
+          const errorMessage = formatUserFriendlyError(error, "login");
+          set({ error: errorMessage, isLoading: false });
+          return { success: false, error: errorMessage };
         }
       },
 
@@ -308,38 +367,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           if (error) {
-            // Provide more user-friendly error messages, but keep useful debug details.
-            const anyErr = error as unknown as { status?: number; code?: string; name?: string; message: string };
-            const status = anyErr.status;
-            const code = anyErr.code;
-
-            // Always log the full error object for debugging (users can screenshot Console).
-            console.error("Supabase signUp error:", error, { status, code });
-
-            let errorMessage = anyErr.message || "Sign up failed";
-
-            if (
-              errorMessage.includes("Database error") ||
-              errorMessage.includes("500") ||
-              errorMessage.includes("Internal Server Error") ||
-              status === 500
-            ) {
-              errorMessage =
-                "Signup failed due to a database trigger/policy error. " +
-                "Please open Supabase Dashboard → Logs → Auth to see the exact Postgres error, " +
-                "or send a screenshot of the Network response body from /auth/v1/signup.";
-            } else if (errorMessage.includes("User already registered") || errorMessage.includes("already registered")) {
-              errorMessage = "An account with this email already exists. Please sign in instead.";
-            } else if (errorMessage.includes("Password") || errorMessage.includes("password")) {
-              errorMessage = "Password does not meet requirements. Please use a stronger password.";
-            } else if (errorMessage.includes("Email") || errorMessage.includes("email")) {
-              errorMessage = "Invalid email address. Please check and try again.";
-            }
-
-            const debugSuffix =
-              status || code ? ` (debug: status=${status ?? "?"}${code ? `, code=${code}` : ""})` : "";
-            errorMessage = `${errorMessage}${debugSuffix}`;
-            
+            const errorMessage = formatUserFriendlyError(error, "signup");
             set({ error: errorMessage, isLoading: false });
             return { success: false, error: errorMessage };
           }
@@ -377,9 +405,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           return { success: true };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Sign up failed";
-          set({ error: message, isLoading: false });
-          return { success: false, error: message };
+          const errorMessage = formatUserFriendlyError(error, "signup");
+          set({ error: errorMessage, isLoading: false });
+          return { success: false, error: errorMessage };
         }
       },
 
@@ -416,16 +444,17 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           if (error) {
-            set({ error: error.message, isLoading: false });
-            return { success: false, error: error.message };
+            const errorMessage = formatUserFriendlyError(error, "password");
+            set({ error: errorMessage, isLoading: false });
+            return { success: false, error: errorMessage };
           }
 
           set({ isLoading: false });
           return { success: true };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Password reset failed";
-          set({ error: message, isLoading: false });
-          return { success: false, error: message };
+          const errorMessage = formatUserFriendlyError(error, "password");
+          set({ error: errorMessage, isLoading: false });
+          return { success: false, error: errorMessage };
         }
       },
 
@@ -442,16 +471,17 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           if (error) {
-            set({ error: error.message, isLoading: false });
-            return { success: false, error: error.message };
+            const errorMessage = formatUserFriendlyError(error, "password");
+            set({ error: errorMessage, isLoading: false });
+            return { success: false, error: errorMessage };
           }
 
           set({ isLoading: false });
           return { success: true };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Password update failed";
-          set({ error: message, isLoading: false });
-          return { success: false, error: message };
+          const errorMessage = formatUserFriendlyError(error, "password");
+          set({ error: errorMessage, isLoading: false });
+          return { success: false, error: errorMessage };
         }
       },
 
@@ -469,13 +499,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           if (error) {
-            return { success: false, error: error.message };
+            const errorMessage = formatUserFriendlyError(error, "login");
+            return { success: false, error: errorMessage };
           }
 
           return { success: true };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Google sign in failed";
-          return { success: false, error: message };
+          const errorMessage = formatUserFriendlyError(error, "login");
+          return { success: false, error: errorMessage };
         }
       },
 
@@ -493,13 +524,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
 
           if (error) {
-            return { success: false, error: error.message };
+            const errorMessage = formatUserFriendlyError(error, "login");
+            return { success: false, error: errorMessage };
           }
 
           return { success: true };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "GitHub sign in failed";
-          return { success: false, error: message };
+          const errorMessage = formatUserFriendlyError(error, "login");
+          return { success: false, error: errorMessage };
         }
       },
 
@@ -531,7 +563,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           if (error) {
             set({ isResendingVerification: false });
-            return { success: false, error: error.message };
+            const errorMessage = formatUserFriendlyError(error, "general");
+            return { success: false, error: errorMessage };
           }
 
           // Start cooldown (60 seconds)
@@ -550,9 +583,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           return { success: true };
         } catch (error) {
+          console.error("Error resending verification email:", error);
           set({ isResendingVerification: false });
-          const message = error instanceof Error ? error.message : "Failed to resend verification email";
-          return { success: false, error: message };
+          return { success: false, error: "Unable to resend verification email. Please try again." };
         }
       },
 

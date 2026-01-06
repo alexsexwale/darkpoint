@@ -68,8 +68,7 @@ export function DailyRewardModal() {
         }, 50);
       } else {
         setClaimError(
-          "Couldn't claim your reward due to a server/database configuration issue. " +
-            "If this keeps happening, it usually means a required Supabase migration hasn't been applied."
+          "Unable to claim your reward right now. Please try again in a moment."
         );
       }
     } finally {

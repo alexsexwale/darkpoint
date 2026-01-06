@@ -408,7 +408,7 @@ export function AddressesPageClient() {
     } catch (error) {
       setMessage({ 
         type: "error", 
-        text: error instanceof Error ? error.message : "Failed to save address" 
+        text: "Unable to save address. Please check your information and try again." 
       });
     } finally {
       setIsSaving(false);
@@ -426,7 +426,7 @@ export function AddressesPageClient() {
     } catch (error) {
       setMessage({ 
         type: "error", 
-        text: error instanceof Error ? error.message : "Failed to delete address" 
+        text: "Unable to delete address. Please try again." 
       });
     } finally {
       setDeletingId(null);
