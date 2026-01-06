@@ -60,12 +60,12 @@ export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
     children: link.children?.filter(child => !child.vipOnly || isVIP),
   }));
 
-  // Check if a child link is active (exact match or starts with for nested routes)
+  // Check if a child link is active - use EXACT match only
+  // This prevents /rewards from being highlighted when on /rewards/spin
   const isChildActive = (href: string) => {
     const basePath = href.split("?")[0];
-    if (basePath === "/") return pathname === "/";
-    // Exact match for most cases, but allow startsWith for deeper nesting
-    return pathname === basePath || (pathname.startsWith(basePath + "/"));
+    // Exact match only - each dropdown item should only highlight its own page
+    return pathname === basePath;
   };
 
   // Check if a parent link should be highlighted
