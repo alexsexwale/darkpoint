@@ -360,8 +360,8 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     set({ isLoading: true });
 
     try {
-      // Fetch all data in parallel
-      await Promise.all([
+      // Fetch all data in parallel - use Promise.allSettled so one failure doesn't block others
+      await Promise.allSettled([
         get().fetchUserProfile(),
         get().fetchSpinPrizes(),
         get().fetchRewards(),
@@ -369,8 +369,43 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         get().fetchUserBadges(),
       ]);
 
-      // Check daily reward status
-      await get().checkDailyRewardStatus();
+      // If userProfile is still null after fetching, create a basic local profile
+      if (!get().userProfile) {
+        console.log("Creating basic local profile for user");
+        const username = user.email?.split("@")[0] || "user";
+        set({
+          userProfile: {
+            id: user.id,
+            username,
+            display_name: username,
+            email: user.email || null,
+            avatar_url: null,
+            phone: null,
+            referral_code: null,
+            total_xp: 100, // Welcome XP
+            current_level: 1,
+            current_streak: 0,
+            longest_streak: 0,
+            last_login_date: null,
+            total_spent: 0,
+            total_orders: 0,
+            total_reviews: 0,
+            referred_by: null,
+            referral_count: 0,
+            available_spins: 1, // Welcome spin
+            store_credit: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as UserProfile,
+        });
+      }
+
+      // Check daily reward status - don't let it block initialization
+      try {
+        await get().checkDailyRewardStatus();
+      } catch (e) {
+        console.warn("Failed to check daily reward status:", e);
+      }
 
       // Initialize daily quests
       get().initDailyQuests();
@@ -378,6 +413,37 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       set({ isInitialized: true, isLoading: false });
     } catch (error) {
       console.error("Error initializing gamification:", error);
+      
+      // Even on error, create a basic profile so UI doesn't get stuck
+      if (!get().userProfile) {
+        const username = user.email?.split("@")[0] || "user";
+        set({
+          userProfile: {
+            id: user.id,
+            username,
+            display_name: username,
+            email: user.email || null,
+            avatar_url: null,
+            phone: null,
+            referral_code: null,
+            total_xp: 0,
+            current_level: 1,
+            current_streak: 0,
+            longest_streak: 0,
+            last_login_date: null,
+            total_spent: 0,
+            total_orders: 0,
+            total_reviews: 0,
+            referred_by: null,
+            referral_count: 0,
+            available_spins: 0,
+            store_credit: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as UserProfile,
+        });
+      }
+      
       set({ isInitialized: true, isLoading: false });
     }
   },
@@ -390,7 +456,87 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     if (!user) return;
 
     try {
-      // Fetch both gamification stats and profile details in parallel
+      // Try to fetch profile directly first - this always works if profile exists
+      const { data: directProfile, error: directError } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (directProfile) {
+        // Profile exists - use it directly
+        set({
+          userProfile: directProfile as UserProfile,
+        });
+        
+        // Try RPC for additional stats (level info, achievements) but don't block
+        supabase.rpc("get_gamification_stats", { p_user_id: user.id } as never)
+          .then(({ data }) => {
+            const result = data as unknown as GamificationStatsResponse;
+            if (result?.success && result.profile) {
+              set((state) => ({
+                userProfile: {
+                  ...state.userProfile,
+                  ...result.profile,
+                } as UserProfile,
+                levelInfo: result.level_info || null,
+                nextLevelXP: result.next_level?.xp_required || null,
+                achievementStats: result.achievements || { total: 0, unlocked: 0, legendary: 0, xpEarned: 0 },
+              }));
+            }
+          }, () => {
+            // Silently fail - we already have the profile
+          });
+        return;
+      }
+
+      // Profile doesn't exist yet - create it with welcome bonuses using RPC
+      if (directError?.code === "PGRST116") {
+        console.log("Creating new user profile with welcome bonuses via RPC...");
+        
+        // Use RPC to create profile (bypasses RLS issues)
+        const { data: rpcResult, error: rpcError } = await supabase
+          .rpc("ensure_user_profile", { p_user_id: user.id } as never);
+        
+        if (rpcError) {
+          console.error("RPC ensure_user_profile failed:", rpcError);
+          
+          // Fallback: Try direct upsert with minimal columns
+          const username = user.email?.split("@")[0] || "user";
+          const { data: newProfile, error: upsertError } = await supabase
+            .from("user_profiles")
+            .upsert({
+              id: user.id,
+              username,
+              display_name: username,
+              total_xp: 100,
+              available_spins: 1,
+            } as never, { onConflict: "id" })
+            .select()
+            .single();
+
+          if (upsertError) {
+            console.error("Upsert also failed:", upsertError);
+          } else if (newProfile) {
+            set({ userProfile: newProfile as UserProfile });
+            return;
+          }
+        } else {
+          // RPC succeeded - refetch the profile
+          const { data: createdProfile } = await supabase
+            .from("user_profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+          
+          if (createdProfile) {
+            set({ userProfile: createdProfile as UserProfile });
+            return;
+          }
+        }
+      }
+
+      // Fallback: Try RPC approach
       const [rpcResult, profileResult] = await Promise.all([
         supabase.rpc("get_gamification_stats", { p_user_id: user.id } as never),
         supabase.from("user_profiles").select("avatar_url, display_name, username, phone").eq("id", user.id).single()
@@ -542,7 +688,23 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
   // Fetch spin prizes
   fetchSpinPrizes: async () => {
-    if (!isSupabaseConfigured()) return;
+    // Default prizes as fallback
+    const defaultPrizes: SpinPrize[] = [
+      { id: "1", name: "+10 XP", description: "Nice! You earned 10 bonus XP!", prize_type: "xp", prize_value: "10", probability: 20, color: "#6b7280", is_active: true },
+      { id: "2", name: "+25 XP", description: "Great spin! 25 XP added!", prize_type: "xp", prize_value: "25", probability: 20, color: "#22c55e", is_active: true },
+      { id: "3", name: "+50 XP", description: "Awesome! 50 XP for you!", prize_type: "xp", prize_value: "50", probability: 18, color: "#3b82f6", is_active: true },
+      { id: "4", name: "+75 XP", description: "Lucky! 75 XP bonus!", prize_type: "xp", prize_value: "75", probability: 12, color: "#8b5cf6", is_active: true },
+      { id: "5", name: "+100 XP", description: "Amazing! 100 XP jackpot!", prize_type: "xp", prize_value: "100", probability: 12, color: "#a855f7", is_active: true },
+      { id: "6", name: "+150 XP", description: "Incredible! 150 XP mega bonus!", prize_type: "xp", prize_value: "150", probability: 8, color: "#ec4899", is_active: true },
+      { id: "7", name: "Free Spin!", description: "Lucky you! Another free spin!", prize_type: "spin", prize_value: "1", probability: 5, color: "#ef4444", is_active: true },
+      { id: "8", name: "+250 XP", description: "EPIC! 250 XP legendary spin!", prize_type: "xp", prize_value: "250", probability: 3, color: "#f59e0b", is_active: true },
+      { id: "9", name: "+500 XP", description: "JACKPOT! 500 XP ultra rare!", prize_type: "xp", prize_value: "500", probability: 2, color: "#fbbf24", is_active: true },
+    ];
+
+    if (!isSupabaseConfigured()) {
+      set({ spinPrizes: defaultPrizes });
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -553,9 +715,11 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
       if (error) throw error;
 
-      set({ spinPrizes: data || [] });
+      // Use fetched data or fallback to defaults
+      set({ spinPrizes: data && data.length > 0 ? data : defaultPrizes });
     } catch (error) {
-      console.error("Error fetching spin prizes:", error);
+      console.error("Error fetching spin prizes, using defaults:", error);
+      set({ spinPrizes: defaultPrizes });
     }
   },
 
@@ -1134,7 +1298,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
       // Log final result
       if (error || !data) {
-        console.error("All achievement check functions failed. Please run the fix_achievements_comprehensive.sql migration.", error);
+        console.warn("Achievement functions not available. Run fix_all_rewards.sql migration to enable achievements.");
         pendingAchievementCheck.forEach(p => p.resolve([]));
         pendingAchievementCheck = [];
         return [];
@@ -1143,7 +1307,9 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       // Check if the response indicates an error
       const responseData = data as unknown as { success?: boolean; error?: string };
       if (responseData?.success === false) {
-        console.error("Achievement check returned error:", responseData.error);
+        // Use warn instead of error to avoid scary red console messages
+        console.warn("Achievement check returned error:", responseData.error);
+        console.info("💡 Tip: Run the fix_all_rewards.sql migration in Supabase to fix this.");
         pendingAchievementCheck.forEach(p => p.resolve([]));
         pendingAchievementCheck = [];
         return [];

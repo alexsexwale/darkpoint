@@ -351,7 +351,7 @@ export function XPHistoryPageClient() {
                                 )}
                               </div>
                               <p className="text-xs md:text-sm text-white/50 truncate">
-                                {tx.description || getDefaultDescription(tx.action, tx.amount)}
+                                {formatDescription(tx.description) || getDefaultDescription(tx.action, tx.amount)}
                               </p>
                               <p className="text-[10px] md:text-xs text-white/30 mt-1">
                                 {formatTime(tx.created_at)}
@@ -417,6 +417,38 @@ export function XPHistoryPageClient() {
       </div>
     </AccountLayout>
   );
+}
+
+// Quest ID to friendly name mapping
+const QUEST_FRIENDLY_NAMES: Record<string, string> = {
+  browse_products: "Browse Products",
+  add_wishlist: "Add to Wishlist",
+  share_product: "Share a Product",
+  write_review: "Write a Review",
+  visit_spin: "Visit Spin Wheel",
+  make_purchase: "Make a Purchase",
+  view_news: "Read News Article",
+  complete_profile: "Complete Profile",
+  daily_login: "Daily Login",
+};
+
+// Helper to format description with user-friendly quest names
+function formatDescription(description: string | null): string {
+  if (!description) return "";
+  
+  // Check if it's a quest description with technical ID
+  const questMatch = description.match(/Daily quest[:\s]+(\w+)/i);
+  if (questMatch) {
+    const questId = questMatch[1];
+    const friendlyName = QUEST_FRIENDLY_NAMES[questId] || questId.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+    return `Daily Quest: ${friendlyName}`;
+  }
+  
+  // Replace any remaining snake_case quest IDs in the description
+  return description.replace(/:\s*(\w+_\w+)/g, (match, id) => {
+    const friendlyName = QUEST_FRIENDLY_NAMES[id] || id.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+    return `: ${friendlyName}`;
+  });
 }
 
 // Helper to generate default description

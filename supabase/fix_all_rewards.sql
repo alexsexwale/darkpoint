@@ -99,6 +99,85 @@ CREATE TABLE IF NOT EXISTS deleted_accounts (
 );
 CREATE INDEX IF NOT EXISTS idx_deleted_accounts_email ON deleted_accounts(email);
 
+-- User achievements table
+CREATE TABLE IF NOT EXISTS user_achievements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  achievement_id UUID NOT NULL,
+  progress INTEGER DEFAULT 0,
+  unlocked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, achievement_id)
+);
+
+-- Add missing columns to user_achievements if they don't exist
+ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE user_achievements ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;
+
+-- Achievements definitions table
+CREATE TABLE IF NOT EXISTS achievements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT DEFAULT 'general',
+  icon TEXT,
+  xp_reward INTEGER DEFAULT 0,
+  requirement_type TEXT NOT NULL,
+  requirement_value INTEGER NOT NULL,
+  rarity TEXT DEFAULT 'common',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Spin prizes table
+CREATE TABLE IF NOT EXISTS spin_prizes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  prize_type TEXT NOT NULL DEFAULT 'xp',
+  prize_value TEXT NOT NULL,
+  probability INTEGER NOT NULL DEFAULT 10,
+  color TEXT DEFAULT '#6b7280',
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Fix prize_type column if it's an enum (convert to text)
+DO $$ 
+BEGIN
+  -- Check if prize_type is an enum and convert to text
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'spin_prizes' 
+    AND column_name = 'prize_type' 
+    AND udt_name != 'text'
+  ) THEN
+    ALTER TABLE spin_prizes ALTER COLUMN prize_type TYPE TEXT USING prize_type::TEXT;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Could not alter prize_type column: %', SQLERRM;
+END $$;
+
+-- Insert default spin prizes if table is empty
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM spin_prizes LIMIT 1) THEN
+    INSERT INTO spin_prizes (name, description, prize_type, prize_value, probability, color, is_active)
+    VALUES
+      ('+10 XP', 'Nice! You earned 10 bonus XP!', 'xp', '10', 20, '#6b7280', true),
+      ('+25 XP', 'Great spin! 25 XP added!', 'xp', '25', 20, '#22c55e', true),
+      ('+50 XP', 'Awesome! 50 XP for you!', 'xp', '50', 18, '#3b82f6', true),
+      ('+75 XP', 'Lucky! 75 XP bonus!', 'xp', '75', 12, '#8b5cf6', true),
+      ('+100 XP', 'Amazing! 100 XP jackpot!', 'xp', '100', 12, '#a855f7', true),
+      ('+150 XP', 'Incredible! 150 XP mega bonus!', 'xp', '150', 8, '#ec4899', true),
+      ('Free Spin!', 'Lucky you! Another free spin!', 'spin', '1', 5, '#ef4444', true),
+      ('+250 XP', 'EPIC! 250 XP legendary spin!', 'xp', '250', 3, '#f59e0b', true),
+      ('+500 XP', 'JACKPOT! 500 XP ultra rare!', 'xp', '500', 2, '#fbbf24', true);
+  END IF;
+END $$;
+
 -- ========================
 -- STEP 2: Add missing columns to existing tables
 -- ========================
@@ -254,6 +333,109 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 -- ========================
+-- STEP 3.5: Function to ensure user profile exists (callable from frontend)
+-- ========================
+
+CREATE OR REPLACE FUNCTION ensure_user_profile(p_user_id UUID)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_profile user_profiles%ROWTYPE;
+  v_user auth.users%ROWTYPE;
+  v_username TEXT;
+  v_referral_code TEXT;
+  v_is_returning BOOLEAN := FALSE;
+BEGIN
+  -- Check if profile already exists
+  SELECT * INTO v_profile FROM user_profiles WHERE id = p_user_id;
+  
+  IF v_profile.id IS NOT NULL THEN
+    -- Profile exists, return it
+    RETURN json_build_object(
+      'success', true,
+      'message', 'Profile already exists',
+      'profile', row_to_json(v_profile)
+    );
+  END IF;
+  
+  -- Get user data from auth.users
+  SELECT * INTO v_user FROM auth.users WHERE id = p_user_id;
+  
+  IF v_user.id IS NULL THEN
+    RETURN json_build_object('success', false, 'message', 'User not found');
+  END IF;
+  
+  -- Generate username and referral code
+  v_username := COALESCE(
+    v_user.raw_user_meta_data->>'username',
+    SPLIT_PART(v_user.email, '@', 1),
+    'user_' || LEFT(p_user_id::TEXT, 8)
+  );
+  v_referral_code := 'DARK-' || UPPER(LEFT(v_username, 4)) || FLOOR(RANDOM() * 9000 + 1000)::TEXT;
+  
+  -- Check if returning user
+  SELECT EXISTS(SELECT 1 FROM deleted_accounts WHERE email = v_user.email) INTO v_is_returning;
+  
+  -- Create the profile with welcome bonuses
+  INSERT INTO user_profiles (
+    id, username, display_name, email, referral_code,
+    total_xp, current_level, current_streak, longest_streak,
+    total_spent, total_orders, total_reviews, total_referrals,
+    available_spins, newsletter_subscribed, is_returning_user
+  ) VALUES (
+    p_user_id, v_username, v_username, v_user.email, v_referral_code,
+    100, 1, 0, 0,  -- 100 XP welcome bonus
+    0, 0, 0, 0,
+    1, TRUE, v_is_returning  -- 1 free spin
+  );
+  
+  -- Add welcome XP transaction
+  INSERT INTO xp_transactions (user_id, amount, action, description)
+  VALUES (p_user_id, 100, 'signup', '🎮 Welcome to Darkpoint! Here''s 100 XP to start your journey!')
+  ON CONFLICT DO NOTHING;
+  
+  -- Add welcome coupon (10% off)
+  INSERT INTO user_coupons (
+    user_id, code, discount_type, discount_value, min_order_value,
+    max_uses, uses_count, is_used, source, description, expires_at
+  ) VALUES (
+    p_user_id, NULL, 'percent', 10, 0,
+    1, 0, FALSE, 'welcome', '🎁 Welcome Gift: 10% Off Your First Order',
+    NOW() + INTERVAL '30 days'
+  )
+  ON CONFLICT DO NOTHING;
+  
+  -- Subscribe to newsletter
+  INSERT INTO newsletter_subscriptions (email, user_id, source, is_subscribed)
+  VALUES (v_user.email, p_user_id, 'registration', TRUE)
+  ON CONFLICT (email) DO UPDATE SET user_id = p_user_id, is_subscribed = TRUE;
+  
+  -- Return the new profile
+  SELECT * INTO v_profile FROM user_profiles WHERE id = p_user_id;
+  
+  RETURN json_build_object(
+    'success', true,
+    'message', 'Profile created with welcome bonuses',
+    'profile', row_to_json(v_profile),
+    'bonuses', json_build_object(
+      'xp', 100,
+      'spins', 1,
+      'coupon', '10% off first order'
+    )
+  );
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'message', SQLERRM);
+END;
+$$;
+
+-- Grant execute to authenticated users
+GRANT EXECUTE ON FUNCTION ensure_user_profile(UUID) TO authenticated;
+
+-- ========================
 -- STEP 4: Create/Update daily reward claim function
 -- ========================
 
@@ -273,12 +455,61 @@ DECLARE
   v_xp_earned INTEGER := 0;
   v_free_spin_earned BOOLEAN := FALSE;
   v_multiplier_applied BOOLEAN := FALSE;
+  v_user auth.users%ROWTYPE;
+  v_username TEXT;
+  v_referral_code TEXT;
 BEGIN
   -- Get user profile
   SELECT * INTO v_profile FROM user_profiles WHERE id = p_user_id;
 
+  -- Auto-create profile if it doesn't exist
   IF NOT FOUND THEN
-    RETURN json_build_object('success', false, 'error', 'User profile not found');
+    -- Get user data from auth.users
+    SELECT * INTO v_user FROM auth.users WHERE id = p_user_id;
+    
+    IF v_user.id IS NULL THEN
+      RETURN json_build_object('success', false, 'error', 'User not found');
+    END IF;
+    
+    -- Generate username and referral code
+    v_username := COALESCE(
+      v_user.raw_user_meta_data->>'username',
+      SPLIT_PART(v_user.email, '@', 1),
+      'user_' || LEFT(p_user_id::TEXT, 8)
+    );
+    v_referral_code := 'DARK-' || UPPER(LEFT(v_username, 4)) || FLOOR(RANDOM() * 9000 + 1000)::TEXT;
+    
+    -- Create the profile with welcome bonuses
+    INSERT INTO user_profiles (
+      id, username, display_name, email, referral_code,
+      total_xp, current_level, current_streak, longest_streak,
+      available_spins, newsletter_subscribed
+    ) VALUES (
+      p_user_id, v_username, v_username, v_user.email, v_referral_code,
+      100, 1, 0, 0, 1, TRUE
+    )
+    ON CONFLICT (id) DO NOTHING;
+    
+    -- Log welcome XP
+    INSERT INTO xp_transactions (user_id, amount, action, description)
+    VALUES (p_user_id, 100, 'signup', '🎮 Welcome to Darkpoint!')
+    ON CONFLICT DO NOTHING;
+    
+    -- Create welcome coupon
+    INSERT INTO user_coupons (
+      user_id, discount_type, discount_value, max_uses, is_used, source, description, expires_at
+    ) VALUES (
+      p_user_id, 'percent', 10, 1, FALSE, 'welcome', '🎁 Welcome Gift: 10% Off Your First Order',
+      NOW() + INTERVAL '30 days'
+    )
+    ON CONFLICT DO NOTHING;
+    
+    -- Re-fetch the profile
+    SELECT * INTO v_profile FROM user_profiles WHERE id = p_user_id;
+    
+    IF NOT FOUND THEN
+      RETURN json_build_object('success', false, 'error', 'Could not create profile');
+    END IF;
   END IF;
 
   -- Check if already claimed today
@@ -406,6 +637,10 @@ DROP POLICY IF EXISTS "Users can view own profile" ON user_profiles;
 CREATE POLICY "Users can view own profile" ON user_profiles
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON user_profiles;
+CREATE POLICY "Users can insert own profile" ON user_profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
 DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
 CREATE POLICY "Users can update own profile" ON user_profiles
   FOR UPDATE USING (auth.uid() = id);
@@ -418,6 +653,10 @@ CREATE POLICY "Service role full access profiles" ON user_profiles
 DROP POLICY IF EXISTS "Users can view own XP" ON xp_transactions;
 CREATE POLICY "Users can view own XP" ON xp_transactions
   FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own XP" ON xp_transactions;
+CREATE POLICY "Users can insert own XP" ON xp_transactions
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Service role insert XP" ON xp_transactions;
 CREATE POLICY "Service role insert XP" ON xp_transactions
@@ -437,16 +676,58 @@ DROP POLICY IF EXISTS "Users can view own coupons" ON user_coupons;
 CREATE POLICY "Users can view own coupons" ON user_coupons
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own coupons" ON user_coupons;
+CREATE POLICY "Users can insert own coupons" ON user_coupons
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
 DROP POLICY IF EXISTS "Service role manage coupons" ON user_coupons;
 CREATE POLICY "Service role manage coupons" ON user_coupons
   FOR ALL USING (true);
 
+-- Spin prizes policies
+ALTER TABLE spin_prizes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view spin prizes" ON spin_prizes;
+CREATE POLICY "Anyone can view spin prizes" ON spin_prizes
+  FOR SELECT USING (true);
+
+-- User achievements policies
+ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own achievements" ON user_achievements;
+CREATE POLICY "Users can view own achievements" ON user_achievements
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own achievements" ON user_achievements;
+CREATE POLICY "Users can insert own achievements" ON user_achievements
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own achievements" ON user_achievements;
+CREATE POLICY "Users can update own achievements" ON user_achievements
+  FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Service role manage achievements" ON user_achievements;
+CREATE POLICY "Service role manage achievements" ON user_achievements
+  FOR ALL USING (true);
+
+-- Achievements definition policies
+ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view achievements" ON achievements;
+CREATE POLICY "Anyone can view achievements" ON achievements
+  FOR SELECT USING (true);
+
 -- Grant table access
 GRANT SELECT, INSERT, UPDATE ON user_profiles TO authenticated;
-GRANT SELECT ON xp_transactions TO authenticated;
+GRANT SELECT, INSERT ON xp_transactions TO authenticated;
 GRANT SELECT, INSERT ON daily_logins TO authenticated;
-GRANT SELECT ON user_coupons TO authenticated;
+GRANT SELECT, INSERT ON user_coupons TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON newsletter_subscriptions TO authenticated;
+GRANT SELECT ON spin_prizes TO authenticated;
+GRANT SELECT ON spin_prizes TO anon;
+GRANT SELECT, INSERT, UPDATE ON user_achievements TO authenticated;
+GRANT SELECT ON achievements TO authenticated;
+GRANT SELECT ON achievements TO anon;
 
 -- Service role needs full access
 GRANT ALL ON user_profiles TO service_role;
@@ -454,6 +735,9 @@ GRANT ALL ON xp_transactions TO service_role;
 GRANT ALL ON daily_logins TO service_role;
 GRANT ALL ON user_coupons TO service_role;
 GRANT ALL ON newsletter_subscriptions TO service_role;
+GRANT ALL ON spin_prizes TO service_role;
+GRANT ALL ON user_achievements TO service_role;
+GRANT ALL ON achievements TO service_role;
 
 -- ========================
 -- STEP 6: Helper function to fix existing users

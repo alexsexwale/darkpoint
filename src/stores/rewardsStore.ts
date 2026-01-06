@@ -330,14 +330,20 @@ export const useRewardsStore = create<RewardsStore>()(
             .from("user_coupons")
             .select("*")
             .eq("user_id", user.id)
-            .eq("used", false)
+            .eq("is_used", false)  // Column is named is_used, not used
             .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
             .order("created_at", { ascending: false });
 
           if (error) throw error;
 
+          // Map is_used to used for interface compatibility
+          const mappedRewards = (data || []).map(r => ({
+            ...r,
+            used: r.is_used ?? false,
+          })) as UserReward[];
+
           set({ 
-            rewards: (data || []) as UserReward[], 
+            rewards: mappedRewards, 
             isLoading: false, 
             isInitialized: true 
           });
@@ -368,7 +374,7 @@ export const useRewardsStore = create<RewardsStore>()(
           const { error } = await supabase
             .from("user_coupons")
             .update({ 
-              used: true, 
+              is_used: true,  // Column is named is_used, not used
               used_at: new Date().toISOString(),
               // Could add order_id reference if needed
             } as never)
