@@ -159,15 +159,27 @@ export function MysteryBoxCheckoutClient() {
     setError(null);
     setIsProcessing(true);
 
-    // Validate required fields
-    if (!billing.firstName || !billing.lastName || !billing.email || !billing.phone) {
-      setError("Please fill in all required billing fields");
+    // Validate required fields with specific error messages
+    const missingBillingFields: string[] = [];
+    if (!billing.firstName) missingBillingFields.push("First Name");
+    if (!billing.lastName) missingBillingFields.push("Last Name");
+    if (!billing.email) missingBillingFields.push("Email");
+    if (!billing.phone) missingBillingFields.push("Phone Number");
+
+    if (missingBillingFields.length > 0) {
+      setError(`Please fill in: ${missingBillingFields.join(", ")}`);
       setIsProcessing(false);
       return;
     }
 
-    if (!billing.address || !billing.city || !billing.province || !billing.postalCode) {
-      setError("Please fill in your complete billing address");
+    const missingAddressFields: string[] = [];
+    if (!billing.address) missingAddressFields.push("Street Address");
+    if (!billing.city) missingAddressFields.push("City");
+    if (!billing.province) missingAddressFields.push("Province");
+    if (!billing.postalCode) missingAddressFields.push("Postal Code");
+
+    if (missingAddressFields.length > 0) {
+      setError(`Please fill in: ${missingAddressFields.join(", ")}`);
       setIsProcessing(false);
       return;
     }
@@ -183,10 +195,20 @@ export function MysteryBoxCheckoutClient() {
         }
       : shipping;
 
-    if (!sameAsBilling && (!shippingDetails.address || !shippingDetails.city)) {
-      setError("Please fill in your complete shipping address");
-      setIsProcessing(false);
-      return;
+    if (!sameAsBilling) {
+      const missingShippingFields: string[] = [];
+      if (!shippingDetails.firstName) missingShippingFields.push("First Name");
+      if (!shippingDetails.lastName) missingShippingFields.push("Last Name");
+      if (!shippingDetails.address) missingShippingFields.push("Street Address");
+      if (!shippingDetails.city) missingShippingFields.push("City");
+      if (!shippingDetails.province) missingShippingFields.push("Province");
+      if (!shippingDetails.postalCode) missingShippingFields.push("Postal Code");
+
+      if (missingShippingFields.length > 0) {
+        setError(`Please fill in shipping: ${missingShippingFields.join(", ")}`);
+        setIsProcessing(false);
+        return;
+      }
     }
 
     try {
