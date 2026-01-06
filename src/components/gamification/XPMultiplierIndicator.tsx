@@ -42,13 +42,15 @@ export function XPMultiplierIndicator({
 
   // Countdown timer
   useEffect(() => {
-    if (!activeMultiplier?.expires_at) {
+    // Use new column name with fallback to old name
+    const expiresAtStr = activeMultiplier?.multiplier_expires_at || activeMultiplier?.expires_at;
+    if (!expiresAtStr) {
       setTimeRemaining(null);
       return;
     }
 
     const calculateRemaining = () => {
-      const expiresAt = new Date(activeMultiplier.expires_at).getTime();
+      const expiresAt = new Date(expiresAtStr).getTime();
       const now = Date.now();
       const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000));
       return remaining;
@@ -62,13 +64,16 @@ export function XPMultiplierIndicator({
       const remaining = calculateRemaining();
       setTimeRemaining(remaining);
 
+      // Get multiplier value (new name or fallback)
+      const multiplierValue = activeMultiplier.multiplier_value || activeMultiplier.multiplier || 1;
+      
       // Notify when 5 minutes remaining
       if (remaining <= 300 && remaining > 0 && !hasNotifiedExpiring) {
         setHasNotifiedExpiring(true);
         addNotification({
           type: "info",
           title: "⚡ XP Boost Expiring Soon!",
-          message: `Your ${activeMultiplier.multiplier}x XP multiplier expires in ${formatTime(remaining)}`,
+          message: `Your ${multiplierValue}x XP multiplier expires in ${formatTime(remaining)}`,
           icon: "⏰",
         });
       }
@@ -79,7 +84,7 @@ export function XPMultiplierIndicator({
         addNotification({
           type: "info",
           title: "XP Boost Ended",
-          message: `Your ${activeMultiplier.multiplier}x XP multiplier has expired. You earned ${activeMultiplier.xp_earned_with_multiplier || 0} bonus XP!`,
+          message: `Your ${multiplierValue}x XP multiplier has expired. You earned ${activeMultiplier.xp_earned_with_multiplier || 0} bonus XP!`,
           icon: "⌛",
         });
         // Clear the multiplier from state
@@ -92,11 +97,12 @@ export function XPMultiplierIndicator({
 
   // Reset notification flags when multiplier changes
   useEffect(() => {
-    if (activeMultiplier?.id) {
+    const multiplierId = activeMultiplier?.multiplier_id || activeMultiplier?.id;
+    if (multiplierId) {
       setHasNotifiedExpiring(false);
       setHasNotifiedExpired(false);
     }
-  }, [activeMultiplier?.id]);
+  }, [activeMultiplier?.multiplier_id, activeMultiplier?.id]);
 
   // Fetch multiplier on mount
   useEffect(() => {
@@ -135,7 +141,7 @@ export function XPMultiplierIndicator({
             >
               ⚡
             </motion.span>
-            <span className="font-heading">{activeMultiplier.multiplier}x XP</span>
+            <span className="font-heading">{activeMultiplier.multiplier_value || activeMultiplier.multiplier}x XP</span>
             <span className="text-xs opacity-75">
               {formatTime(timeRemaining!)}
             </span>
@@ -167,7 +173,7 @@ export function XPMultiplierIndicator({
             >
               ⚡
             </motion.span>
-            <span>{activeMultiplier.multiplier}x</span>
+            <span>{activeMultiplier.multiplier_value || activeMultiplier.multiplier}x</span>
             <span className="opacity-75">{formatTime(timeRemaining!)}</span>
           </motion.div>
         )}
@@ -220,14 +226,14 @@ export function XPMultiplierIndicator({
                 </motion.div>
                 <div>
                   <h3 className="font-heading text-lg text-white">XP BOOST ACTIVE</h3>
-                  <p className="text-xs text-white/60">{activeMultiplier.source_description}</p>
+                  <p className="text-xs text-white/60">{activeMultiplier.multiplier_description || activeMultiplier.source_description}</p>
                 </div>
               </div>
               <div className={`
                 text-3xl font-heading 
                 ${isExpiring ? "text-red-400" : "text-[var(--color-main-1)]"}
               `}>
-                {activeMultiplier.multiplier}x
+                {activeMultiplier.multiplier_value || activeMultiplier.multiplier}x
               </div>
             </div>
 
