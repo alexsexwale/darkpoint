@@ -393,19 +393,48 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
                     {selectedPrize.prize_type === "mystery" && "🎁 Check your rewards!"}
                   </motion.div>
 
-                  {/* Claim button */}
+                  {/* Action buttons */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.7 }}
+                    className="flex flex-col gap-3"
                   >
-                    <Button
-                      onClick={closeResultModal}
-                      size="lg"
-                      className="min-w-[200px]"
-                    >
-                      Awesome! 🎊
-                    </Button>
+                    {/* Show "Spin Again" button if user has spins */}
+                    {availableSpins > 0 ? (
+                      <>
+                        <Button
+                          onClick={() => {
+                            closeResultModal();
+                            // Reset wheel rotation for next spin
+                            if (wheelRef.current) {
+                              gsap.set(wheelRef.current, { rotation: 0 });
+                            }
+                            setHasSpun(false);
+                            // Small delay to ensure state is updated
+                            setTimeout(() => handleSpin(), 100);
+                          }}
+                          size="lg"
+                          className="min-w-[200px]"
+                        >
+                          🎡 Spin Again!
+                        </Button>
+                        <button
+                          onClick={closeResultModal}
+                          className="text-sm text-white/50 hover:text-white/80 transition-colors"
+                        >
+                          Close
+                        </button>
+                      </>
+                    ) : (
+                      <Button
+                        onClick={closeResultModal}
+                        size="lg"
+                        className="min-w-[200px]"
+                      >
+                        Awesome! 🎊
+                      </Button>
+                    )}
                   </motion.div>
 
                   {/* Remaining spins hint */}
@@ -414,9 +443,9 @@ export function SpinWheel({ className, size = 320, onSpinComplete }: SpinWheelPr
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.8 }}
-                      className="text-xs text-white/40 mt-4"
+                      className="text-xs text-[var(--color-main-1)] mt-4 font-medium"
                     >
-                      You have {availableSpins} more spin{availableSpins !== 1 ? "s" : ""} remaining!
+                      🎰 You have {availableSpins} more spin{availableSpins !== 1 ? "s" : ""} available!
                     </motion.p>
                   )}
                 </div>
