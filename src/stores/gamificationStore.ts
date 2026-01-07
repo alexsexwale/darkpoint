@@ -1855,34 +1855,8 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           const tableResult = data as unknown as Array<{ badge_id: string; equipped: boolean; acquired_at: string }> | null;
           if (!error && tableResult && tableResult.length > 0) {
             set({ userBadges: tableResult });
-            return;
           }
-          
-          // Final fallback: check user_rewards for cosmetic rewards
-          const { data: rewardsData, error: rewardsError } = await supabase
-            .from("user_rewards")
-            .select("reward_id, created_at")
-            .eq("user_id", user.id);
-          
-          // If the table doesn't exist / schema differs, Supabase (PostgREST) can return 400.
-          // Don't spam the console with scary errors for an optional fallback.
-          if (rewardsError) {
-            return;
-          }
-
-          if (rewardsData) {
-            const typedRewardsData = rewardsData as Array<{ reward_id: string; created_at: string }>;
-            const badges = typedRewardsData
-              .filter(r => r.reward_id.startsWith("badge_") || r.reward_id.startsWith("frame_"))
-              .map(r => ({
-                badge_id: r.reward_id,
-                equipped: false,
-                acquired_at: r.created_at,
-              }));
-            if (badges.length > 0) {
-              set({ userBadges: badges });
-            }
-          }
+          // Note: user_rewards fallback removed - table doesn't exist in schema
         } catch (err) {
           console.warn("Error fetching badges:", err);
         }
