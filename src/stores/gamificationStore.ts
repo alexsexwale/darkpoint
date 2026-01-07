@@ -1859,11 +1859,17 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           }
           
           // Final fallback: check user_rewards for cosmetic rewards
-          const { data: rewardsData } = await supabase
+          const { data: rewardsData, error: rewardsError } = await supabase
             .from("user_rewards")
             .select("reward_id, created_at")
             .eq("user_id", user.id);
           
+          // If the table doesn't exist / schema differs, Supabase (PostgREST) can return 400.
+          // Don't spam the console with scary errors for an optional fallback.
+          if (rewardsError) {
+            return;
+          }
+
           if (rewardsData) {
             const typedRewardsData = rewardsData as Array<{ reward_id: string; created_at: string }>;
             const badges = typedRewardsData
