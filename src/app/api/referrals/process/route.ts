@@ -45,7 +45,17 @@ export async function POST(req: NextRequest) {
     const referredUserId = userData.user.id;
     const referralCodeFromMeta = (userData.user.user_metadata as { referral_code?: string | null } | null)?.referral_code || null;
 
-    const body = (await req.json()) as Body;
+    // Some clients/extensions can send an empty body; handle gracefully.
+    let body: Body = {};
+    try {
+      const raw = await req.text();
+      if (raw) body = JSON.parse(raw) as Body;
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Invalid JSON body" },
+        { status: 400 }
+      );
+    }
     const referralCode = body?.referralCode || referralCodeFromMeta;
 
     if (!referralCode) {

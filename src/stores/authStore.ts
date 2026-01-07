@@ -140,7 +140,6 @@ async function subscribeToNewsletter(userId: string, email: string) {
         onConflict: "email" 
       });
 
-    console.log("User subscribed to newsletter:", email);
   } catch (error) {
     console.warn("Error subscribing to newsletter:", error);
     // Don't fail signup if newsletter subscription fails
@@ -335,7 +334,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           const referralCode = (data.user.user_metadata as { referral_code?: string | null } | null)?.referral_code || null;
           if (referralCode && data.session?.access_token) {
             try {
-              await fetch("/api/referrals/process", {
+              const resp = await fetch("/api/referrals/process", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -343,6 +342,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                 },
                 body: JSON.stringify({ referralCode }),
               });
+              if (!resp.ok) {
+                const text = await resp.text().catch(() => "");
+                console.warn("Referral processing failed:", resp.status, text);
+              }
             } catch (e) {
               console.warn("Referral processing call failed:", e);
             }
@@ -396,7 +399,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           // If email confirmation is required (no session), we'll process it on first login instead.
           if (data.user && metadata?.referralCode && data.session?.access_token) {
             try {
-              await fetch("/api/referrals/process", {
+              const resp = await fetch("/api/referrals/process", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -406,6 +409,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                   referralCode: metadata.referralCode,
                 }),
               });
+              if (!resp.ok) {
+                const text = await resp.text().catch(() => "");
+                console.warn("Referral processing failed:", resp.status, text);
+              }
             } catch (e) {
               // Best-effort; don't block signup
               console.warn("Referral processing call failed:", e);
