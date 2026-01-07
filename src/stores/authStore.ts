@@ -330,6 +330,24 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             error: null,
           });
 
+          // If this user has a referral code stored in metadata (from a referral signup),
+          // process it now (auth triggers are disabled in production).
+          const referralCode = (data.user.user_metadata as { referral_code?: string | null } | null)?.referral_code || null;
+          if (referralCode && data.session?.access_token) {
+            try {
+              await fetch("/api/referrals/process", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${data.session.access_token}`,
+                },
+                body: JSON.stringify({ referralCode }),
+              });
+            } catch (e) {
+              console.warn("Referral processing call failed:", e);
+            }
+          }
+
           return { success: true };
         } catch (error) {
           const errorMessage = formatUserFriendlyError(error, "login");
@@ -375,14 +393,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           const displayName = metadata?.username || email.split("@")[0];
 
           // Process referral immediately (server-side) so it works even when auth triggers are disabled.
-          // This also works when email confirmation is required (no session).
-          if (data.user && metadata?.referralCode) {
+          // If email confirmation is required (no session), we'll process it on first login instead.
+          if (data.user && metadata?.referralCode && data.session?.access_token) {
             try {
               await fetch("/api/referrals/process", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${data.session.access_token}`,
+                },
                 body: JSON.stringify({
-                  referredUserId: data.user.id,
                   referralCode: metadata.referralCode,
                 }),
               });

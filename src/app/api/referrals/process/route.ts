@@ -1,50 +1,81 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 type Body = {
-  referredUserId?: string;
   referralCode?: string;
 };
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as Body;
-    const referredUserId = body?.referredUserId;
-    const referralCode = body?.referralCode;
-
-    if (!referredUserId || !referralCode) {
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       return NextResponse.json(
-        { success: false, error: "Missing referredUserId or referralCode" },
-        { status: 400 }
-      );
-    }
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json(
-        { success: false, error: "Server is not configured" },
+        { success: false, error: "Server is not configured (missing Supabase env vars)" },
         { status: 500 }
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    // Require a valid user token to prevent abuse
+    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: "Missing Authorization token" },
+        { status: 401 }
+      );
+    }
+
+    // Verify the token and get the signed-in user
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const { data: userData, error: userErr } = await supabaseUser.auth.getUser();
+    if (userErr || !userData?.user) {
+      return NextResponse.json(
+        { success: false, error: "Invalid session" },
+        { status: 401 }
+      );
+    }
+
+    const referredUserId = userData.user.id;
+    const referralCodeFromMeta = (userData.user.user_metadata as { referral_code?: string | null } | null)?.referral_code || null;
+
+    const body = (await req.json()) as Body;
+    const referralCode = body?.referralCode || referralCodeFromMeta;
+
+    if (!referralCode) {
+      // Nothing to process; return success so clients can treat this as a no-op
+      return NextResponse.json({ success: true, data: { skipped: true, reason: "no_referral_code" } });
+    }
+
+    // Server-side processing using service role
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false },
     });
 
     // Ensure the referred user's profile exists (welcome bonuses etc.)
     // This is safe to call multiple times.
-    await supabase.rpc("ensure_user_profile", { p_user_id: referredUserId } as never);
+    const ensureRes = await supabaseAdmin.rpc("ensure_user_profile", { p_user_id: referredUserId } as never);
+    if (ensureRes.error) {
+      return NextResponse.json(
+        { success: false, error: `ensure_user_profile failed: ${ensureRes.error.message}` },
+        { status: 500 }
+      );
+    }
 
     // Prefer the new function name, fallback to old one
-    const res1 = await supabase.rpc(
+    const res1 = await supabaseAdmin.rpc(
       "process_referral_signup",
       { p_referred_user_id: referredUserId, p_referral_code: referralCode } as never
     );
 
     if (res1.error) {
-      const res2 = await supabase.rpc(
+      const res2 = await supabaseAdmin.rpc(
         "process_referral",
         { p_referred_user_id: referredUserId, p_referral_code: referralCode } as never
       );
@@ -56,9 +87,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Clear referral code metadata so it won't re-run
+      await supabaseAdmin.auth.admin.updateUserById(referredUserId, { user_metadata: { referral_code: null } });
       return NextResponse.json({ success: true, data: res2.data ?? null });
     }
 
+    // Clear referral code metadata so it won't re-run
+    await supabaseAdmin.auth.admin.updateUserById(referredUserId, { user_metadata: { referral_code: null } });
     return NextResponse.json({ success: true, data: res1.data ?? null });
   } catch (e) {
     return NextResponse.json(
