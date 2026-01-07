@@ -384,6 +384,9 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
+-- Ensure the trigger is enabled (it may be disabled in some environments)
+ALTER TABLE auth.users ENABLE TRIGGER on_auth_user_created;
+
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION handle_new_user() TO service_role;
 

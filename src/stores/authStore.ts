@@ -374,6 +374,24 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           const displayName = metadata?.username || email.split("@")[0];
 
+          // Process referral immediately (server-side) so it works even when auth triggers are disabled.
+          // This also works when email confirmation is required (no session).
+          if (data.user && metadata?.referralCode) {
+            try {
+              await fetch("/api/referrals/process", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  referredUserId: data.user.id,
+                  referralCode: metadata.referralCode,
+                }),
+              });
+            } catch (e) {
+              // Best-effort; don't block signup
+              console.warn("Referral processing call failed:", e);
+            }
+          }
+
           // Check if email confirmation is required
           if (data.user && !data.session) {
             // Send appropriate email based on returning status
