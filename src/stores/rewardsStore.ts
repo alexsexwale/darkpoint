@@ -538,8 +538,12 @@ export const useRewardsStore = create<RewardsStore>()(
       },
 
       // Calculate discount amount based on applied reward OR VIP prize
+      // Rounds to nearest cent (2 decimal places) for accurate currency calculations
       getDiscountAmount: (subtotal) => {
         const { appliedReward, appliedVIPPrize } = get();
+        
+        // Helper to round to cents (2 decimal places)
+        const roundToCents = (value: number) => Math.round(value * 100) / 100;
         
         // VIP Prize takes precedence
         if (appliedVIPPrize) {
@@ -547,7 +551,7 @@ export const useRewardsStore = create<RewardsStore>()(
           
           switch (appliedVIPPrize.discount_type) {
             case "percent":
-              return Math.round((subtotal * appliedVIPPrize.discount_value) / 100);
+              return roundToCents((subtotal * appliedVIPPrize.discount_value) / 100);
             case "fixed":
               return Math.min(appliedVIPPrize.discount_value, subtotal);
             case "shipping":
@@ -564,7 +568,7 @@ export const useRewardsStore = create<RewardsStore>()(
 
         switch (appliedReward.discount_type) {
           case "percent":
-            return Math.round((subtotal * appliedReward.discount_value) / 100);
+            return roundToCents((subtotal * appliedReward.discount_value) / 100);
           case "fixed":
             return Math.min(appliedReward.discount_value, subtotal);
           case "shipping":
