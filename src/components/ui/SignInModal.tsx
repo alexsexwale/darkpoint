@@ -138,8 +138,19 @@ export function SignInModal() {
       return;
     }
 
-    // Get referral code from session storage if available
-    const referralCode = sessionStorage.getItem("referralCode");
+    // Get referral code from session storage if available.
+    // Fallback: if the user is currently on /ref/[code], read it from the URL.
+    // This makes referrals robust even if sessionStorage isn't available/was cleared.
+    const referralCodeFromSession = sessionStorage.getItem("referralCode");
+    const referralCodeFromUrl = (() => {
+      try {
+        const match = window.location.pathname.match(/^\/ref\/([^/]+)$/);
+        return match?.[1] || null;
+      } catch {
+        return null;
+      }
+    })();
+    const referralCode = referralCodeFromSession || referralCodeFromUrl;
     
     const result = await signUp(email, password, { firstName, lastName, username, referralCode: referralCode || undefined });
     

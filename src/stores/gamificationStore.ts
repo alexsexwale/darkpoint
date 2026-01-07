@@ -455,6 +455,11 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // If this user signed up via referral, Supabase stores it in auth user metadata.
+    // Some environments/triggers may fail to process the referral at signup time,
+    // so we "catch up" here after we know the profile exists.
+    const referralCodeUsed = (user.user_metadata as { referral_code?: string | null } | null)?.referral_code || null;
+
     try {
       // Try to fetch profile directly first - this always works if profile exists
       const { data: directProfile, error: directError } = await supabase
@@ -468,6 +473,48 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         set({
           userProfile: directProfile as UserProfile,
         });
+
+        // Catch up referral processing if needed (best-effort, non-blocking)
+        if (referralCodeUsed && !(directProfile as unknown as { referred_by?: string | null }).referred_by) {
+          // Fire and forget to avoid blocking UI; we'll refresh profile afterwards if it succeeds
+          (async () => {
+            try {
+              const { data, error } = await supabase.rpc(
+                "process_referral_signup",
+                { p_referred_user_id: user.id, p_referral_code: referralCodeUsed } as never
+              );
+
+              // Back-compat: older DBs used process_referral
+              if (error && /process_referral_signup/i.test(error.message)) {
+                const fallback = await supabase.rpc(
+                  "process_referral",
+                  { p_referred_user_id: user.id, p_referral_code: referralCodeUsed } as never
+                );
+                if (fallback.error) throw fallback.error;
+              } else if (error) {
+                throw error;
+              }
+
+              const ok = data as unknown as { success?: boolean; error?: string };
+              if (ok?.success) {
+                // Clear referral code so we don't keep retrying on every load
+                await supabase.auth.updateUser({ data: { referral_code: null } });
+
+                // Refresh profile + achievements so UI updates immediately
+                const { data: refreshed } = await supabase
+                  .from("user_profiles")
+                  .select("*")
+                  .eq("id", user.id)
+                  .single();
+                if (refreshed) set({ userProfile: refreshed as UserProfile });
+                await get().checkAchievements();
+              }
+            } catch (e) {
+              // Don't scare users; just log for debugging
+              console.warn("Referral catch-up failed:", e);
+            }
+          })();
+        }
         
         // Try RPC for additional stats (level info, achievements) but don't block
         supabase.rpc("get_gamification_stats", { p_user_id: user.id } as never)
@@ -519,6 +566,32 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             console.error("Upsert also failed:", upsertError);
           } else if (newProfile) {
             set({ userProfile: newProfile as UserProfile });
+
+            // Catch up referral processing if needed (best-effort)
+            if (referralCodeUsed && !(newProfile as unknown as { referred_by?: string | null }).referred_by) {
+              try {
+                const { data, error } = await supabase.rpc(
+                  "process_referral_signup",
+                  { p_referred_user_id: user.id, p_referral_code: referralCodeUsed } as never
+                );
+                if (error && /process_referral_signup/i.test(error.message)) {
+                  const fallback = await supabase.rpc(
+                    "process_referral",
+                    { p_referred_user_id: user.id, p_referral_code: referralCodeUsed } as never
+                  );
+                  if (fallback.error) throw fallback.error;
+                } else if (error) {
+                  throw error;
+                }
+                const ok = data as unknown as { success?: boolean };
+                if (ok?.success) {
+                  await supabase.auth.updateUser({ data: { referral_code: null } });
+                  await get().checkAchievements();
+                }
+              } catch (e) {
+                console.warn("Referral catch-up failed:", e);
+              }
+            }
             return;
           }
         } else {
@@ -531,6 +604,39 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           
           if (createdProfile) {
             set({ userProfile: createdProfile as UserProfile });
+
+            // Catch up referral processing if needed (best-effort)
+            if (referralCodeUsed && !(createdProfile as unknown as { referred_by?: string | null }).referred_by) {
+              try {
+                const { data, error } = await supabase.rpc(
+                  "process_referral_signup",
+                  { p_referred_user_id: user.id, p_referral_code: referralCodeUsed } as never
+                );
+                if (error && /process_referral_signup/i.test(error.message)) {
+                  const fallback = await supabase.rpc(
+                    "process_referral",
+                    { p_referred_user_id: user.id, p_referral_code: referralCodeUsed } as never
+                  );
+                  if (fallback.error) throw fallback.error;
+                } else if (error) {
+                  throw error;
+                }
+                const ok = data as unknown as { success?: boolean };
+                if (ok?.success) {
+                  await supabase.auth.updateUser({ data: { referral_code: null } });
+                  // refresh profile again so xp shows immediately
+                  const { data: refreshed } = await supabase
+                    .from("user_profiles")
+                    .select("*")
+                    .eq("id", user.id)
+                    .single();
+                  if (refreshed) set({ userProfile: refreshed as UserProfile });
+                  await get().checkAchievements();
+                }
+              } catch (e) {
+                console.warn("Referral catch-up failed:", e);
+              }
+            }
             return;
           }
         }
