@@ -65,7 +65,7 @@ export function ShareProductButton({ product, className }: ShareProductButtonPro
   const hasSharedRef = useRef(false);
 
   const productUrl = typeof window !== "undefined" ? window.location.href : "";
-  const shareText = `Check out ${product.name} at DarkPoint!`;
+  const shareText = `Check out ${product.name} at Darkpoint!`;
 
   const awardShareXP = async (platform: string) => {
     if (!isAuthenticated || hasSharedRef.current) return;

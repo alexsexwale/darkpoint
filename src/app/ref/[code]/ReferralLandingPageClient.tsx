@@ -157,7 +157,7 @@ export function ReferralLandingPageClient({ code }: ReferralLandingPageClientPro
               </h1>
               
               <p className="text-white/70 text-lg mb-6">
-                You&apos;re already part of the DarkPoint family! 
+                You&apos;re already part of the Darkpoint family! 
                 {referrerInfo?.display_name && (
                   <> Your friend <span className="text-[var(--color-main-1)] font-semibold">{referrerInfo.display_name}</span> must be proud!</>
                 )}
@@ -246,7 +246,7 @@ export function ReferralLandingPageClient({ code }: ReferralLandingPageClientPro
           >
             <h1 className="text-4xl md:text-6xl font-heading uppercase tracking-wider mb-6">
               Welcome to{" "}
-              <span className="text-[var(--color-main-1)]">DarkPoint</span>
+              <span className="text-[var(--color-main-1)]">Darkpoint</span>
             </h1>
             <p className="text-xl text-white/70 max-w-2xl mx-auto mb-8">
               Your gateway to premium gaming gear, exclusive rewards, and an epic community of gamers!
@@ -358,7 +358,7 @@ export function ReferralLandingPageClient({ code }: ReferralLandingPageClientPro
             transition={{ delay: 0.4 }}
           >
             <h3 className="text-xl font-heading text-center mb-8 text-white/80">
-              Why Join DarkPoint?
+              Why Join Darkpoint?
             </h3>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 text-center">

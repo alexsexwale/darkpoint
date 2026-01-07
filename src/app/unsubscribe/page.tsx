@@ -168,7 +168,7 @@ function UnsubscribeContent() {
                 </p>
                 
                 <Link href="/" className="text-[var(--color-main-1)] hover:underline text-sm">
-                  ← Back to DarkPoint
+                  ← Back to Darkpoint
                 </Link>
               </div>
             </>

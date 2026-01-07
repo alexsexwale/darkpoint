@@ -7,8 +7,8 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps) {
   const { code } = await params;
   return {
-    title: `Join DarkPoint - Referral ${code}`,
-    description: "Join DarkPoint with a friend's referral and get bonus XP rewards!",
+    title: `Join Darkpoint - Referral ${code}`,
+    description: "Join Darkpoint with a friend's referral and get bonus XP rewards!",
   };
 }
 

@@ -53,7 +53,7 @@ class CJDropshippingAPI {
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'DarkPoint/1.0',
+        'User-Agent': 'Darkpoint/1.0',
       },
     });
 
@@ -62,7 +62,7 @@ class CJDropshippingAPI {
       timeout: 15000,
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'DarkPoint/1.0',
+        'User-Agent': 'Darkpoint/1.0',
       },
     });
 
@@ -81,7 +81,7 @@ class CJDropshippingAPI {
         }
       }
       if (config.headers) {
-        config.headers['User-Agent'] = 'DarkPoint/1.0';
+        config.headers['User-Agent'] = 'Darkpoint/1.0';
       }
 
       return config;
