@@ -242,11 +242,158 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION get_referral_stats(UUID) TO authenticated;
 
 -- ============================================================
+-- Step 9: UPDATE the handle_new_user trigger to properly call referral function
+-- This ensures the referral code from signup metadata is processed
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_username TEXT;
+  v_display_name TEXT;
+  v_referral_code TEXT;
+  v_ref_code_used TEXT;
+  v_is_returning BOOLEAN := FALSE;
+  v_welcome_xp INT := 100;
+  v_welcome_spins INT := 1;
+  v_referral_result JSONB;
+BEGIN
+  -- Extract username from metadata or email
+  v_username := COALESCE(
+    NEW.raw_user_meta_data->>'username',
+    SPLIT_PART(NEW.email, '@', 1)
+  );
+  
+  -- Extract display name
+  v_display_name := COALESCE(
+    NEW.raw_user_meta_data->>'full_name',
+    CONCAT(
+      COALESCE(NEW.raw_user_meta_data->>'first_name', ''),
+      ' ',
+      COALESCE(NEW.raw_user_meta_data->>'last_name', '')
+    )
+  );
+  v_display_name := NULLIF(TRIM(v_display_name), '');
+  
+  -- Get referral code used during signup (THIS IS THE KEY!)
+  v_ref_code_used := NEW.raw_user_meta_data->>'referral_code';
+  
+  RAISE NOTICE 'New user signup: id=%, email=%, referral_code=%', NEW.id, NEW.email, v_ref_code_used;
+  
+  -- Generate unique referral code for this new user
+  v_referral_code := 'DARK-' || UPPER(LEFT(v_username, 6)) || FLOOR(RANDOM() * 9000 + 1000)::TEXT;
+  
+  -- Ensure referral code is unique
+  WHILE EXISTS (SELECT 1 FROM user_profiles WHERE referral_code = v_referral_code) LOOP
+    v_referral_code := 'DARK-' || UPPER(LEFT(v_username, 6)) || FLOOR(RANDOM() * 9000 + 1000)::TEXT;
+  END LOOP;
+  
+  -- Check if returning user
+  SELECT EXISTS(SELECT 1 FROM deleted_accounts WHERE email = NEW.email) INTO v_is_returning;
+  
+  -- Create user profile with welcome bonuses
+  BEGIN
+    INSERT INTO user_profiles (
+      id, username, display_name, email, referral_code,
+      total_xp, current_level, current_streak, longest_streak,
+      total_spent, total_orders, total_reviews, total_referrals, referral_count,
+      available_spins, newsletter_subscribed, is_returning_user
+    ) VALUES (
+      NEW.id, v_username, v_display_name, NEW.email, v_referral_code,
+      v_welcome_xp, 1, 0, 0,
+      0, 0, 0, 0, 0,
+      v_welcome_spins, true, v_is_returning
+    );
+  EXCEPTION WHEN unique_violation THEN
+    -- Handle duplicate username
+    v_username := v_username || FLOOR(RANDOM() * 1000)::TEXT;
+    INSERT INTO user_profiles (
+      id, username, display_name, email, referral_code,
+      total_xp, current_level, current_streak, longest_streak,
+      total_spent, total_orders, total_reviews, total_referrals, referral_count,
+      available_spins, newsletter_subscribed, is_returning_user
+    ) VALUES (
+      NEW.id, v_username, v_display_name, NEW.email, v_referral_code,
+      v_welcome_xp, 1, 0, 0,
+      0, 0, 0, 0, 0,
+      v_welcome_spins, true, v_is_returning
+    );
+  END;
+  
+  -- Log welcome XP transaction
+  BEGIN
+    INSERT INTO xp_transactions (user_id, amount, action, description)
+    VALUES (NEW.id, v_welcome_xp, 'signup', 'Welcome bonus XP');
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Could not log welcome XP: %', SQLERRM;
+  END;
+  
+  -- Create welcome coupon (10% off for 30 days)
+  IF NOT v_is_returning THEN
+    BEGIN
+      INSERT INTO user_coupons (
+        user_id, code, discount_type, discount_value, min_order_value,
+        max_uses, uses_count, is_used, source, description, expires_at
+      ) VALUES (
+        NEW.id, NULL, 'percent', 10, 0,
+        1, 0, FALSE, 'welcome', '🎁 Welcome Gift: 10% Off Your First Order',
+        NOW() + INTERVAL '30 days'
+      );
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Could not create welcome coupon: %', SQLERRM;
+    END;
+  END IF;
+  
+  -- Subscribe to newsletter
+  BEGIN
+    INSERT INTO newsletter_subscriptions (email, user_id, source)
+    VALUES (NEW.email, NEW.id, 'registration')
+    ON CONFLICT (email) DO UPDATE SET
+      user_id = NEW.id,
+      is_subscribed = true,
+      source = 'registration',
+      updated_at = NOW();
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'Could not subscribe to newsletter: %', SQLERRM;
+  END;
+  
+  -- *** PROCESS REFERRAL IF CODE PROVIDED ***
+  IF v_ref_code_used IS NOT NULL AND TRIM(v_ref_code_used) != '' THEN
+    RAISE NOTICE 'Processing referral for new user % with code %', NEW.id, v_ref_code_used;
+    BEGIN
+      v_referral_result := process_referral_signup(NEW.id, v_ref_code_used);
+      RAISE NOTICE 'Referral result: %', v_referral_result;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Referral processing failed: % - %', SQLERRM, SQLSTATE;
+    END;
+  ELSE
+    RAISE NOTICE 'No referral code provided for user %', NEW.id;
+  END IF;
+  
+  RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'handle_new_user error for %: %', NEW.id, SQLERRM;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Recreate the trigger
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION handle_new_user() TO service_role;
+
+-- ============================================================
 -- VERIFICATION: Test the setup
 -- ============================================================
 DO $$
 BEGIN
   RAISE NOTICE 'Referral system fix applied successfully!';
   RAISE NOTICE 'Functions created: process_referral_signup, process_referral, admin_process_referral, get_referral_stats';
+  RAISE NOTICE 'Trigger handle_new_user has been updated to properly process referrals!';
 END $$;
 

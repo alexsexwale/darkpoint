@@ -445,8 +445,8 @@ function formatDescription(description: string | null): string {
   }
   
   // Replace any remaining snake_case quest IDs in the description
-  return description.replace(/:\s*(\w+_\w+)/g, (match, id) => {
-    const friendlyName = QUEST_FRIENDLY_NAMES[id] || id.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+  return description.replace(/:\s*(\w+_\w+)/g, (match: string, id: string) => {
+    const friendlyName = QUEST_FRIENDLY_NAMES[id] || id.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
     return `: ${friendlyName}`;
   });
 }
