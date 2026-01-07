@@ -22,6 +22,7 @@ export function BackgroundAudio({
   const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const wasPausedOnBlurRef = useRef(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const {
     isPlaying,
@@ -34,6 +35,23 @@ export function BackgroundAudio({
     setDuration,
     setCurrentTrack,
   } = useAudioStore();
+
+  // Wait for Zustand to hydrate from localStorage before acting on muted state
+  useEffect(() => {
+    // Check if the store has been hydrated by checking if it has the persist API
+    const unsubscribe = useAudioStore.persist.onFinishHydration(() => {
+      setIsHydrated(true);
+    });
+    
+    // If already hydrated (e.g., hot reload), set immediately
+    if (useAudioStore.persist.hasHydrated()) {
+      setIsHydrated(true);
+    }
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // Fade functions - defined first so they can be used in effects
   const fadeOut = useCallback(() => {
@@ -151,22 +169,24 @@ export function BackgroundAudio({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
 
-  // Auto-play based on muted state after hydration
+  // Auto-play based on muted state after BOTH component init AND Zustand hydration
   // If user has NOT muted (isMuted = false), auto-play music
   useEffect(() => {
-    if (hasInitialized && !isMuted && !isPlaying && howlRef.current) {
+    // Wait for both component initialization AND Zustand hydration
+    if (hasInitialized && isHydrated && !isMuted && !isPlaying && howlRef.current) {
       // Small delay to ensure everything is ready
       setTimeout(() => {
         fadeIn();
       }, 500);
     }
-    // Only run when hasInitialized changes (i.e., on mount after hydration)
+    // Only run when both hasInitialized and isHydrated are true
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasInitialized]);
+  }, [hasInitialized, isHydrated]);
 
   // Handle mute state changes - this is the primary control now
+  // Only act on mute changes AFTER hydration to respect persisted state
   useEffect(() => {
-    if (!howlRef.current || !hasInitialized) return;
+    if (!howlRef.current || !hasInitialized || !isHydrated) return;
 
     if (isMuted && howlRef.current.playing()) {
       // User muted - fade out and pause
@@ -175,28 +195,28 @@ export function BackgroundAudio({
       // User unmuted - fade in and play
       fadeIn();
     }
-  }, [isMuted, hasInitialized, fadeIn, fadeOut]);
+  }, [isMuted, hasInitialized, isHydrated, fadeIn, fadeOut]);
 
   // Handle play/pause from store (for programmatic control)
   useEffect(() => {
-    if (!howlRef.current || !hasInitialized) return;
+    if (!howlRef.current || !hasInitialized || !isHydrated) return;
 
     if (isPlaying && !howlRef.current.playing() && !isMuted) {
       fadeIn();
     } else if (!isPlaying && howlRef.current.playing()) {
       fadeOut();
     }
-  }, [isPlaying, isMuted, hasInitialized, fadeIn, fadeOut]);
+  }, [isPlaying, isMuted, hasInitialized, isHydrated, fadeIn, fadeOut]);
 
-  // Handle volume changes
+  // Handle volume changes - wait for hydration to use correct muted state
   useEffect(() => {
-    if (!howlRef.current) return;
+    if (!howlRef.current || !isHydrated) return;
     howlRef.current.volume(isMuted ? 0 : volume / 100);
-  }, [volume, isMuted]);
+  }, [volume, isMuted, isHydrated]);
 
-  // Handle window blur/focus
+  // Handle window blur/focus - only if not muted
   useEffect(() => {
-    if (!pauseOnBlur) return;
+    if (!pauseOnBlur || !isHydrated) return;
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -205,7 +225,8 @@ export function BackgroundAudio({
           fadeOut();
         }
       } else {
-        if (wasPausedOnBlurRef.current) {
+        // Only resume if not muted
+        if (wasPausedOnBlurRef.current && !isMuted) {
           wasPausedOnBlurRef.current = false;
           fadeIn();
         }
@@ -216,7 +237,7 @@ export function BackgroundAudio({
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [pauseOnBlur, fadeIn, fadeOut]);
+  }, [pauseOnBlur, isHydrated, isMuted, fadeIn, fadeOut]);
 
   // This component doesn't render anything visible
   return null;

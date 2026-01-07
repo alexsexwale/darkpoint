@@ -15,8 +15,60 @@ interface DailyQuestListProps {
   showLoginPrompt?: boolean;
 }
 
+// Skeleton component for loading state
+function DailyQuestListSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 animate-pulse", className)}>
+      {/* Header Skeleton */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <div className="h-6 bg-[var(--color-dark-3)] rounded w-36 mb-2" />
+          <div className="h-4 bg-[var(--color-dark-3)] rounded w-44" />
+        </div>
+        <div className="text-center">
+          <div className="h-8 bg-[var(--color-dark-3)] rounded w-12 mx-auto mb-1" />
+          <div className="h-3 bg-[var(--color-dark-3)] rounded w-16" />
+        </div>
+      </div>
+
+      {/* Progress Summary Skeleton */}
+      <div className="mb-6 p-4 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)]">
+        <div className="flex items-center justify-between mb-2">
+          <div className="h-4 bg-[var(--color-dark-4)] rounded w-24" />
+          <div className="h-4 bg-[var(--color-dark-4)] rounded w-16" />
+        </div>
+        <div className="h-3 bg-[var(--color-dark-4)] rounded-full w-full" />
+      </div>
+
+      {/* Quest Items Skeleton */}
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-[var(--color-dark-3)]/50 border border-[var(--color-dark-4)] p-4 rounded-lg">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-[var(--color-dark-4)] rounded-lg flex-shrink-0" />
+              <div className="flex-1">
+                <div className="flex justify-between mb-2">
+                  <div className="h-5 bg-[var(--color-dark-4)] rounded w-32" />
+                  <div className="h-5 bg-[var(--color-dark-4)] rounded w-16" />
+                </div>
+                <div className="h-4 bg-[var(--color-dark-4)] rounded w-44 mb-2" />
+                <div className="h-2 bg-[var(--color-dark-4)] rounded-full w-full" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Reset Timer Skeleton */}
+      <div className="mt-4 text-center">
+        <div className="h-3 bg-[var(--color-dark-3)] rounded w-32 mx-auto" />
+      </div>
+    </div>
+  );
+}
+
 export function DailyQuestList({ className, compact = false, showLoginPrompt = false }: DailyQuestListProps) {
-  const { dailyQuests } = useGamificationStore();
+  const { dailyQuests, isLoading } = useGamificationStore();
   const { openSignIn } = useUIStore();
 
   // Get today's quests - either from store or generate fresh
@@ -26,6 +78,11 @@ export function DailyQuestList({ className, compact = false, showLoginPrompt = f
     }
     return getDailyQuests();
   }, [dailyQuests]);
+
+  // Show skeleton while loading (only for authenticated users)
+  if (isLoading && !showLoginPrompt) {
+    return <DailyQuestListSkeleton className={className} />;
+  }
 
   const completedCount = quests.filter((q) => q.completed).length;
   const totalXP = quests.reduce((sum, q) => sum + (q.completed ? q.xpReward : 0), 0);

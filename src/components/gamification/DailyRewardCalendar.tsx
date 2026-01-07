@@ -11,9 +11,49 @@ interface DailyRewardCalendarProps {
 }
 
 export function DailyRewardCalendar({ className, onClaimReward }: DailyRewardCalendarProps) {
-  const { userProfile } = useGamificationStore();
+  const { userProfile, isLoading } = useGamificationStore();
 
-  if (!userProfile) return null;
+  // Show skeleton while loading
+  if (!userProfile || isLoading) {
+    return (
+      <div className={cn("bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 animate-pulse", className)}>
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="h-6 bg-[var(--color-dark-3)] rounded w-36 mb-2" />
+            <div className="h-4 bg-[var(--color-dark-3)] rounded w-28" />
+          </div>
+          <div className="text-center">
+            <div className="h-8 w-8 bg-[var(--color-dark-3)] rounded-full mx-auto mb-1" />
+            <div className="h-3 bg-[var(--color-dark-3)] rounded w-14" />
+          </div>
+        </div>
+
+        {/* Calendar Grid Skeleton */}
+        <div className="grid grid-cols-7 gap-2 mb-6">
+          {[...Array(7)].map((_, i) => (
+            <div key={i} className="flex flex-col items-center justify-center p-2 sm:p-3 border border-[var(--color-dark-4)] bg-[var(--color-dark-3)]">
+              <div className="h-3 bg-[var(--color-dark-4)] rounded w-8 mb-1" />
+              <div className="h-6 w-6 bg-[var(--color-dark-4)] rounded mb-1" />
+              <div className="h-3 bg-[var(--color-dark-4)] rounded w-6" />
+            </div>
+          ))}
+        </div>
+
+        {/* Button Skeleton */}
+        <div className="h-12 bg-[var(--color-dark-3)] rounded w-full mb-4" />
+
+        {/* Milestone Skeleton */}
+        <div className="pt-4 border-t border-[var(--color-dark-3)]">
+          <div className="flex justify-between mb-2">
+            <div className="h-3 bg-[var(--color-dark-3)] rounded w-32" />
+            <div className="h-3 bg-[var(--color-dark-3)] rounded w-16" />
+          </div>
+          <div className="h-2 bg-[var(--color-dark-3)] rounded-full w-full" />
+        </div>
+      </div>
+    );
+  }
 
   const currentStreak = userProfile.current_streak;
   const cycleDay = currentStreak > 0 ? ((currentStreak - 1) % 7) + 1 : 0;

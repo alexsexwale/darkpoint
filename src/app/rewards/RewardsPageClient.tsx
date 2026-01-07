@@ -119,9 +119,44 @@ function GuestWelcome() {
   );
 }
 
+// Skeleton for user stats header
+function UserStatsHeaderSkeleton() {
+  return (
+    <div className="bg-gradient-to-r from-[var(--color-dark-2)] to-[var(--color-dark-1)] border border-[var(--color-dark-3)] rounded-lg p-6 mb-8 animate-pulse">
+      <div className="flex flex-col md:flex-row items-center gap-6">
+        <div className="w-20 h-20 bg-[var(--color-dark-3)] rounded-full" />
+        
+        <div className="flex-1 w-full">
+          <div className="flex items-center justify-between mb-2">
+            <div className="h-4 bg-[var(--color-dark-3)] rounded w-32" />
+            <div className="h-4 bg-[var(--color-dark-3)] rounded w-20" />
+          </div>
+          <div className="h-3 bg-[var(--color-dark-3)] rounded-full w-full" />
+        </div>
+
+        <div className="flex gap-6 text-center">
+          <div>
+            <div className="h-8 w-12 bg-[var(--color-dark-3)] rounded mx-auto mb-1" />
+            <div className="h-3 w-16 bg-[var(--color-dark-3)] rounded" />
+          </div>
+          <div>
+            <div className="h-8 w-12 bg-[var(--color-dark-3)] rounded mx-auto mb-1" />
+            <div className="h-3 w-16 bg-[var(--color-dark-3)] rounded" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // User stats header for logged-in users
 function UserStatsHeader() {
-  const { userProfile } = useGamificationStore();
+  const { userProfile, isLoading } = useGamificationStore();
+
+  // Show skeleton while loading
+  if (isLoading || !userProfile) {
+    return <UserStatsHeaderSkeleton />;
+  }
 
   return (
     <motion.div
@@ -188,10 +223,133 @@ export function RewardsPageClient() {
       <div className="min-h-screen">
         <section className="py-16">
           <div className="container">
-            <div className="animate-pulse">
-              <div className="h-12 bg-[var(--color-dark-2)] rounded w-1/3 mx-auto mb-4" />
-              <div className="h-6 bg-[var(--color-dark-2)] rounded w-1/2 mx-auto mb-16" />
-              <div className="h-64 bg-[var(--color-dark-2)] rounded mb-8" />
+            {/* Header Skeleton */}
+            <div className="text-center mb-12 animate-pulse">
+              <div className="h-12 bg-[var(--color-dark-2)] rounded w-64 mx-auto mb-4" />
+              <div className="h-5 bg-[var(--color-dark-2)] rounded w-96 mx-auto" />
+            </div>
+
+            {/* User Stats Header Skeleton */}
+            <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-lg p-6 mb-8 animate-pulse">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="w-20 h-20 bg-[var(--color-dark-3)] rounded-full" />
+                <div className="flex-1 w-full">
+                  <div className="flex justify-between mb-2">
+                    <div className="h-4 bg-[var(--color-dark-3)] rounded w-32" />
+                    <div className="h-4 bg-[var(--color-dark-3)] rounded w-20" />
+                  </div>
+                  <div className="h-3 bg-[var(--color-dark-3)] rounded w-full" />
+                </div>
+                <div className="flex gap-6">
+                  <div className="text-center">
+                    <div className="h-8 w-12 bg-[var(--color-dark-3)] rounded mx-auto mb-1" />
+                    <div className="h-3 w-16 bg-[var(--color-dark-3)] rounded" />
+                  </div>
+                  <div className="text-center">
+                    <div className="h-8 w-12 bg-[var(--color-dark-3)] rounded mx-auto mb-1" />
+                    <div className="h-3 w-16 bg-[var(--color-dark-3)] rounded" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Daily Rewards & Quests Grid Skeleton */}
+            <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-16">
+              {/* Daily Rewards Calendar Skeleton */}
+              <div className="animate-pulse">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-6 bg-[var(--color-dark-2)] rounded w-40" />
+                  <div className="h-8 bg-[var(--color-dark-2)] rounded w-16" />
+                </div>
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+                  {/* Calendar Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="h-7 bg-[var(--color-dark-3)] rounded w-36" />
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 bg-[var(--color-dark-3)] rounded-full" />
+                      <div className="h-5 bg-[var(--color-dark-3)] rounded w-16" />
+                    </div>
+                  </div>
+                  
+                  {/* Day Icons Row */}
+                  <div className="flex justify-between gap-2 mb-6">
+                    {[...Array(7)].map((_, i) => (
+                      <div key={i} className="flex-1 text-center">
+                        <div className={`h-16 rounded-lg ${i < 2 ? 'bg-[var(--color-main-1)]/20 border-2 border-[var(--color-main-1)]/30' : 'bg-[var(--color-dark-3)]'}`} />
+                        <div className="h-3 bg-[var(--color-dark-3)] rounded w-8 mx-auto mt-2" />
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Claimed Message */}
+                  <div className="bg-[var(--color-dark-3)]/50 p-4 rounded-lg">
+                    <div className="h-5 bg-[var(--color-dark-3)] rounded w-48 mx-auto mb-2" />
+                    <div className="h-4 bg-[var(--color-dark-3)] rounded w-40 mx-auto" />
+                  </div>
+                  
+                  {/* Milestone */}
+                  <div className="mt-6 pt-4 border-t border-[var(--color-dark-3)]">
+                    <div className="flex justify-between mb-2">
+                      <div className="h-4 bg-[var(--color-dark-3)] rounded w-40" />
+                      <div className="h-4 bg-[var(--color-dark-3)] rounded w-16" />
+                    </div>
+                    <div className="h-2 bg-[var(--color-dark-3)] rounded-full w-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Today's Quests Skeleton */}
+              <div className="animate-pulse">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-6 bg-[var(--color-dark-2)] rounded w-40" />
+                  <div className="h-6 bg-[var(--color-dark-2)] rounded w-12" />
+                </div>
+                <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+                  {/* Quest Progress Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="h-5 bg-[var(--color-dark-3)] rounded w-28" />
+                    <div className="h-5 bg-[var(--color-dark-3)] rounded w-16" />
+                  </div>
+                  <div className="h-2 bg-[var(--color-dark-3)] rounded-full w-full mb-2" />
+                  <div className="h-4 bg-[var(--color-dark-3)] rounded w-64 mx-auto mb-6" />
+                  
+                  {/* Quest Items */}
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="bg-[var(--color-dark-3)]/30 border border-[var(--color-dark-3)] p-4 rounded-lg mb-3">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 bg-[var(--color-dark-3)] rounded-lg" />
+                        <div className="flex-1">
+                          <div className="flex justify-between mb-2">
+                            <div className="h-5 bg-[var(--color-dark-3)] rounded w-32" />
+                            <div className="h-5 bg-[var(--color-dark-3)] rounded w-16" />
+                          </div>
+                          <div className="h-4 bg-[var(--color-dark-3)] rounded w-40 mb-2" />
+                          <div className="h-2 bg-[var(--color-dark-3)] rounded-full w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Reset Timer */}
+                  <div className="h-4 bg-[var(--color-dark-3)] rounded w-36 mx-auto mt-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* More Ways to Earn Skeleton */}
+            <div className="text-center mb-8 animate-pulse">
+              <div className="h-8 bg-[var(--color-dark-2)] rounded w-52 mx-auto" />
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto animate-pulse">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 text-center">
+                  <div className="w-16 h-16 bg-[var(--color-dark-3)] rounded-full mx-auto mb-4" />
+                  <div className="h-6 bg-[var(--color-dark-3)] rounded w-32 mx-auto mb-2" />
+                  <div className="h-4 bg-[var(--color-dark-3)] rounded w-44 mx-auto mb-4" />
+                  <div className="h-10 bg-[var(--color-dark-3)] rounded w-28 mx-auto" />
+                </div>
+              ))}
             </div>
           </div>
         </section>
