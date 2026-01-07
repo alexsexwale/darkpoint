@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -49,7 +50,8 @@ interface NavLinksProps {
   onLinkClick?: () => void;
 }
 
-export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
+// Internal component that uses useSearchParams (must be wrapped in Suspense)
+function NavLinksInternal({ className, mobile, onLinkClick }: NavLinksProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { hasAnyBadge } = useGamificationStore();
@@ -187,5 +189,43 @@ export function NavLinks({ className, mobile, onLinkClick }: NavLinksProps) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// Export wrapper that provides Suspense boundary for useSearchParams
+export function NavLinks(props: NavLinksProps) {
+  const fallback = props.mobile ? (
+    <ul className={cn("flex flex-col space-y-2", props.className)}>
+      {baseNavLinks.map((link) => (
+        <li key={link.href}>
+          <Link
+            href={link.href}
+            className="block py-3 px-4 font-heading text-lg text-white"
+          >
+            {link.label}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <ul className={cn("flex items-center gap-1", props.className)}>
+      {baseNavLinks.map((link) => (
+        <li key={link.href} className="relative group">
+          <NavLinkEffect
+            href={link.href}
+            isActive={false}
+            showDots={true}
+          >
+            {link.label}
+          </NavLinkEffect>
+        </li>
+      ))}
+    </ul>
+  );
+
+  return (
+    <Suspense fallback={fallback}>
+      <NavLinksInternal {...props} />
+    </Suspense>
   );
 }
