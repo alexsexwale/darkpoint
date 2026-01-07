@@ -337,9 +337,9 @@ export const useRewardsStore = create<RewardsStore>()(
           if (error) throw error;
 
           // Map is_used to used for interface compatibility
-          const mappedRewards = (data || []).map(r => ({
+          const mappedRewards = (data || []).map((r: Record<string, unknown>) => ({
             ...r,
-            used: r.is_used ?? false,
+            used: (r.is_used as boolean) ?? false,
           })) as UserReward[];
 
           set({ 
