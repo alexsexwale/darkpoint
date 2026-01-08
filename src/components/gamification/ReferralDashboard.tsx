@@ -134,32 +134,22 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
           return;
         }
 
-        // Fallback: Query referrals table directly
+        // Fallback: Query referrals table directly (simplified without join)
         const { data: referralsData } = await supabase
           .from("referrals")
-          .select(`
-            id,
-            status,
-            created_at,
-            updated_at,
-            referred:referred_id (
-              display_name,
-              username
-            )
-          `)
+          .select("id, status, created_at, updated_at, referred_id")
           .eq("referrer_id", userProfile.id)
           .order("created_at", { ascending: false });
 
-        if (referralsData) {
+        if (referralsData && referralsData.length > 0) {
           const pending: ReferralRecord[] = [];
           const completed: ReferralRecord[] = [];
 
           for (const ref of referralsData) {
-            const referred = ref.referred as { display_name?: string; username?: string } | null;
             const record: ReferralRecord = {
               id: ref.id,
-              referred_name: referred?.display_name || referred?.username || "Anonymous",
-              status: ref.status as "pending" | "completed",
+              referred_name: "Friend",
+              status: (ref.status === "pending" || ref.status === "pending_purchase") ? "pending" : "completed",
               created_at: ref.created_at,
               completed_at: ref.updated_at,
             };
