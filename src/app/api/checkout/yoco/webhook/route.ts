@@ -438,73 +438,198 @@ export async function POST(request: NextRequest) {
         customerEmail = authUser.user.email;
       }
 
-      // Update user stats
-      try {
-        await supabase.rpc("update_user_order_stats", {
-          p_user_id: userId,
-          p_order_total: (order.total as number) - ((order.discount_amount as number) || 0),
-        });
-        console.log("User stats updated for:", userId);
-      } catch (err) {
-        console.warn("Failed to update user stats:", err);
-      }
+      const orderTotal = (order.total as number) - ((order.discount_amount as number) || 0);
+      const xpAmount = Math.max(Math.floor(orderTotal / 10), 10); // Minimum 10 XP
 
-      // Award XP for purchase
-      try {
-        const xpAmount = Math.floor(((order.total as number) - ((order.discount_amount as number) || 0)) / 10);
-        await supabase.rpc("add_xp", {
-          p_user_id: userId,
-          p_action: "purchase",
-          p_amount: Math.max(xpAmount, 10),
-          p_description: `Purchase: Order ${order.order_number}`,
-        });
-        console.log("XP awarded:", Math.max(xpAmount, 10));
-      } catch (err) {
-        console.warn("Failed to award XP:", err);
-      }
+      // ============================================
+      // DIRECT DATABASE OPERATIONS (No RPC functions)
+      // ============================================
 
-      // Check and award achievements after purchase
-      try {
-        const achievementResult = await supabase.rpc("check_achievements", {
-          p_user_id: userId,
-        });
-        if (achievementResult.data?.unlocked?.length > 0) {
-          console.log("Achievements unlocked:", achievementResult.data.unlocked);
+      // 1. Update user profile stats directly
+      console.log("Updating user stats for:", userId);
+      const { data: currentProfile, error: profileFetchError } = await supabase
+        .from("user_profiles")
+        .select("total_xp, total_orders, total_spent")
+        .eq("id", userId)
+        .single();
+
+      if (profileFetchError) {
+        console.error("Failed to fetch user profile:", profileFetchError);
+      } else {
+        const { error: profileUpdateError } = await supabase
+          .from("user_profiles")
+          .update({
+            total_xp: (currentProfile?.total_xp || 0) + xpAmount,
+            total_orders: (currentProfile?.total_orders || 0) + 1,
+            total_spent: (currentProfile?.total_spent || 0) + orderTotal,
+            last_purchase_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", userId);
+
+        if (profileUpdateError) {
+          console.error("Failed to update user profile:", profileUpdateError);
+        } else {
+          console.log("User profile updated: +", xpAmount, "XP, total_orders +1");
         }
-      } catch (err) {
-        console.warn("Failed to check achievements:", err);
       }
 
-      // Complete referral if this user was referred (purchase-based referral system)
-      // This awards XP to the referrer only when the referred user makes their first purchase
-      try {
-        const referralResult = await supabase.rpc("complete_referral_on_purchase", {
-          p_buyer_user_id: userId,
+      // 2. Log XP transaction directly
+      console.log("Logging XP transaction:", xpAmount);
+      const { error: xpError } = await supabase
+        .from("xp_transactions")
+        .insert({
+          user_id: userId,
+          amount: xpAmount,
+          action: "purchase",
+          description: `Purchase: Order ${order.order_number} (R${orderTotal.toFixed(2)})`,
+          created_at: new Date().toISOString(),
         });
-        if (referralResult.data?.success && !referralResult.data?.skipped) {
-          console.log("Referral completed! Referrer awarded:", referralResult.data.referrer_xp_awarded, "XP");
-        } else if (referralResult.data?.skipped) {
-          console.log("Referral check skipped:", referralResult.data.reason);
-        }
-      } catch (err) {
-        console.warn("Failed to complete referral:", err);
+
+      if (xpError) {
+        console.error("Failed to log XP transaction:", xpError);
+      } else {
+        console.log("XP transaction logged successfully");
       }
 
-      // Check if user should get bonus spin (R1000+ contribution)
-      const contribution = (order.total as number) - ((order.discount_amount as number) || 0) - ((order.shipping_cost as number) || 0);
+      // 3. Award First Timer achievement directly (if this is their first order)
+      if ((currentProfile?.total_orders || 0) === 0) {
+        console.log("First purchase detected - awarding First Timer achievement");
+        
+        // Find the First Timer achievement
+        const { data: firstTimerAchievement } = await supabase
+          .from("achievements")
+          .select("id, xp_reward")
+          .eq("requirement_type", "purchase_count")
+          .eq("requirement_value", 1)
+          .single();
+
+        if (firstTimerAchievement) {
+          // Check if not already unlocked
+          const { data: existingAchievement } = await supabase
+            .from("user_achievements")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("achievement_id", firstTimerAchievement.id)
+            .single();
+
+          if (!existingAchievement) {
+            // Unlock the achievement
+            const { error: achievementError } = await supabase
+              .from("user_achievements")
+              .insert({
+                user_id: userId,
+                achievement_id: firstTimerAchievement.id,
+                progress: 1,
+                unlocked_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+
+            if (!achievementError && firstTimerAchievement.xp_reward > 0) {
+              // Award achievement XP
+              await supabase.from("user_profiles").update({
+                total_xp: (currentProfile?.total_xp || 0) + xpAmount + firstTimerAchievement.xp_reward,
+              }).eq("id", userId);
+
+              await supabase.from("xp_transactions").insert({
+                user_id: userId,
+                amount: firstTimerAchievement.xp_reward,
+                action: "achievement",
+                description: "Achievement: First Timer",
+                created_at: new Date().toISOString(),
+              });
+
+              console.log("First Timer achievement unlocked! +", firstTimerAchievement.xp_reward, "XP");
+            }
+          }
+        }
+      }
+
+      // 4. Complete referral directly (if this user was referred)
+      console.log("Checking for pending referral...");
+      const { data: pendingReferral } = await supabase
+        .from("referrals")
+        .select("id, referrer_id")
+        .eq("referred_id", userId)
+        .in("status", ["pending", "pending_purchase"])
+        .eq("reward_claimed", false)
+        .single();
+
+      if (pendingReferral) {
+        console.log("Found pending referral! Referrer:", pendingReferral.referrer_id);
+
+        // Get referrer's current stats
+        const { data: referrerProfile } = await supabase
+          .from("user_profiles")
+          .select("total_xp, referral_count, total_referrals")
+          .eq("id", pendingReferral.referrer_id)
+          .single();
+
+        // Calculate XP based on tier
+        const referralCount = referrerProfile?.referral_count || 0;
+        let referrerXp = 300; // Bronze
+        if (referralCount >= 25) referrerXp = 750; // Diamond
+        else if (referralCount >= 10) referrerXp = 500; // Gold
+        else if (referralCount >= 5) referrerXp = 400; // Silver
+
+        // Update referrer profile
+        await supabase
+          .from("user_profiles")
+          .update({
+            total_xp: (referrerProfile?.total_xp || 0) + referrerXp,
+            referral_count: (referrerProfile?.referral_count || 0) + 1,
+            total_referrals: (referrerProfile?.total_referrals || 0) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", pendingReferral.referrer_id);
+
+        // Log XP for referrer
+        await supabase.from("xp_transactions").insert({
+          user_id: pendingReferral.referrer_id,
+          amount: referrerXp,
+          action: "referral",
+          description: `Referral completed! Friend made their first purchase.`,
+          created_at: new Date().toISOString(),
+        });
+
+        // Update referral status
+        await supabase
+          .from("referrals")
+          .update({
+            status: "completed",
+            reward_claimed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", pendingReferral.id);
+
+        console.log("Referral completed! Referrer awarded", referrerXp, "XP");
+      } else {
+        console.log("No pending referral found for this user");
+      }
+
+      // 5. Grant bonus spin for big spenders (R1000+)
+      const contribution = orderTotal - ((order.shipping_cost as number) || 0);
       if (contribution >= 1000) {
-        try {
-          await supabase.rpc("grant_bonus_spin", {
-            p_user_id: userId,
-            p_reason: `Big spender bonus: Order ${order.order_number}`,
-          });
-          console.log("Bonus spin granted for big spender");
-        } catch (err) {
-          console.warn("Failed to grant bonus spin:", err);
-        }
+        console.log("Big spender detected (R" + contribution + ") - granting bonus spin");
+        const { data: currentSpins } = await supabase
+          .from("user_profiles")
+          .select("free_spins")
+          .eq("id", userId)
+          .single();
+
+        await supabase
+          .from("user_profiles")
+          .update({
+            free_spins: (currentSpins?.free_spins || 0) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", userId);
+
+        console.log("Bonus spin granted!");
       }
 
-      // If a reward was applied, mark it as used
+      // 6. Mark reward as used
       if (order.applied_reward_id) {
         console.log("Marking reward as used:", order.applied_reward_id);
         const { error: rewardError } = await supabase
@@ -519,11 +644,11 @@ export async function POST(request: NextRequest) {
         if (rewardError) {
           console.error("Failed to mark reward as used:", rewardError);
         } else {
-          console.log("Reward marked as used successfully:", order.applied_reward_id);
+          console.log("Reward marked as used successfully");
         }
-      } else {
-        console.log("No reward applied to this order");
       }
+
+      console.log("=== All purchase rewards processed ===");
     } else {
       console.log("No userId - skipping user rewards (guest checkout)");
     }
