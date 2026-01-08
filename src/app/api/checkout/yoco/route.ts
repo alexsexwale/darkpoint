@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
         shipping_country: shipping?.country || billing.country,
         shipping_phone: shipping?.phone || billing.phone,
         billing_name: billing.firstName + " " + billing.lastName,
+        billing_email: billing.email || null,
         billing_address_line1: billing.address,
         billing_city: billing.city,
         billing_province: billing.province,

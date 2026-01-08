@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Confetti from "react-confetti";
 import { formatPrice } from "@/lib/utils";
-import { useGamificationStore } from "@/stores";
+import { useGamificationStore, useAuthStore, useRewardsStore } from "@/stores";
+import { supabase } from "@/lib/supabase";
 
 interface OrderData {
   orderNumber: string;
+  orderId: string;
   email: string;
   total: number;
   items: number;
@@ -23,8 +25,10 @@ export function PaymentSuccessClient() {
   
   const [showConfetti, setShowConfetti] = useState(true);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+  const [rewardsProcessed, setRewardsProcessed] = useState(false);
   const [orderData, setOrderData] = useState<OrderData>({
     orderNumber: orderNumber,
+    orderId: "",
     email: "",
     total: 0,
     items: 0,
@@ -33,6 +37,35 @@ export function PaymentSuccessClient() {
   });
 
   const { checkAchievements, fetchUserProfile } = useGamificationStore();
+  const { user, session } = useAuthStore();
+  const { fetchRewards } = useRewardsStore();
+
+  // Process purchase rewards
+  const processRewards = useCallback(async (orderId: string, userId: string) => {
+    if (rewardsProcessed || !session?.access_token) return;
+
+    try {
+      const response = await fetch("/api/orders/process-rewards", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ orderId, userId }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setRewardsProcessed(true);
+        // Refresh profile and rewards after processing
+        await fetchUserProfile();
+        await checkAchievements();
+        await fetchRewards(); // Refresh rewards to hide used ones
+      }
+    } catch (error) {
+      console.error("Failed to process rewards:", error);
+    }
+  }, [rewardsProcessed, session?.access_token, fetchUserProfile, checkAchievements, fetchRewards]);
 
   useEffect(() => {
     // Set window size for confetti
@@ -45,22 +78,44 @@ export function PaymentSuccessClient() {
     const achievementTimer = setTimeout(async () => {
       await fetchUserProfile(); // Refresh user stats first
       await checkAchievements(); // Then check for new achievements
+      await fetchRewards(); // Refresh rewards to hide used ones
     }, 2000);
 
     return () => {
       clearTimeout(timer);
       clearTimeout(achievementTimer);
     };
-  }, [checkAchievements, fetchUserProfile]);
+  }, [checkAchievements, fetchUserProfile, fetchRewards]);
 
-  // Fetch order details (optional - order details will be in the confirmation email)
+  // Fetch order details and process rewards
   useEffect(() => {
     if (orderNumber && orderNumber !== "Unknown") {
-      // Order details can be fetched from API if needed
-      // For now we just display the order number
       setOrderData(prev => ({ ...prev, orderNumber }));
+
+      // Fetch order details and process rewards
+      const fetchAndProcess = async () => {
+        const { data: order } = await supabase
+          .from("orders")
+          .select("id, user_id, total, payment_status, rewards_processed")
+          .eq("order_number", orderNumber)
+          .single();
+
+        if (order) {
+          setOrderData(prev => ({ ...prev, orderId: order.id, total: order.total }));
+
+          // If order is paid and rewards not processed, trigger processing
+          if (order.payment_status === "paid" && !order.rewards_processed && order.user_id && user?.id === order.user_id) {
+            // Wait a bit for webhook to potentially finish
+            setTimeout(() => {
+              processRewards(order.id, order.user_id);
+            }, 3000);
+          }
+        }
+      };
+
+      fetchAndProcess();
     }
-  }, [orderNumber]);
+  }, [orderNumber, user?.id, processRewards]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
