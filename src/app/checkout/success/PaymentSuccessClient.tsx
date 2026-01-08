@@ -94,11 +94,20 @@ export function PaymentSuccessClient() {
 
       // Fetch order details and process rewards
       const fetchAndProcess = async () => {
-        const { data: order } = await supabase
+        const { data } = await supabase
           .from("orders")
           .select("id, user_id, total, payment_status, rewards_processed")
           .eq("order_number", orderNumber)
           .single();
+
+        // Cast to expected type since rewards_processed might not be in generated types
+        const order = data as {
+          id: string;
+          user_id: string | null;
+          total: number;
+          payment_status: string;
+          rewards_processed: boolean | null;
+        } | null;
 
         if (order) {
           setOrderData(prev => ({ ...prev, orderId: order.id, total: order.total }));
