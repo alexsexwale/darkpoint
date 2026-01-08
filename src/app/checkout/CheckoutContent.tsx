@@ -399,16 +399,29 @@ export function CheckoutContent() {
             />
 
             <div className="grid sm:grid-cols-2 gap-6">
+              <div className="nk-form-group">
+                <select
+                  value={billing.province}
+                  onChange={(e) => updateBilling("province", e.target.value)}
+                  required
+                  className="nk-form-control w-full bg-transparent border-b border-[var(--color-dark-3)] focus:border-[var(--color-main-1)] text-white py-3 outline-none cursor-pointer appearance-none"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23999'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0 center', backgroundSize: '1.5em' }}
+                >
+                  <option value="" disabled className="bg-[var(--color-dark-2)] text-white/50">Province *</option>
+                  <option value="Eastern Cape" className="bg-[var(--color-dark-2)]">Eastern Cape</option>
+                  <option value="Free State" className="bg-[var(--color-dark-2)]">Free State</option>
+                  <option value="Gauteng" className="bg-[var(--color-dark-2)]">Gauteng</option>
+                  <option value="KwaZulu-Natal" className="bg-[var(--color-dark-2)]">KwaZulu-Natal</option>
+                  <option value="Limpopo" className="bg-[var(--color-dark-2)]">Limpopo</option>
+                  <option value="Mpumalanga" className="bg-[var(--color-dark-2)]">Mpumalanga</option>
+                  <option value="North West" className="bg-[var(--color-dark-2)]">North West</option>
+                  <option value="Northern Cape" className="bg-[var(--color-dark-2)]">Northern Cape</option>
+                  <option value="Western Cape" className="bg-[var(--color-dark-2)]">Western Cape</option>
+                </select>
+              </div>
               <Input
                 type="text"
-                placeholder="State/Province *"
-                value={billing.province}
-                onChange={(e) => updateBilling("province", e.target.value)}
-                required
-              />
-              <Input
-                type="text"
-                placeholder="ZIP/Postal Code *"
+                placeholder="Postal Code *"
                 value={billing.postalCode}
                 onChange={(e) => updateBilling("postalCode", e.target.value)}
                 required
@@ -461,15 +474,29 @@ export function CheckoutContent() {
                 onChange={(e) => updateShipping("city", e.target.value)}
               />
               <div className="grid sm:grid-cols-2 gap-6">
+                <div className="nk-form-group">
+                  <select
+                    value={shipping.province}
+                    onChange={(e) => updateShipping("province", e.target.value)}
+                    required
+                    className="nk-form-control w-full bg-transparent border-b border-[var(--color-dark-3)] focus:border-[var(--color-main-1)] text-white py-3 outline-none cursor-pointer appearance-none"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23999'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0 center', backgroundSize: '1.5em' }}
+                  >
+                    <option value="" disabled className="bg-[var(--color-dark-2)] text-white/50">Province *</option>
+                    <option value="Eastern Cape" className="bg-[var(--color-dark-2)]">Eastern Cape</option>
+                    <option value="Free State" className="bg-[var(--color-dark-2)]">Free State</option>
+                    <option value="Gauteng" className="bg-[var(--color-dark-2)]">Gauteng</option>
+                    <option value="KwaZulu-Natal" className="bg-[var(--color-dark-2)]">KwaZulu-Natal</option>
+                    <option value="Limpopo" className="bg-[var(--color-dark-2)]">Limpopo</option>
+                    <option value="Mpumalanga" className="bg-[var(--color-dark-2)]">Mpumalanga</option>
+                    <option value="North West" className="bg-[var(--color-dark-2)]">North West</option>
+                    <option value="Northern Cape" className="bg-[var(--color-dark-2)]">Northern Cape</option>
+                    <option value="Western Cape" className="bg-[var(--color-dark-2)]">Western Cape</option>
+                  </select>
+                </div>
                 <Input
                   type="text"
-                  placeholder="State/Province *"
-                  value={shipping.province}
-                  onChange={(e) => updateShipping("province", e.target.value)}
-                />
-                <Input
-                  type="text"
-                  placeholder="ZIP/Postal Code *"
+                  placeholder="Postal Code *"
                   value={shipping.postalCode}
                   onChange={(e) => updateShipping("postalCode", e.target.value)}
                 />
