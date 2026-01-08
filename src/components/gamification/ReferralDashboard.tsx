@@ -121,8 +121,8 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
       }
 
       try {
-        // Try RPC first
-        const { data, error } = await supabase.rpc("get_referral_stats", {
+        // Try RPC first (using type assertion since function may not be in generated types)
+        const { data, error } = await (supabase.rpc as (fn: string, params: Record<string, unknown>) => Promise<{ data: { success?: boolean; pending_referrals?: ReferralRecord[]; completed_referrals?: ReferralRecord[] } | null; error: unknown }>)("get_referral_stats", {
           p_user_id: userProfile.id,
         });
 
