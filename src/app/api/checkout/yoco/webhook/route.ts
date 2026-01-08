@@ -543,7 +543,7 @@ export async function POST(request: NextRequest) {
         .from("referrals")
         .select("id, referrer_id")
         .eq("referred_id", userId)
-        .in("status", ["pending", "pending_purchase"])
+        .in("status", ["pending", "pending_purchase", "signed_up"]) // Include signed_up status
         .eq("reward_claimed", false)
         .single();
 
