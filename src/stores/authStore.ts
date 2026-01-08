@@ -332,8 +332,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           // If this user has a referral code stored in metadata (from a referral signup),
           // process it now (auth triggers are disabled in production).
           const referralCode = (data.user.user_metadata as { referral_code?: string | null } | null)?.referral_code || null;
+          console.log("[AuthStore] Login - checking referral code:", { referralCode, hasSession: !!data.session?.access_token });
           if (referralCode && data.session?.access_token) {
             try {
+              console.log("[AuthStore] Processing referral on login:", referralCode);
               const resp = await fetch("/api/referrals/process", {
                 method: "POST",
                 headers: {
@@ -342,9 +344,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                 },
                 body: JSON.stringify({ referralCode }),
               });
+              const responseBody = await resp.json().catch(() => ({}));
+              console.log("[AuthStore] Referral API response:", resp.status, responseBody);
               if (!resp.ok) {
-                const text = await resp.text().catch(() => "");
-                console.warn("Referral processing failed:", resp.status, text);
+                console.warn("Referral processing failed:", resp.status, responseBody);
               }
             } catch (e) {
               console.warn("Referral processing call failed:", e);
@@ -397,8 +400,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
           // Process referral immediately (server-side) so it works even when auth triggers are disabled.
           // If email confirmation is required (no session), we'll process it on first login instead.
+          console.log("[AuthStore] Signup - checking referral:", { 
+            hasUser: !!data.user, 
+            referralCode: metadata?.referralCode, 
+            hasSession: !!data.session?.access_token 
+          });
           if (data.user && metadata?.referralCode && data.session?.access_token) {
             try {
+              console.log("[AuthStore] Processing referral on signup:", metadata.referralCode);
               const resp = await fetch("/api/referrals/process", {
                 method: "POST",
                 headers: {
@@ -409,9 +418,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                   referralCode: metadata.referralCode,
                 }),
               });
+              const responseBody = await resp.json().catch(() => ({}));
+              console.log("[AuthStore] Referral API response:", resp.status, responseBody);
               if (!resp.ok) {
-                const text = await resp.text().catch(() => "");
-                console.warn("Referral processing failed:", resp.status, text);
+                console.warn("Referral processing failed:", resp.status, responseBody);
               }
             } catch (e) {
               // Best-effort; don't block signup
