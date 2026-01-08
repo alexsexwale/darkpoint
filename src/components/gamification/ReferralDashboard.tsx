@@ -134,12 +134,13 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
           return;
         }
 
-        // Fallback: Query referrals table directly (simplified without join)
-        const { data: referralsData } = await supabase
+        // Fallback: Query referrals table directly
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: referralsData } = await (supabase as any)
           .from("referrals")
           .select("id, status, created_at, updated_at, referred_id")
           .eq("referrer_id", userProfile.id)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false }) as { data: Array<{ id: string; status: string; created_at: string; updated_at: string; referred_id: string }> | null };
 
         if (referralsData && referralsData.length > 0) {
           const pending: ReferralRecord[] = [];
