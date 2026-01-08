@@ -476,9 +476,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
         // Catch up referral processing if needed (best-effort, non-blocking)
         const hasReferrer = !!(directProfile as unknown as { referred_by?: string | null }).referred_by;
-        console.log("[GamificationStore] Referral catch-up check:", { referralCodeUsed, hasReferrer });
         if (referralCodeUsed && !hasReferrer) {
-          console.log("[GamificationStore] Attempting referral catch-up for code:", referralCodeUsed);
           // Fire and forget to avoid blocking UI; we'll refresh profile afterwards if it succeeds
           (async () => {
             try {
@@ -488,7 +486,6 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
               
               if (accessToken) {
                 // Use server API (more reliable than direct RPC)
-                console.log("[GamificationStore] Calling /api/referrals/process...");
                 const resp = await fetch("/api/referrals/process", {
                   method: "POST",
                   headers: {
@@ -498,7 +495,6 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
                   body: JSON.stringify({ referralCode: referralCodeUsed }),
                 });
                 const result = await resp.json().catch(() => ({}));
-                console.log("[GamificationStore] Referral API response:", resp.status, result);
                 
                 if (resp.ok && result?.success) {
                   // Refresh profile + achievements so UI updates immediately
@@ -508,14 +504,12 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
                     .eq("id", user.id)
                     .single();
                   if (refreshed) {
-                    console.log("[GamificationStore] Profile refreshed after referral processing");
                     set({ userProfile: refreshed as UserProfile });
                   }
                   await get().checkAchievements();
                 }
               } else {
                 // Fallback to direct RPC
-                console.log("[GamificationStore] No session, trying direct RPC...");
                 const { data, error } = await supabase.rpc(
                   "process_referral_signup",
                   { p_referred_user_id: user.id, p_referral_code: referralCodeUsed } as never
@@ -533,7 +527,6 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
                 }
 
                 const ok = data as unknown as { success?: boolean; error?: string };
-                console.log("[GamificationStore] Direct RPC result:", ok);
                 if (ok?.success) {
                   // Clear referral code so we don't keep retrying on every load
                   await supabase.auth.updateUser({ data: { referral_code: null } });
@@ -548,9 +541,8 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
                   await get().checkAchievements();
                 }
               }
-            } catch (e) {
-              // Don't scare users; just log for debugging
-              console.warn("[GamificationStore] Referral catch-up failed:", e);
+            } catch {
+              // Best-effort; silent fail
             }
           })();
         }

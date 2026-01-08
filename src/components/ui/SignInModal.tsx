@@ -151,7 +151,6 @@ export function SignInModal() {
       }
     })();
     const referralCode = referralCodeFromSession || referralCodeFromUrl;
-    console.log("[SignInModal] Signup with referral:", { referralCodeFromSession, referralCodeFromUrl, finalCode: referralCode });
     
     const result = await signUp(email, password, { firstName, lastName, username, referralCode: referralCode || undefined });
     

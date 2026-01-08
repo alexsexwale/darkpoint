@@ -12,11 +12,95 @@ interface ReferralDashboardProps {
   className?: string;
 }
 
+function ReferralDashboardSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-6 animate-pulse", className)}>
+      {/* Stats overview skeleton */}
+      <div className="grid md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 text-center">
+            <div className="h-10 w-16 bg-[var(--color-dark-3)] rounded mx-auto mb-2" />
+            <div className="h-4 w-24 bg-[var(--color-dark-3)] rounded mx-auto" />
+          </div>
+        ))}
+      </div>
+
+      {/* Referral link section skeleton */}
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+        <div className="h-6 w-40 bg-[var(--color-dark-3)] rounded mb-4" />
+        
+        {/* Link display skeleton */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex-1 h-12 bg-[var(--color-dark-3)] rounded" />
+          <div className="w-20 h-12 bg-[var(--color-dark-3)] rounded" />
+        </div>
+
+        {/* Referral code skeleton */}
+        <div className="flex items-center justify-between p-4 bg-[var(--color-dark-3)] mb-6">
+          <div>
+            <div className="h-3 w-16 bg-[var(--color-dark-4)] rounded mb-2" />
+            <div className="h-6 w-32 bg-[var(--color-dark-4)] rounded" />
+          </div>
+          <div className="w-24 h-8 bg-[var(--color-dark-4)] rounded" />
+        </div>
+
+        {/* Share buttons skeleton */}
+        <div className="space-y-3">
+          <div className="h-4 w-32 bg-[var(--color-dark-3)] rounded" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-12 bg-[var(--color-dark-3)] rounded" />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Tier progress skeleton */}
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+        <div className="h-6 w-32 bg-[var(--color-dark-3)] rounded mb-4" />
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-4 border border-[var(--color-dark-4)]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-[var(--color-dark-3)] rounded-full" />
+                  <div>
+                    <div className="h-4 w-20 bg-[var(--color-dark-3)] rounded mb-1" />
+                    <div className="h-3 w-16 bg-[var(--color-dark-4)] rounded" />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="h-5 w-16 bg-[var(--color-dark-3)] rounded mb-1" />
+                  <div className="h-3 w-12 bg-[var(--color-dark-4)] rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* How it works skeleton */}
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+        <div className="h-6 w-28 bg-[var(--color-dark-3)] rounded mb-4" />
+        <div className="grid md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="text-center">
+              <div className="w-12 h-12 mx-auto mb-3 bg-[var(--color-dark-3)] rounded-full" />
+              <div className="h-4 w-24 bg-[var(--color-dark-3)] rounded mx-auto mb-2" />
+              <div className="h-3 w-32 bg-[var(--color-dark-4)] rounded mx-auto" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ReferralDashboard({ className }: ReferralDashboardProps) {
-  const { userProfile } = useGamificationStore();
+  const { userProfile, isLoading } = useGamificationStore();
   const [copied, setCopied] = useState(false);
 
-  if (!userProfile) return null;
+  if (!userProfile || isLoading) return <ReferralDashboardSkeleton className={className} />;
 
   const referralCode = userProfile.referral_code || "LOADING";
   const referralCount = userProfile.referral_count;
@@ -192,11 +276,21 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[var(--color-main-1)] font-heading">
-                      {tier.rewardPerReferral} XP
-                    </p>
-                    <p className="text-xs text-white/40">per referral</p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-[var(--color-main-1)] font-heading">
+                        {tier.rewardPerReferral} XP
+                      </p>
+                      <p className="text-xs text-white/40">per referral</p>
+                    </div>
+                    {/* Completed checkmark */}
+                    {isCompleted && (
+                      <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -208,13 +302,6 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
                       animate={{ width: `${Math.min(progress, 100)}%` }}
                       className="h-full bg-[var(--color-main-1)]"
                     />
-                  </div>
-                )}
-
-                {/* Completed checkmark */}
-                {isCompleted && (
-                  <div className="absolute top-4 right-4">
-                    <span className="text-green-500">✓</span>
                   </div>
                 )}
               </div>

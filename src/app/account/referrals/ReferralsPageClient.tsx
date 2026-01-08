@@ -7,12 +7,97 @@ import { ReferralDashboard } from "@/components/gamification";
 import { Button } from "@/components/ui";
 import { useAuthStore, useUIStore } from "@/stores";
 
+function ReferralsPageSkeleton() {
+  return (
+    <AccountLayout title="Referral Program">
+      <div className="space-y-6 animate-pulse">
+        {/* Stats overview skeleton */}
+        <div className="grid md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 text-center">
+              <div className="h-10 w-16 bg-[var(--color-dark-3)] rounded mx-auto mb-2" />
+              <div className="h-4 w-24 bg-[var(--color-dark-3)] rounded mx-auto" />
+            </div>
+          ))}
+        </div>
+
+        {/* Referral link section skeleton */}
+        <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+          <div className="h-6 w-40 bg-[var(--color-dark-3)] rounded mb-4" />
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex-1 h-12 bg-[var(--color-dark-3)] rounded" />
+            <div className="w-20 h-12 bg-[var(--color-dark-3)] rounded" />
+          </div>
+          <div className="flex items-center justify-between p-4 bg-[var(--color-dark-3)] mb-6">
+            <div>
+              <div className="h-3 w-16 bg-[var(--color-dark-4)] rounded mb-2" />
+              <div className="h-6 w-32 bg-[var(--color-dark-4)] rounded" />
+            </div>
+            <div className="w-24 h-8 bg-[var(--color-dark-4)] rounded" />
+          </div>
+          <div className="space-y-3">
+            <div className="h-4 w-32 bg-[var(--color-dark-3)] rounded" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-12 bg-[var(--color-dark-3)] rounded" />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tier progress skeleton */}
+        <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+          <div className="h-6 w-32 bg-[var(--color-dark-3)] rounded mb-4" />
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-4 border border-[var(--color-dark-4)]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[var(--color-dark-3)] rounded-full" />
+                    <div>
+                      <div className="h-4 w-20 bg-[var(--color-dark-3)] rounded mb-1" />
+                      <div className="h-3 w-16 bg-[var(--color-dark-4)] rounded" />
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="h-5 w-16 bg-[var(--color-dark-3)] rounded mb-1" />
+                    <div className="h-3 w-12 bg-[var(--color-dark-4)] rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* How it works skeleton */}
+        <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+          <div className="h-6 w-28 bg-[var(--color-dark-3)] rounded mb-4" />
+          <div className="grid md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="text-center">
+                <div className="w-12 h-12 mx-auto mb-3 bg-[var(--color-dark-3)] rounded-full" />
+                <div className="h-4 w-24 bg-[var(--color-dark-3)] rounded mx-auto mb-2" />
+                <div className="h-3 w-32 bg-[var(--color-dark-4)] rounded mx-auto" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </AccountLayout>
+  );
+}
+
 export function ReferralsPageClient() {
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { openSignIn } = useUIStore();
 
+  // Show skeleton while initializing
+  if (!authInitialized) {
+    return <ReferralsPageSkeleton />;
+  }
+
   // Show login prompt for unauthenticated users
-  if (authInitialized && !isAuthenticated) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen">
         <section className="relative py-8 md:py-16 overflow-hidden px-4">
