@@ -114,10 +114,12 @@ export function NavIcons() {
         </div>
       )}
 
-      {/* Wishlist */}
+      {/* Wishlist - hidden on mobile when daily reward needs to be claimed */}
       <Link
         href="/wishlist"
-        className="relative p-2 text-white hover:text-[var(--color-main-1)] transition-colors cursor-pointer"
+        className={`relative p-2 text-white hover:text-[var(--color-main-1)] transition-colors cursor-pointer ${
+          showDailyRewardIcon ? "hidden sm:block" : ""
+        }`}
         aria-label="My Wishlist"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
