@@ -306,13 +306,27 @@ BEGIN
   END IF;
 END $$;
 
--- 6. Grant permissions
+-- 6. Create check_achievements_v4 alias (some code still calls this)
+DROP FUNCTION IF EXISTS check_achievements_v4(UUID);
+
+CREATE OR REPLACE FUNCTION check_achievements_v4(p_user_id UUID)
+RETURNS JSONB AS $$
+BEGIN
+  -- Just call the main check_achievements function
+  RETURN check_achievements(p_user_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 7. Grant permissions
 GRANT EXECUTE ON FUNCTION check_achievements(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION check_achievements(UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION check_achievements_v4(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION check_achievements_v4(UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION check_achievements_v4(UUID) TO anon;
 GRANT EXECUTE ON FUNCTION process_purchase_rewards(UUID, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION process_purchase_rewards(UUID, UUID) TO service_role;
 
--- 7. Ensure user_achievements has unique constraint
+-- 8. Ensure user_achievements has unique constraint
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -325,7 +339,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'Unique constraint may already exist: %', SQLERRM;
 END $$;
 
--- 8. Display success message
+-- 9. Display success message
 DO $$
 BEGIN
   RAISE NOTICE '✅ All purchase issues fixed!';

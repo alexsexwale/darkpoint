@@ -357,72 +357,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, error: "Amount mismatch" }, { status: 200 });
     }
 
-    // Try to use the RPC function first
-    const { data: updateResult, error: updateRpcError } = await supabase.rpc("update_order_payment_status", {
-      p_order_id: order.id as string,
-      p_payment_status: paymentStatus,
-      p_yoco_payment_id: paymentId || null,
-      p_yoco_checkout_id: checkoutId || null,
-    });
+    // Update order directly (skip broken RPC functions)
+    const updateData = {
+      status: "processing",
+      payment_status: paymentStatus,
+      paid_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      yoco_payment_id: paymentId || order.yoco_payment_id,
+      yoco_checkout_id: checkoutId || order.yoco_checkout_id,
+    };
 
-    console.log("RPC update result:", updateResult, "Error:", updateRpcError);
+    console.log("Updating order with:", updateData);
 
-    // Fallback to direct update if RPC fails
-    if (updateRpcError || !updateResult?.success) {
-      console.log("RPC failed, falling back to direct update...");
-      
-      const updateData = {
-        status: "processing",
-        payment_status: paymentStatus,
-        paid_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        yoco_payment_id: paymentId || order.yoco_payment_id,
-        yoco_checkout_id: checkoutId || order.yoco_checkout_id,
-      };
+    const { error: directUpdateError, data: updatedOrder } = await supabase
+      .from("orders")
+      .update(updateData)
+      .eq("id", order.id)
+      .select()
+      .single();
 
-      console.log("Direct update data:", updateData);
-
-      const { error: directUpdateError, data: updatedOrder } = await supabase
-        .from("orders")
-        .update(updateData)
-        .eq("id", order.id)
-        .select()
-        .single();
-
-      if (directUpdateError) {
-        console.error("Failed to update order:", {
-          error: directUpdateError,
-          code: directUpdateError.code,
-          message: directUpdateError.message,
-          details: directUpdateError.details,
-          hint: directUpdateError.hint,
-          orderId: order.id,
-          orderNumber: order.order_number,
-        });
-        
-        // Try raw SQL as last resort
-        console.log("Attempting raw SQL update...");
-        const { error: rawError } = await supabase.rpc("update_order_payment_status", {
-          p_order_id: order.id as string,
-          p_payment_status: "paid",
-          p_yoco_payment_id: paymentId,
-          p_yoco_checkout_id: checkoutId,
-        });
-        
-        if (rawError) {
-          console.error("Raw SQL update also failed:", rawError);
-          return NextResponse.json({ 
-            received: true, 
-            error: "Failed to update order",
-            details: directUpdateError.message 
-          }, { status: 200 });
-        }
-      } else {
-        console.log("Direct update successful:", updatedOrder?.payment_status);
-      }
-    } else {
-      console.log("RPC update successful:", updateResult);
+    if (directUpdateError) {
+      console.error("Failed to update order:", {
+        error: directUpdateError,
+        code: directUpdateError.code,
+        message: directUpdateError.message,
+        details: directUpdateError.details,
+        hint: directUpdateError.hint,
+        orderId: order.id,
+        orderNumber: order.order_number,
+      });
+      return NextResponse.json({ 
+        received: true, 
+        error: "Failed to update order",
+        details: directUpdateError.message 
+      }, { status: 200 });
     }
+    
+    console.log("Order update successful:", updatedOrder?.payment_status);
 
     console.log("Order payment status updated to:", paymentStatus, "for order:", order.order_number);
 
@@ -720,31 +691,27 @@ export async function GET(request: NextRequest) {
 
     // Debug endpoint to manually mark order as paid
     if (markPaid === "true") {
-      const { data: updateResult, error: updateError } = await supabase.rpc("update_order_payment_status", {
-        p_order_id: order.id,
-        p_payment_status: "paid",
-        p_yoco_payment_id: null,
-        p_yoco_checkout_id: null,
-      });
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({
+          payment_status: "paid",
+          status: "processing",
+          paid_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id);
 
       if (updateError) {
-        // Fallback to direct update
-        await supabase
-          .from("orders")
-          .update({
-            payment_status: "paid",
-            status: "processing",
-            paid_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", order.id);
+        return NextResponse.json({
+          success: false,
+          error: updateError.message,
+        });
       }
 
       return NextResponse.json({
         success: true,
         message: "Order marked as paid",
         orderNumber: order.order_number,
-        updateResult,
       });
     }
     
