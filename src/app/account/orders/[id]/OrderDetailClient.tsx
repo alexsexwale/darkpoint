@@ -26,6 +26,7 @@ interface OrderDetails {
   items: OrderItem[];
   subtotal: number;
   shipping: number;
+  discount: number;
   tax: number;
   total: number;
   shippingAddress: {
@@ -82,6 +83,7 @@ function convertOrderToDetails(order: any): OrderDetails | null {
     })),
     subtotal: order.subtotal || 0,
     shipping: order.shipping_cost || 0,
+    discount: order.discount_amount || 0,
     tax: order.tax_amount || 0,
     total: order.total || 0,
     shippingAddress: {
@@ -467,6 +469,12 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <span>Subtotal</span>
               <span>R${order.subtotal.toFixed(2)}</span>
             </div>
+            ${order.discount > 0 ? `
+            <div class="summary-row" style="color: #22c55e;">
+              <span>🎁 Discount Applied</span>
+              <span>-R${order.discount.toFixed(2)}</span>
+            </div>
+            ` : ''}
             <div class="summary-row">
               <span>Shipping</span>
               <span>${order.shipping === 0 ? 'Free' : `R${order.shipping.toFixed(2)}`}</span>
@@ -666,6 +674,14 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <span>Subtotal</span>
               <span>{formatPrice(order.subtotal)}</span>
             </div>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-green-500">
+                <span className="flex items-center gap-2">
+                  <span>🎁</span> Discount Applied
+                </span>
+                <span>-{formatPrice(order.discount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-white/70">
               <span>Shipping</span>
               <span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</span>

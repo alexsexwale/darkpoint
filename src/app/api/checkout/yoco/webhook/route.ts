@@ -506,7 +506,8 @@ export async function POST(request: NextRequest) {
 
       // If a reward was applied, mark it as used
       if (order.applied_reward_id) {
-        await supabase
+        console.log("Marking reward as used:", order.applied_reward_id);
+        const { error: rewardError } = await supabase
           .from("user_coupons")
           .update({
             is_used: true,
@@ -514,8 +515,17 @@ export async function POST(request: NextRequest) {
             used_on_order_id: order.id,
           } as never)
           .eq("id", order.applied_reward_id);
-        console.log("Reward marked as used:", order.applied_reward_id);
+        
+        if (rewardError) {
+          console.error("Failed to mark reward as used:", rewardError);
+        } else {
+          console.log("Reward marked as used successfully:", order.applied_reward_id);
+        }
+      } else {
+        console.log("No reward applied to this order");
       }
+    } else {
+      console.log("No userId - skipping user rewards (guest checkout)");
     }
 
     // Send order confirmation email
