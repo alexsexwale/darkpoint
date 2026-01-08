@@ -475,6 +475,21 @@ export async function POST(request: NextRequest) {
         console.warn("Failed to check achievements:", err);
       }
 
+      // Complete referral if this user was referred (purchase-based referral system)
+      // This awards XP to the referrer only when the referred user makes their first purchase
+      try {
+        const referralResult = await supabase.rpc("complete_referral_on_purchase", {
+          p_buyer_user_id: userId,
+        });
+        if (referralResult.data?.success && !referralResult.data?.skipped) {
+          console.log("Referral completed! Referrer awarded:", referralResult.data.referrer_xp_awarded, "XP");
+        } else if (referralResult.data?.skipped) {
+          console.log("Referral check skipped:", referralResult.data.reason);
+        }
+      } catch (err) {
+        console.warn("Failed to complete referral:", err);
+      }
+
       // Check if user should get bonus spin (R1000+ contribution)
       const contribution = (order.total as number) - ((order.discount_amount as number) || 0) - ((order.shipping_cost as number) || 0);
       if (contribution >= 1000) {

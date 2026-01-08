@@ -170,8 +170,8 @@ export function ReferralLandingPageClient({ code }: ReferralLandingPageClientPro
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-3xl mb-1">⚡</div>
-                    <div className="text-[var(--color-main-1)] font-heading text-lg">300 XP</div>
-                    <div className="text-xs text-white/50">Per referral</div>
+                    <div className="text-[var(--color-main-1)] font-heading text-lg">300+ XP</div>
+                    <div className="text-xs text-white/50">When they purchase</div>
                   </div>
                   <div className="text-center">
                     <div className="text-3xl mb-1">🏆</div>
@@ -290,7 +290,7 @@ export function ReferralLandingPageClient({ code }: ReferralLandingPageClientPro
               </p>
 
               {/* Rewards grid */}
-              <div className="grid md:grid-cols-4 gap-4 mb-8">
+              <div className="grid md:grid-cols-4 gap-4 mb-6">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   className="bg-[var(--color-dark-3)]/50 rounded-lg p-4 text-center border border-[var(--color-main-1)]/20"
@@ -326,6 +326,14 @@ export function ReferralLandingPageClient({ code }: ReferralLandingPageClientPro
                   <div className="text-[var(--color-main-1)] font-heading text-xl">100 XP</div>
                   <div className="text-xs text-white/50">Welcome Bonus</div>
                 </motion.div>
+              </div>
+
+              {/* Info about referrer earning */}
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-8 text-center">
+                <p className="text-sm text-white/70">
+                  <span className="text-green-500 font-semibold">Bonus:</span> When you make your first purchase, {referrerName} earns XP too! 
+                  <span className="text-white/50"> It&apos;s a win-win!</span>
+                </p>
               </div>
 
               {/* CTA */}

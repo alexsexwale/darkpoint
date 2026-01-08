@@ -12,8 +12,8 @@ function ReferralsPageSkeleton() {
     <AccountLayout title="Referral Program">
       <div className="space-y-6 animate-pulse">
         {/* Stats overview skeleton */}
-        <div className="grid md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
+        <div className="grid md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 text-center">
               <div className="h-10 w-16 bg-[var(--color-dark-3)] rounded mx-auto mb-2" />
               <div className="h-4 w-24 bg-[var(--color-dark-3)] rounded mx-auto" />
@@ -153,20 +153,20 @@ export function ReferralsPageClient() {
                 Get Your <span className="text-green-500">Referral Link</span>
               </h2>
               <p className="text-white/60 mb-6 max-w-md mx-auto">
-                Sign in to get your unique referral code and start earning. Get <span className="text-green-500 font-semibold">R50 credit</span> for each friend who signs up!
+                Sign in to get your unique referral code and start earning. Earn <span className="text-green-500 font-semibold">300+ XP</span> for each friend who makes a purchase!
               </p>
 
               {/* Benefits */}
               <div className="grid sm:grid-cols-3 gap-4 mb-8">
                 <div className="bg-[var(--color-dark-3)]/50 rounded-lg p-4">
-                  <div className="text-3xl mb-2">💰</div>
-                  <p className="text-sm font-medium">R50 Credit</p>
-                  <p className="text-xs text-white/50">Per referral</p>
+                  <div className="text-3xl mb-2">⚡</div>
+                  <p className="text-sm font-medium">300+ XP</p>
+                  <p className="text-xs text-white/50">When they purchase</p>
                 </div>
                 <div className="bg-[var(--color-dark-3)]/50 rounded-lg p-4">
-                  <div className="text-3xl mb-2">⚡</div>
-                  <p className="text-sm font-medium">500 XP</p>
-                  <p className="text-xs text-white/50">Bonus per friend</p>
+                  <div className="text-3xl mb-2">📈</div>
+                  <p className="text-sm font-medium">Up to 750 XP</p>
+                  <p className="text-xs text-white/50">Higher tiers</p>
                 </div>
                 <div className="bg-[var(--color-dark-3)]/50 rounded-lg p-4">
                   <div className="text-3xl mb-2">🎯</div>
@@ -184,12 +184,12 @@ export function ReferralsPageClient() {
                     <span>Share your unique referral link with friends</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center text-xs font-bold">2</span>
-                    <span>They sign up and make their first purchase</span>
+                    <span className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center text-xs font-bold">2</span>
+                    <span>They sign up and get <span className="text-yellow-500">200 XP</span> instantly</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="w-6 h-6 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center text-xs font-bold">3</span>
-                    <span>You both get R50 credit + bonus XP!</span>
+                    <span>When they make a purchase, <span className="text-green-500">YOU earn XP!</span></span>
                   </div>
                 </div>
               </div>

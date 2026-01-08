@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useGamificationStore } from "@/stores";
 import { getReferralTier, REFERRAL_TIERS } from "@/types/gamification";
 import { Button } from "@/components/ui";
 import { SITE_URL } from "@/lib/constants";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+
+interface ReferralRecord {
+  id: string;
+  referred_name: string;
+  status: "pending" | "completed";
+  created_at: string;
+  completed_at?: string;
+}
 
 interface ReferralDashboardProps {
   className?: string;
@@ -99,11 +108,43 @@ function ReferralDashboardSkeleton({ className }: { className?: string }) {
 export function ReferralDashboard({ className }: ReferralDashboardProps) {
   const { userProfile, isLoading } = useGamificationStore();
   const [copied, setCopied] = useState(false);
+  const [pendingReferrals, setPendingReferrals] = useState<ReferralRecord[]>([]);
+  const [completedReferrals, setCompletedReferrals] = useState<ReferralRecord[]>([]);
+  const [referralsLoading, setReferralsLoading] = useState(true);
+
+  // Fetch referrals data
+  useEffect(() => {
+    async function fetchReferrals() {
+      if (!userProfile?.id || !isSupabaseConfigured()) {
+        setReferralsLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.rpc("get_referral_stats", {
+          p_user_id: userProfile.id,
+        });
+
+        if (!error && data?.success) {
+          setPendingReferrals(data.pending_referrals || []);
+          setCompletedReferrals(data.completed_referrals || []);
+        }
+      } catch {
+        // Silently fail - we'll just show 0 referrals
+      } finally {
+        setReferralsLoading(false);
+      }
+    }
+
+    fetchReferrals();
+  }, [userProfile?.id]);
 
   if (!userProfile || isLoading) return <ReferralDashboardSkeleton className={className} />;
 
   const referralCode = userProfile.referral_code || "LOADING";
-  const referralCount = userProfile.referral_count;
+  const referralCount = userProfile.referral_count || 0;
+  const pendingCount = pendingReferrals.length;
+  const completedCount = completedReferrals.length;
   const currentTier = getReferralTier(referralCount);
   const nextTier = REFERRAL_TIERS.find((t) => t.minReferrals > referralCount);
   const referralLink = `${SITE_URL}/ref/${referralCode}`;
@@ -132,13 +173,23 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
   return (
     <div className={cn("space-y-6", className)}>
       {/* Stats overview */}
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Total referrals */}
-        <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 text-center">
-          <div className="text-4xl font-heading text-[var(--color-main-1)] mb-2">
-            {referralCount}
+      <div className="grid md:grid-cols-4 gap-4">
+        {/* Pending referrals */}
+        <div className="bg-[var(--color-dark-2)] border border-yellow-500/30 p-6 text-center">
+          <div className="text-4xl font-heading text-yellow-500 mb-2">
+            {referralsLoading ? "..." : pendingCount}
           </div>
-          <p className="text-sm text-white/60">Total Referrals</p>
+          <p className="text-sm text-white/60">Pending</p>
+          <p className="text-xs text-yellow-500/60 mt-1">Awaiting purchase</p>
+        </div>
+
+        {/* Completed referrals */}
+        <div className="bg-[var(--color-dark-2)] border border-green-500/30 p-6 text-center">
+          <div className="text-4xl font-heading text-green-500 mb-2">
+            {completedCount}
+          </div>
+          <p className="text-sm text-white/60">Completed</p>
+          <p className="text-xs text-green-500/60 mt-1">XP earned</p>
         </div>
 
         {/* Current tier */}
@@ -152,9 +203,68 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
           <div className="text-4xl font-heading text-[var(--color-main-1)] mb-2">
             {(referralCount * currentTier.rewardPerReferral).toLocaleString()} XP
           </div>
-          <p className="text-sm text-white/60">XP Earned from Referrals</p>
+          <p className="text-sm text-white/60">XP Earned</p>
         </div>
       </div>
+
+      {/* Referrals List */}
+      {(pendingCount > 0 || completedCount > 0) && (
+        <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
+          <h3 className="font-heading text-xl mb-4">Your Referrals</h3>
+          
+          {/* Info banner */}
+          <div className="bg-[var(--color-main-1)]/10 border border-[var(--color-main-1)]/30 rounded-lg p-4 mb-4">
+            <p className="text-sm text-white/80">
+              <span className="text-[var(--color-main-1)] font-semibold">How it works:</span> You earn XP when your referred friends make their first purchase. 
+              Pending referrals have signed up but haven&apos;t purchased yet.
+            </p>
+          </div>
+
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {/* Pending referrals */}
+            {pendingReferrals.map((ref) => (
+              <div key={ref.id} className="flex items-center justify-between p-3 bg-[var(--color-dark-3)] rounded-lg border-l-4 border-yellow-500">
+                <div>
+                  <p className="font-medium text-white">{ref.referred_name}</p>
+                  <p className="text-xs text-white/40">
+                    Signed up {new Date(ref.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-500 rounded">
+                    Pending
+                  </span>
+                </div>
+              </div>
+            ))}
+            
+            {/* Completed referrals */}
+            {completedReferrals.map((ref) => (
+              <div key={ref.id} className="flex items-center justify-between p-3 bg-[var(--color-dark-3)] rounded-lg border-l-4 border-green-500">
+                <div>
+                  <p className="font-medium text-white">{ref.referred_name}</p>
+                  <p className="text-xs text-white/40">
+                    Purchased {ref.completed_at ? new Date(ref.completed_at).toLocaleDateString() : "recently"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-500 font-heading text-sm">+{currentTier.rewardPerReferral} XP</span>
+                  <span className="px-2 py-1 text-xs bg-green-500/20 text-green-500 rounded">
+                    Completed
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {/* Empty state */}
+            {pendingCount === 0 && completedCount === 0 && !referralsLoading && (
+              <div className="text-center py-8 text-white/40">
+                <p>No referrals yet. Share your link to get started!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Referral link section */}
       <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
@@ -334,21 +444,21 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
             </p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 mx-auto mb-3 bg-[var(--color-main-1)]/20 rounded-full flex items-center justify-center text-2xl">
+            <div className="w-12 h-12 mx-auto mb-3 bg-yellow-500/20 rounded-full flex items-center justify-center text-2xl">
               2️⃣
             </div>
             <p className="font-heading text-sm mb-1">They Sign Up</p>
             <p className="text-xs text-white/40">
-              Friends create an account using your link
+              They get <span className="text-yellow-500">200 XP</span> instantly, referral marked pending
             </p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 mx-auto mb-3 bg-[var(--color-main-1)]/20 rounded-full flex items-center justify-center text-2xl">
+            <div className="w-12 h-12 mx-auto mb-3 bg-green-500/20 rounded-full flex items-center justify-center text-2xl">
               3️⃣
             </div>
-            <p className="font-heading text-sm mb-1">Both Get Rewards</p>
+            <p className="font-heading text-sm mb-1">They Make a Purchase</p>
             <p className="text-xs text-white/40">
-              You earn XP, they get welcome bonuses
+              You earn <span className="text-green-500">{currentTier.rewardPerReferral} XP</span> when they buy!
             </p>
           </div>
         </div>
