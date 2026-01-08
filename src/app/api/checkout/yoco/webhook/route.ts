@@ -409,15 +409,35 @@ export async function POST(request: NextRequest) {
         customerEmail = authUser.user.email;
       }
 
-      const orderTotal = (order.total as number) - ((order.discount_amount as number) || 0);
-      const xpAmount = Math.max(Math.floor(orderTotal / 10), 10); // Minimum 10 XP
-
       // ============================================
-      // DIRECT DATABASE OPERATIONS (No RPC functions)
+      // IDEMPOTENCY CHECK - Prevent duplicate rewards
       // ============================================
+      
+      // Re-fetch order to check rewards_processed flag (might have been set by another process)
+      const { data: freshOrder } = await supabase
+        .from("orders")
+        .select("rewards_processed")
+        .eq("id", order.id)
+        .single();
 
-      // 1. Update user profile stats directly
-      console.log("Updating user stats for:", userId);
+      if (freshOrder?.rewards_processed) {
+        console.log("Rewards already processed for order:", order.order_number, "- skipping");
+      } else {
+        // Mark as processed IMMEDIATELY to prevent race conditions
+        await supabase
+          .from("orders")
+          .update({ rewards_processed: true, updated_at: new Date().toISOString() })
+          .eq("id", order.id);
+
+        const orderTotal = (order.total as number) - ((order.discount_amount as number) || 0);
+        const xpAmount = Math.max(Math.floor(orderTotal / 10), 10); // Minimum 10 XP
+
+        // ============================================
+        // DIRECT DATABASE OPERATIONS (No RPC functions)
+        // ============================================
+
+        // 1. Update user profile stats directly
+        console.log("Updating user stats for:", userId);
       const { data: currentProfile, error: profileFetchError } = await supabase
         .from("user_profiles")
         .select("total_xp, total_orders, total_spent")
@@ -600,26 +620,27 @@ export async function POST(request: NextRequest) {
         console.log("Bonus spin granted!");
       }
 
-      // 6. Mark reward as used
-      if (order.applied_reward_id) {
-        console.log("Marking reward as used:", order.applied_reward_id);
-        const { error: rewardError } = await supabase
-          .from("user_coupons")
-          .update({
-            is_used: true,
-            used_at: new Date().toISOString(),
-            used_on_order_id: order.id,
-          } as never)
-          .eq("id", order.applied_reward_id);
-        
-        if (rewardError) {
-          console.error("Failed to mark reward as used:", rewardError);
-        } else {
-          console.log("Reward marked as used successfully");
+        // 6. Mark reward as used
+        if (order.applied_reward_id) {
+          console.log("Marking reward as used:", order.applied_reward_id);
+          const { error: rewardError } = await supabase
+            .from("user_coupons")
+            .update({
+              is_used: true,
+              used_at: new Date().toISOString(),
+              used_on_order_id: order.id,
+            } as never)
+            .eq("id", order.applied_reward_id);
+          
+          if (rewardError) {
+            console.error("Failed to mark reward as used:", rewardError);
+          } else {
+            console.log("Reward marked as used successfully");
+          }
         }
-      }
 
-      console.log("=== All purchase rewards processed ===");
+        console.log("=== All purchase rewards processed ===");
+      } // End of rewards processing else block
     } else {
       console.log("No userId - skipping user rewards (guest checkout)");
     }

@@ -55,30 +55,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Try RPC first
-    const { data: rpcResult, error: rpcError } = await supabase.rpc(
-      "process_purchase_rewards",
-      { p_user_id: userId, p_order_id: orderId }
-    );
+    // Check if already processed FIRST (before any operations)
+    if (order.rewards_processed) {
+      return NextResponse.json({
+        success: false,
+        already_processed: true,
+        error: "Rewards already processed for this order",
+      });
+    }
 
-    if (rpcError || !rpcResult?.success) {
-      // Fallback to direct operations
-      console.log("RPC failed, doing direct operations:", rpcError);
+    // Mark as processed IMMEDIATELY to prevent race conditions
+    await supabase
+      .from("orders")
+      .update({ rewards_processed: true, updated_at: new Date().toISOString() })
+      .eq("id", orderId)
+      .eq("rewards_processed", false); // Only update if not already processed (atomic check)
 
-      const results: Record<string, unknown> = {};
+    // Re-check if we successfully claimed the processing
+    const { data: claimCheck } = await supabase
+      .from("orders")
+      .select("rewards_processed")
+      .eq("id", orderId)
+      .single();
 
-      // Get current profile
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("total_xp, total_orders, total_spent")
-        .eq("id", userId)
-        .single();
+    // If it was already processed by someone else, stop
+    if (!claimCheck || claimCheck.rewards_processed === false) {
+      return NextResponse.json({
+        success: false,
+        error: "Another process is handling rewards",
+      });
+    }
 
-      const orderTotal = order.total - (order.discount_amount || 0);
-      const xpAmount = Math.max(Math.floor(orderTotal / 10), 10);
+    const results: Record<string, unknown> = {};
 
-      // Only process if not already processed
-      if (!order.rewards_processed) {
+    // Get current profile
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("total_xp, total_orders, total_spent")
+      .eq("id", userId)
+      .single();
+
+    const orderTotal = order.total - (order.discount_amount || 0);
+    const xpAmount = Math.max(Math.floor(orderTotal / 10), 10);
+
+    // Process rewards (we've already claimed exclusivity above)
+    {
         // Update profile
         await supabase
           .from("user_profiles")
@@ -163,26 +184,12 @@ export async function POST(request: NextRequest) {
             })
             .eq("id", pendingReferral.id);
 
-          results.referral_completed = true;
-          results.referrer_xp = referrerXp;
-        }
-
-        // Mark as processed
-        await supabase
-          .from("orders")
-          .update({ rewards_processed: true, updated_at: new Date().toISOString() })
-          .eq("id", orderId);
-
-        return NextResponse.json({ success: true, ...results });
-      } else {
-        return NextResponse.json({
-          success: false,
-          error: "Rewards already processed for this order",
-        });
+        results.referral_completed = true;
+        results.referrer_xp = referrerXp;
       }
-    }
 
-    return NextResponse.json({ success: true, ...rpcResult });
+      return NextResponse.json({ success: true, ...results });
+    }
   } catch (error) {
     console.error("Process rewards error:", error);
     return NextResponse.json(
