@@ -121,6 +121,7 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
       }
 
       try {
+        // Try RPC first
         const { data, error } = await supabase.rpc("get_referral_stats", {
           p_user_id: userProfile.id,
         });
@@ -128,6 +129,52 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
         if (!error && data?.success) {
           setPendingReferrals(data.pending_referrals || []);
           setCompletedReferrals(data.completed_referrals || []);
+          setReferralsLoading(false);
+          return;
+        }
+
+        // Fallback: Query referrals table directly
+        const { data: referralsData } = await supabase
+          .from("referrals")
+          .select(`
+            id,
+            status,
+            created_at,
+            updated_at,
+            referred:referred_id (
+              display_name,
+              username
+            )
+          `)
+          .eq("referrer_id", userProfile.id)
+          .order("created_at", { ascending: false });
+
+        if (referralsData) {
+          const pending: ReferralRecord[] = [];
+          const completed: ReferralRecord[] = [];
+
+          for (const ref of referralsData) {
+            const referred = ref.referred as { display_name?: string; username?: string } | null;
+            const record: ReferralRecord = {
+              id: ref.id,
+              referred_name: referred?.display_name || referred?.username || "Anonymous",
+              status: ref.status as "pending" | "completed",
+              created_at: ref.created_at,
+              completed_at: ref.updated_at,
+            };
+
+            // 'pending_purchase' = signed up but hasn't purchased yet
+            // 'completed' = made their first purchase  
+            // 'signed_up' = old status from before purchase-based system
+            if (ref.status === "pending_purchase" || ref.status === "pending") {
+              pending.push(record);
+            } else if (ref.status === "completed" || ref.status === "signed_up") {
+              completed.push(record);
+            }
+          }
+
+          setPendingReferrals(pending);
+          setCompletedReferrals(completed);
         }
       } catch {
         // Silently fail - we'll just show 0 referrals

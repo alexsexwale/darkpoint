@@ -264,14 +264,14 @@ BEGIN
     COALESCE(jsonb_agg(jsonb_build_object(
       'id', r.id,
       'referred_name', COALESCE(u.display_name, u.username, 'Anonymous'),
-      'status', r.status,
+      'status', 'pending',
       'created_at', r.created_at
     ) ORDER BY r.created_at DESC), '[]'::jsonb),
     COUNT(*)
   INTO v_pending_referrals, v_pending_count
   FROM referrals r
   LEFT JOIN user_profiles u ON r.referred_id = u.id
-  WHERE r.referrer_id = p_user_id AND r.status = 'pending';
+  WHERE r.referrer_id = p_user_id AND r.status IN ('pending_purchase', 'pending');
 
   -- Get completed referrals (made a purchase)
   SELECT 
