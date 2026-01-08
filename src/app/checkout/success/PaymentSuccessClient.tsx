@@ -115,8 +115,9 @@ export function PaymentSuccessClient() {
           // If order is paid and rewards not processed, trigger processing
           if (order.payment_status === "paid" && !order.rewards_processed && order.user_id && user?.id === order.user_id) {
             // Wait a bit for webhook to potentially finish
+            const userId = order.user_id; // Capture for closure (guaranteed non-null by condition above)
             setTimeout(() => {
-              processRewards(order.id, order.user_id);
+              processRewards(order.id, userId);
             }, 3000);
           }
         }
