@@ -596,66 +596,33 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 4. Complete referral directly (if this user was referred)
-      console.log("Checking for pending referral...");
+      // 4. Update referral status to 'pending_purchase' (if this user was referred)
+      // NOTE: Referral is only COMPLETED when the order is DELIVERED, not at payment time
+      // This prevents fraud/refund abuse - referrer only gets XP when order is actually delivered
+      console.log("Checking for pending referral to mark as pending_purchase...");
       const { data: pendingReferral } = await supabase
         .from("referrals")
-        .select("id, referrer_id")
+        .select("id, referrer_id, status")
         .eq("referred_id", userId)
-        .in("status", ["pending", "pending_purchase", "signed_up"]) // Include signed_up status
+        .in("status", ["pending", "signed_up"]) // Only update if not already pending_purchase
         .eq("reward_claimed", false)
         .single();
 
       if (pendingReferral) {
-        console.log("Found pending referral! Referrer:", pendingReferral.referrer_id);
-
-        // Get referrer's current stats
-        const { data: referrerProfile } = await supabase
-          .from("user_profiles")
-          .select("total_xp, referral_count, total_referrals")
-          .eq("id", pendingReferral.referrer_id)
-          .single();
-
-        // Calculate XP based on tier
-        const referralCount = referrerProfile?.referral_count || 0;
-        let referrerXp = 300; // Bronze
-        if (referralCount >= 25) referrerXp = 750; // Diamond
-        else if (referralCount >= 10) referrerXp = 500; // Gold
-        else if (referralCount >= 5) referrerXp = 400; // Silver
-
-        // Update referrer profile
-        await supabase
-          .from("user_profiles")
-          .update({
-            total_xp: (referrerProfile?.total_xp || 0) + referrerXp,
-            referral_count: (referrerProfile?.referral_count || 0) + 1,
-            total_referrals: (referrerProfile?.total_referrals || 0) + 1,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", pendingReferral.referrer_id);
-
-        // Log XP for referrer
-        await supabase.from("xp_transactions").insert({
-          user_id: pendingReferral.referrer_id,
-          amount: referrerXp,
-          action: "referral",
-          description: `Referral completed! Friend made their first purchase.`,
-          created_at: new Date().toISOString(),
-        });
-
-        // Update referral status
+        console.log("Found referral! Updating status to pending_purchase. Referrer:", pendingReferral.referrer_id);
+        
+        // Update referral status to pending_purchase (awaiting delivery)
         await supabase
           .from("referrals")
           .update({
-            status: "completed",
-            reward_claimed: true,
+            status: "pending_purchase",
             updated_at: new Date().toISOString(),
           })
           .eq("id", pendingReferral.id);
 
-        console.log("Referral completed! Referrer awarded", referrerXp, "XP");
+        console.log("Referral status updated to pending_purchase. Will complete when order is delivered.");
       } else {
-        console.log("No pending referral found for this user");
+        console.log("No pending referral found for this user (or already pending_purchase)");
       }
 
       // 5. Grant bonus spin for big spenders (R1000+)

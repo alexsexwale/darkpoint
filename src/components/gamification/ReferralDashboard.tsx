@@ -106,11 +106,13 @@ function ReferralDashboardSkeleton({ className }: { className?: string }) {
 }
 
 export function ReferralDashboard({ className }: ReferralDashboardProps) {
-  const { userProfile, isLoading } = useGamificationStore();
+  const { userProfile, isLoading, refreshProfile } = useGamificationStore();
   const [copied, setCopied] = useState(false);
   const [pendingReferrals, setPendingReferrals] = useState<ReferralRecord[]>([]);
   const [completedReferrals, setCompletedReferrals] = useState<ReferralRecord[]>([]);
   const [referralsLoading, setReferralsLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ type: "success" | "info" | "error"; text: string } | null>(null);
 
   // Fetch referrals data
   useEffect(() => {
@@ -155,12 +157,13 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
               completed_at: ref.updated_at,
             };
 
-            // 'pending_purchase' = signed up but hasn't purchased yet
-            // 'completed' = made their first purchase  
-            // 'signed_up' = old status from before purchase-based system
-            if (ref.status === "pending_purchase" || ref.status === "pending") {
+            // 'pending' = just signed up
+            // 'pending_purchase' = signed up and made a purchase (awaiting delivery)
+            // 'signed_up' = old status from before purchase-based system (treat as pending)
+            // 'completed' = order was delivered, referrer got XP
+            if (ref.status === "pending_purchase" || ref.status === "pending" || ref.status === "signed_up") {
               pending.push(record);
-            } else if (ref.status === "completed" || ref.status === "signed_up") {
+            } else if (ref.status === "completed") {
               completed.push(record);
             }
           }
@@ -209,17 +212,112 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
     window.open(urls[platform], "_blank", "width=600,height=400");
   };
 
+  // Sync referrals - check if any pending referrals have delivered orders
+  const syncReferrals = async () => {
+    setSyncing(true);
+    setSyncMessage(null);
+
+    try {
+      const response = await fetch("/api/referrals/complete-on-delivery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+
+      if (data.completed > 0) {
+        setSyncMessage({
+          type: "success",
+          text: `${data.completed} referral${data.completed > 1 ? "s" : ""} completed! You earned XP.`,
+        });
+        // Refresh profile to get updated XP and referral counts
+        await refreshProfile();
+        // Refresh referrals list
+        setReferralsLoading(true);
+        // Re-fetch referrals after a short delay
+        setTimeout(async () => {
+          if (!userProfile?.id || !isSupabaseConfigured()) return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: referralsData } = await (supabase as any)
+            .from("referrals")
+            .select("id, status, created_at, updated_at, referred_id")
+            .eq("referrer_id", userProfile.id)
+            .order("created_at", { ascending: false }) as { data: Array<{ id: string; status: string; created_at: string; updated_at: string; referred_id: string }> | null };
+
+          if (referralsData) {
+            const pending: ReferralRecord[] = [];
+            const completed: ReferralRecord[] = [];
+            for (const ref of referralsData) {
+              const record: ReferralRecord = {
+                id: ref.id,
+                referred_name: "Friend",
+                status: (ref.status === "pending" || ref.status === "pending_purchase") ? "pending" : "completed",
+                created_at: ref.created_at,
+                completed_at: ref.updated_at,
+              };
+              if (ref.status === "pending_purchase" || ref.status === "pending") {
+                pending.push(record);
+              } else if (ref.status === "completed") {
+                completed.push(record);
+              }
+            }
+            setPendingReferrals(pending);
+            setCompletedReferrals(completed);
+          }
+          setReferralsLoading(false);
+        }, 500);
+      } else if (data.processed > 0) {
+        setSyncMessage({
+          type: "info",
+          text: "No referrals ready to complete. Friends need to have delivered orders.",
+        });
+      } else {
+        setSyncMessage({
+          type: "info",
+          text: "No pending referrals to sync.",
+        });
+      }
+    } catch (error) {
+      setSyncMessage({
+        type: "error",
+        text: "Failed to sync referrals. Please try again.",
+      });
+      console.error("Sync error:", error);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className={cn("space-y-6", className)}>
+      {/* Sync message */}
+      {syncMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            "p-4 rounded-lg border",
+            syncMessage.type === "success" && "bg-green-500/10 border-green-500/30 text-green-400",
+            syncMessage.type === "info" && "bg-blue-500/10 border-blue-500/30 text-blue-400",
+            syncMessage.type === "error" && "bg-red-500/10 border-red-500/30 text-red-400"
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <span>{syncMessage.text}</span>
+            <button onClick={() => setSyncMessage(null)} className="text-white/60 hover:text-white">×</button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Stats overview */}
       <div className="grid md:grid-cols-4 gap-4">
         {/* Pending referrals */}
-        <div className="bg-[var(--color-dark-2)] border border-yellow-500/30 p-6 text-center">
+        <div className="bg-[var(--color-dark-2)] border border-yellow-500/30 p-6 text-center relative">
           <div className="text-4xl font-heading text-yellow-500 mb-2">
             {referralsLoading ? "..." : pendingCount}
           </div>
           <p className="text-sm text-white/60">Pending</p>
-          <p className="text-xs text-yellow-500/60 mt-1">Awaiting purchase</p>
+          <p className="text-xs text-yellow-500/60 mt-1">Awaiting delivery</p>
         </div>
 
         {/* Completed referrals */}
@@ -249,13 +347,38 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
       {/* Referrals List */}
       {(pendingCount > 0 || completedCount > 0) && (
         <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
-          <h3 className="font-heading text-xl mb-4">Your Referrals</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading text-xl">Your Referrals</h3>
+            {pendingCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={syncReferrals}
+                disabled={syncing}
+                className="flex items-center gap-2"
+              >
+                {syncing ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    🔄 Sync Referrals
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
           
           {/* Info banner */}
           <div className="bg-[var(--color-main-1)]/10 border border-[var(--color-main-1)]/30 rounded-lg p-4 mb-4">
             <p className="text-sm text-white/80">
-              <span className="text-[var(--color-main-1)] font-semibold">How it works:</span> You earn XP when your referred friends make their first purchase. 
-              Pending referrals have signed up but haven&apos;t purchased yet.
+              <span className="text-[var(--color-main-1)] font-semibold">How it works:</span> You earn XP when your referred friends have their first order <strong>delivered</strong>. 
+              Pending referrals are awaiting delivery confirmation.
             </p>
           </div>
 
