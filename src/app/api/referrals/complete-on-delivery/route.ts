@@ -42,11 +42,13 @@ export async function POST(request: Request) {
     };
 
     // Find all pending referrals (optionally filtered by referred user)
+    // Note: We query ALL referrals that haven't been completed yet
     let query = supabase
       .from("referrals")
-      .select("id, referrer_id, referred_id, status, reward_claimed")
-      .in("status", ["pending", "pending_purchase", "signed_up"])
-      .eq("reward_claimed", false);
+      .select("id, referrer_id, referred_id, status, reward_claimed");
+    
+    // Filter for non-completed referrals
+    query = query.neq("status", "completed");
     
     if (userId) {
       query = query.eq("referred_id", userId);
@@ -55,8 +57,11 @@ export async function POST(request: Request) {
     const { data: pendingReferrals, error: referralError } = await query;
 
     if (referralError) {
+      console.error("Referral query error:", referralError);
       return NextResponse.json({ error: referralError.message }, { status: 500 });
     }
+
+    console.log("Found referrals:", JSON.stringify(pendingReferrals, null, 2));
 
     if (!pendingReferrals || pendingReferrals.length === 0) {
       return NextResponse.json({ 
@@ -69,21 +74,37 @@ export async function POST(request: Request) {
     for (const referral of pendingReferrals) {
       results.processed++;
 
+      // Skip if already rewarded
+      if (referral.reward_claimed) {
+        console.log(`Skipping referral ${referral.id} - already rewarded`);
+        results.details.push({
+          referrer_id: referral.referrer_id,
+          referred_id: referral.referred_id,
+          xp_awarded: 0,
+          status: "already_rewarded",
+        });
+        continue;
+      }
+
       // Check if the referred user has any DELIVERED orders
       const { data: deliveredOrders, error: orderError } = await supabase
         .from("orders")
-        .select("id, order_number")
+        .select("id, order_number, status")
         .eq("user_id", referral.referred_id)
         .eq("status", "delivered")
         .limit(1);
 
+      console.log(`Checking orders for referred user ${referral.referred_id}:`, deliveredOrders);
+
       if (orderError) {
+        console.error(`Order query error for ${referral.referred_id}:`, orderError);
         results.errors.push(`Error checking orders for ${referral.referred_id}: ${orderError.message}`);
         continue;
       }
 
       // Only complete referral if there's a delivered order
       if (!deliveredOrders || deliveredOrders.length === 0) {
+        console.log(`No delivered orders found for referred user ${referral.referred_id}`);
         results.details.push({
           referrer_id: referral.referrer_id,
           referred_id: referral.referred_id,
@@ -92,6 +113,8 @@ export async function POST(request: Request) {
         });
         continue;
       }
+
+      console.log(`Found delivered order for ${referral.referred_id}: ${deliveredOrders[0].order_number}`);
 
       // Get referrer's profile to calculate XP based on tier
       const { data: referrerProfile } = await supabase
@@ -177,8 +200,9 @@ export async function POST(request: Request) {
 }
 
 // Helper function to check and award referral achievements
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function checkReferralAchievements(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   userId: string,
   newReferralCount: number
 ) {
