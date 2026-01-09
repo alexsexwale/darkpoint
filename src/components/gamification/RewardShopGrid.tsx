@@ -83,6 +83,30 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
     is_active: true,
     created_at: new Date().toISOString(),
   },
+  {
+    id: "xp_boost_1_5x",
+    name: "1.5x XP Boost",
+    description: "50% bonus XP for 12 hours",
+    category: "xp_booster",
+    xp_cost: 200,
+    value: "1.5x_12h",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "discount_15",
+    name: "15% Discount",
+    description: "15% off your next order",
+    category: "discount",
+    xp_cost: 400,
+    value: "15",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
 
   // === VIP BADGES (Purchase to unlock tiers - requires orders) ===
   {
@@ -124,12 +148,12 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
 
   // === BRONZE VIP REWARDS (Fire Badge required) ===
   {
-    id: "vip_discount_15",
-    name: "VIP 15% Discount",
-    description: "15% off your next order - Bronze VIP exclusive!",
+    id: "vip_discount_20",
+    name: "VIP 20% Discount",
+    description: "20% off your next order - Bronze VIP exclusive!",
     category: "exclusive",
     xp_cost: 400,
-    value: "15",
+    value: "20",
     image_url: null,
     stock: null,
     is_active: true,
@@ -672,6 +696,193 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
           </div>
         </div>
       )}
+
+      {/* VIP Unlock Path - What you can unlock */}
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 overflow-hidden">
+        <h3 className="font-heading text-lg mb-2 text-center">
+          🎯 <span className="text-[var(--color-main-1)]">VIP Unlock Path</span>
+        </h3>
+        <p className="text-xs text-white/50 text-center mb-6">
+          Place orders to unlock badges and exclusive rewards
+        </p>
+        
+        {/* Timeline-style unlock path */}
+        <div className="relative">
+          {/* Connecting line */}
+          <div className="absolute top-8 left-0 right-0 h-1 bg-gradient-to-r from-orange-500/30 via-yellow-500/30 to-amber-500/30 hidden md:block" />
+          
+          <div className="grid md:grid-cols-3 gap-6 relative">
+            {/* Bronze Tier */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className={cn(
+                "relative p-4 rounded-lg border-2 transition-all",
+                userVIPTier === "bronze" || userVIPTier === "gold" || userVIPTier === "platinum"
+                  ? "border-orange-500 bg-orange-500/10"
+                  : userOrderCount >= 1
+                  ? "border-orange-500/50 bg-orange-500/5"
+                  : "border-[var(--color-dark-4)] bg-[var(--color-dark-3)]/50"
+              )}
+            >
+              {/* Status badge */}
+              <div className={cn(
+                "absolute -top-3 left-4 px-2 py-0.5 text-[10px] font-bold rounded",
+                userVIPTier === "bronze" || userVIPTier === "gold" || userVIPTier === "platinum"
+                  ? "bg-green-500 text-white"
+                  : userOrderCount >= 1
+                  ? "bg-orange-500 text-white"
+                  : "bg-[var(--color-dark-4)] text-white/60"
+              )}>
+                {userVIPTier === "bronze" || userVIPTier === "gold" || userVIPTier === "platinum" ? "✓ UNLOCKED" : userOrderCount >= 1 ? "AVAILABLE" : `${userOrderCount}/1 ORDER`}
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl mb-2">🔥</div>
+                <h4 className="font-heading text-orange-400 mb-1">Bronze VIP</h4>
+                <p className="text-xs text-white/40 mb-3">Fire Badge • 500 XP</p>
+                
+                <div className="space-y-1 text-xs text-left">
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> Up to 20% discounts
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> 2x XP boost (24h)
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> VIP Mystery Boxes
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> VIP Lounge access
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+            
+            {/* Gold Tier */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className={cn(
+                "relative p-4 rounded-lg border-2 transition-all",
+                userVIPTier === "gold" || userVIPTier === "platinum"
+                  ? "border-yellow-500 bg-yellow-500/10"
+                  : userOrderCount >= 3
+                  ? "border-yellow-500/50 bg-yellow-500/5"
+                  : "border-[var(--color-dark-4)] bg-[var(--color-dark-3)]/50"
+              )}
+            >
+              {/* Status badge */}
+              <div className={cn(
+                "absolute -top-3 left-4 px-2 py-0.5 text-[10px] font-bold rounded",
+                userVIPTier === "gold" || userVIPTier === "platinum"
+                  ? "bg-green-500 text-white"
+                  : userOrderCount >= 3
+                  ? "bg-yellow-500 text-black"
+                  : "bg-[var(--color-dark-4)] text-white/60"
+              )}>
+                {userVIPTier === "gold" || userVIPTier === "platinum" ? "✓ UNLOCKED" : userOrderCount >= 3 ? "AVAILABLE" : `${userOrderCount}/3 ORDERS`}
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl mb-2">👑</div>
+                <h4 className="font-heading text-yellow-400 mb-1">Gold VIP</h4>
+                <p className="text-xs text-white/40 mb-3">Crown Badge • 1,000 XP</p>
+                
+                <div className="space-y-1 text-xs text-left">
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> Up to 25% discounts
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> 3x XP boost (24h)
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> Premium Mystery Boxes
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> 24h early sale access
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> Priority support
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+            
+            {/* Platinum Tier */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className={cn(
+                "relative p-4 rounded-lg border-2 transition-all",
+                userVIPTier === "platinum"
+                  ? "border-amber-400 bg-amber-500/10"
+                  : userOrderCount >= 5
+                  ? "border-amber-400/50 bg-amber-500/5"
+                  : "border-[var(--color-dark-4)] bg-[var(--color-dark-3)]/50"
+              )}
+            >
+              {/* Status badge */}
+              <div className={cn(
+                "absolute -top-3 left-4 px-2 py-0.5 text-[10px] font-bold rounded",
+                userVIPTier === "platinum"
+                  ? "bg-green-500 text-white"
+                  : userOrderCount >= 5
+                  ? "bg-amber-400 text-black"
+                  : "bg-[var(--color-dark-4)] text-white/60"
+              )}>
+                {userVIPTier === "platinum" ? "✓ UNLOCKED" : userOrderCount >= 5 ? "AVAILABLE" : `${userOrderCount}/5 ORDERS`}
+              </div>
+              
+              <div className="text-center">
+                <div className="text-3xl mb-2">✨</div>
+                <h4 className="font-heading text-amber-400 mb-1">Platinum VIP</h4>
+                <p className="text-xs text-white/40 mb-3">Gold Frame • 1,500 XP</p>
+                
+                <div className="space-y-1 text-xs text-left">
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> Up to 35% discounts
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> 4x XP boost (24h)
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> Elite Mystery Boxes
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> 48h early sale access
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> Monthly 100 XP + spin
+                  </div>
+                  <div className="flex items-center gap-2 text-white/70">
+                    <span className="text-green-400">✓</span> Diamond Frame access
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+        
+        {/* Progress indicator */}
+        <div className="mt-6 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-dark-3)] rounded-full text-sm">
+            <span className="text-white/60">Your progress:</span>
+            <span className="font-bold text-[var(--color-main-1)]">{userOrderCount} order{userOrderCount !== 1 ? 's' : ''}</span>
+            {userOrderCount < 5 && (
+              <>
+                <span className="text-white/40">→</span>
+                <span className="text-white/60">
+                  Next unlock: {userOrderCount < 1 ? "1 order" : userOrderCount < 3 ? `${3 - userOrderCount} more orders` : `${5 - userOrderCount} more orders`}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* How to earn more XP */}
       <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">

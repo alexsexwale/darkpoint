@@ -157,13 +157,13 @@ export function RewardShopCard({
 
       {/* Already owned overlay */}
       {isAlreadyOwned && (
-        <div className="absolute inset-0 bg-green-900/30 z-10 flex items-center justify-center">
-          <div className="text-center px-4">
-            <div className="text-3xl mb-2">✅</div>
-            <div className="text-sm font-medium text-green-400">
+        <div className="absolute inset-0 bg-green-950/95 z-10 flex items-center justify-center backdrop-blur-sm">
+          <div className="text-center px-4 py-6 bg-green-900/50 rounded-lg border border-green-500/30">
+            <div className="text-4xl mb-3">✅</div>
+            <div className="text-base font-bold text-green-400">
               Already Owned
             </div>
-            <div className="text-xs text-white/50 mt-1">
+            <div className="text-sm text-green-300/70 mt-2">
               You already have this badge
             </div>
           </div>
@@ -172,29 +172,33 @@ export function RewardShopCard({
 
       {/* Badge locked overlay (needs more orders) */}
       {isBadgeLocked && !isAlreadyOwned && (
-        <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center">
-          <div className="text-center px-4">
-            <div className="text-3xl mb-2">🛒</div>
-            <div className="text-sm font-medium text-white/80">
+        <div className="absolute inset-0 bg-black/90 z-10 flex items-center justify-center backdrop-blur-sm">
+          <div className="text-center px-4 py-6 bg-[var(--color-dark-2)] rounded-lg border border-orange-500/30">
+            <div className="text-4xl mb-3">🛒</div>
+            <div className="text-base font-bold text-orange-400">
               {requiredOrders} Order{requiredOrders !== 1 ? 's' : ''} Required
             </div>
-            <div className="text-xs text-white/50 mt-1">
+            <div className="text-sm text-white/70 mt-2">
               You have {userOrderCount} order{userOrderCount !== 1 ? 's' : ''}
-              {userOrderCount > 0 && ` (${requiredOrders - userOrderCount} more needed)`}
             </div>
+            {userOrderCount > 0 && (
+              <div className="text-xs text-orange-300 mt-1">
+                {requiredOrders - userOrderCount} more needed
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* VIP tier locked overlay */}
       {isLocked && !isBadgeLocked && !isAlreadyOwned && (
-        <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center">
-          <div className="text-center px-4">
-            <div className="text-3xl mb-2">🔒</div>
-            <div className="text-sm font-medium text-white/80">
+        <div className="absolute inset-0 bg-black/90 z-10 flex items-center justify-center backdrop-blur-sm">
+          <div className="text-center px-4 py-6 bg-[var(--color-dark-2)] rounded-lg border border-purple-500/30">
+            <div className="text-4xl mb-3">🔒</div>
+            <div className="text-base font-bold text-purple-400">
               {reward.requiredTierName || "VIP"} Required
             </div>
-            <div className="text-xs text-white/50 mt-1">
+            <div className="text-sm text-white/70 mt-2">
               Purchase the required badge to unlock
             </div>
           </div>

@@ -204,12 +204,21 @@ export function BackgroundAudio({
   useEffect(() => {
     if (!howlRef.current || !hasInitialized || !isHydrated) return;
 
-    if (isMuted && howlRef.current.playing()) {
-      // User muted - fade out and pause
-      fadeOut();
-    } else if (!isMuted && !howlRef.current.playing()) {
-      // User unmuted - fade in and play
-      fadeIn();
+    if (isMuted) {
+      // User muted - fade out and pause if playing
+      if (howlRef.current.playing()) {
+        fadeOut();
+      }
+    } else {
+      // User unmuted - always try to play
+      // Check if not already playing (howl.playing() can return false even when sound is loaded)
+      if (!howlRef.current.playing()) {
+        // Force play by reloading if necessary
+        if (howlRef.current.state() === 'unloaded') {
+          howlRef.current.load();
+        }
+        fadeIn();
+      }
     }
   }, [isMuted, hasInitialized, isHydrated, fadeIn, fadeOut]);
 

@@ -25,11 +25,26 @@ UPDATE rewards SET
 WHERE id = 'frame_gold';
 
 -- =====================================================
+-- 1.5 INSERT NON-VIP XP BOOSTER (different from VIP version)
+-- =====================================================
+-- Remove any existing 2x XP boost that's not VIP-only (to avoid confusion)
+DELETE FROM rewards WHERE id = 'xp_boost_2x' AND (vip_only IS NULL OR vip_only = false);
+
+-- Add non-VIP 1.5x XP boost (different from VIP 2x)
+INSERT INTO rewards (id, name, description, category, xp_cost, value, stock, is_active, vip_only, required_tier)
+VALUES
+  ('xp_boost_1_5x', '1.5x XP Boost', '50% bonus XP for 12 hours', 'xp_booster', 200, '1.5x_12h', NULL, true, false, NULL)
+ON CONFLICT (id) DO UPDATE SET
+  description = EXCLUDED.description,
+  xp_cost = EXCLUDED.xp_cost,
+  vip_only = EXCLUDED.vip_only;
+
+-- =====================================================
 -- 2. INSERT BRONZE VIP REWARDS (Fire Badge required)
 -- =====================================================
 INSERT INTO rewards (id, name, description, category, xp_cost, value, stock, is_active, vip_only, required_tier)
 VALUES
-  ('vip_discount_15', 'VIP 15% Discount', '15% off your next order - Bronze VIP exclusive!', 'exclusive', 400, '15', NULL, true, true, 'bronze'),
+  ('vip_discount_20', 'VIP 20% Discount', '20% off your next order - Bronze VIP exclusive!', 'exclusive', 400, '20', NULL, true, true, 'bronze'),
   ('vip_xp_boost_2x', '2x XP Boost', 'Double XP for 24 hours - Bronze VIP perk!', 'exclusive', 300, '2x_24h', NULL, true, true, 'bronze'),
   ('vip_mystery_box_standard', 'VIP Mystery Box', 'Standard VIP mystery box with bonus items', 'exclusive', 600, 'mystery_vip_standard', 100, true, true, 'bronze')
 ON CONFLICT (id) DO UPDATE SET
@@ -169,10 +184,19 @@ GRANT EXECUTE ON FUNCTION get_user_vip_tier(UUID) TO authenticated, service_role
 GRANT EXECUTE ON FUNCTION can_access_reward(UUID, TEXT) TO authenticated, service_role;
 
 -- =====================================================
--- 7. CREATE VIEW FOR TIER-ACCESSIBLE REWARDS
+-- 7. ADD BADGE PURCHASE REQUIREMENTS (before view creation)
 -- =====================================================
+-- Add required_orders column to rewards for badge purchases FIRST
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS required_orders INTEGER DEFAULT 0;
+
+-- =====================================================
+-- 8. CREATE VIEW FOR TIER-ACCESSIBLE REWARDS
+-- =====================================================
+-- Drop existing view first to avoid column conflicts
+DROP VIEW IF EXISTS user_accessible_rewards;
+
 -- This view shows all rewards a user can access based on their tier
-CREATE OR REPLACE VIEW user_accessible_rewards AS
+CREATE VIEW user_accessible_rewards AS
 SELECT 
   r.*,
   CASE 
@@ -183,12 +207,6 @@ SELECT
   END AS tier_label
 FROM rewards r
 WHERE r.is_active = true;
-
--- =====================================================
--- 8. ADD BADGE PURCHASE REQUIREMENTS
--- =====================================================
--- Add required_orders column to rewards for badge purchases
-ALTER TABLE rewards ADD COLUMN IF NOT EXISTS required_orders INTEGER DEFAULT 0;
 
 -- Update badge purchase requirements
 UPDATE rewards SET required_orders = 1 WHERE id = 'badge_fire';
