@@ -12,6 +12,7 @@ import {
   StreakMilestoneModal,
   XPGainPopup,
   NotificationStack,
+  FloatingXPMultiplier,
 } from "@/components/gamification";
 import { ExitIntentPopup } from "@/components/marketing";
 import { AuthProvider } from "@/components/providers/AuthProvider";
@@ -127,6 +128,9 @@ export default function RootLayout({
           {/* Gamification Notifications */}
           <XPGainPopup />
           <NotificationStack />
+
+          {/* Floating XP Multiplier for Mobile */}
+          <FloatingXPMultiplier />
 
           {/* Marketing - Exit Intent Popup */}
           <ExitIntentPopup discount={10} />

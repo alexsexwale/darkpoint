@@ -107,9 +107,11 @@ export function NavIcons() {
         </button>
       )}
 
-      {/* XP Multiplier Indicator - visible in header when active (all screen sizes) */}
+      {/* XP Multiplier Indicator - only show on desktop in header */}
       {showAuthenticatedUI && (
-        <XPMultiplierIndicator variant="header" showOnlyWhenActive />
+        <div className="hidden md:block">
+          <XPMultiplierIndicator variant="header" showOnlyWhenActive />
+        </div>
       )}
 
       {/* Wishlist - hidden on mobile when daily reward needs to be claimed */}
