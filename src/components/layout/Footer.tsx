@@ -68,8 +68,8 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Footer Links Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10 text-center md:text-left">
+        {/* Footer Links Grid - 2 columns on mobile (Shop|Categories, Support|Connect), 4 on desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-10 text-center md:text-left">
           {/* Shop */}
           <div>
             <h3 className="font-heading text-sm uppercase tracking-wider text-white mb-4">Shop</h3>
