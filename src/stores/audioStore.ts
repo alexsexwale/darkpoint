@@ -5,8 +5,8 @@ import { AUDIO_CONFIG } from "@/lib/constants";
 // Available background tracks
 export const AUDIO_TRACKS = [
   "/audio/purpleplanetmusic-desolation.mp3",
-  "/audio/purpleplanetmusic-molten-alloy.mp3",
   "/audio/purpleplanetmusic-lost-souls.mp3",
+  "/audio/purpleplanetmusic-molten-alloy.mp3",
 ] as const;
 
 interface AudioState {
