@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useGamificationStore, useRewardsStore } from "@/stores";
+import { useGamificationStore, useRewardsStore, useAuthStore } from "@/stores";
 import { useGamification } from "@/hooks";
 import { RewardShopCard, RewardShopCardSkeleton } from "./RewardShopCard";
 import type { Reward } from "@/types/gamification";
 import { getHighestVIPTier, hasVIPAccess, VIP_TIERS, BADGE_TIER_INFO, type VIPTier } from "@/types/vip";
+import { supabase } from "@/lib/supabase";
 
 // Extended reward type with VIP tier requirement
 interface ExtendedReward extends Reward {
@@ -323,18 +324,46 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
 
 export function RewardShopGrid({ className }: RewardShopGridProps) {
   const { userProfile, rewards: storeRewards, addNotification, isLoading: gamificationLoading, fetchRewards: fetchGamificationRewards, hasAnyBadge, userBadges } = useGamificationStore();
+  const { user } = useAuthStore();
   const { fetchRewards } = useRewardsStore();
   const { purchaseReward } = useGamification();
   const [selectedCategory, setSelectedCategory] = useState<RewardCategory>("all");
   const [redeeming, setRedeeming] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [actualOrderCount, setActualOrderCount] = useState<number | null>(null);
 
   const isVIP = hasAnyBadge();
   // Get the user's highest VIP tier based on their badges
   const userVIPTier = getHighestVIPTier(userBadges.map(b => b.badge_id));
-  // Get user's order count for badge purchase requirements
-  const userOrderCount = userProfile?.total_orders || 0;
+  // Get user's actual delivered order count (fetched from DB, not cached profile value)
+  const userOrderCount = actualOrderCount ?? 0;
+
+  // Fetch actual order count from database (only count delivered orders)
+  useEffect(() => {
+    const fetchOrderCount = async () => {
+      if (!user?.id) {
+        setActualOrderCount(0);
+        return;
+      }
+      
+      const { count, error } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "delivered");
+      
+      if (error) {
+        console.error("Error fetching order count:", error);
+        // Fallback to profile value if direct query fails
+        setActualOrderCount(userProfile?.total_orders || 0);
+      } else {
+        setActualOrderCount(count || 0);
+      }
+    };
+    
+    fetchOrderCount();
+  }, [user?.id, userProfile?.total_orders]);
 
   // Fetch rewards on mount
   useEffect(() => {
