@@ -96,7 +96,30 @@ export async function POST(request: NextRequest) {
       .single();
 
     const orderTotal = order.total - (order.discount_amount || 0);
-    const xpAmount = Math.max(Math.floor(orderTotal / 10), 10);
+    const baseXpAmount = Math.max(Math.floor(orderTotal / 10), 10);
+
+    // Check for active XP multiplier
+    let xpMultiplier = 1;
+    let multiplierRecord: { id: string; multiplier: number; xp_earned_with_multiplier: number } | null = null;
+    
+    const { data: activeMultiplier } = await supabase
+      .from("user_xp_multipliers")
+      .select("id, multiplier, xp_earned_with_multiplier")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .gt("expires_at", new Date().toISOString())
+      .order("multiplier", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (activeMultiplier) {
+      xpMultiplier = activeMultiplier.multiplier || 1;
+      multiplierRecord = activeMultiplier;
+    }
+
+    // Apply multiplier to XP
+    const xpAmount = Math.floor(baseXpAmount * xpMultiplier);
+    const bonusXp = xpAmount - baseXpAmount;
 
     // Process rewards (we've already claimed exclusivity above)
     {
@@ -112,16 +135,35 @@ export async function POST(request: NextRequest) {
           })
           .eq("id", userId);
 
-        // Log XP
+        // Log XP (with multiplier info)
+        const xpDescription = xpMultiplier > 1 
+          ? `Purchase: Order ${order.order_number} [${xpMultiplier}x: ${baseXpAmount} + ${bonusXp} bonus]`
+          : `Purchase: Order ${order.order_number}`;
+        
         await supabase.from("xp_transactions").insert({
           user_id: userId,
           amount: xpAmount,
           action: "purchase",
-          description: `Purchase: Order ${order.order_number}`,
+          description: xpDescription,
           created_at: new Date().toISOString(),
         });
 
         results.xp_awarded = xpAmount;
+        if (xpMultiplier > 1) {
+          results.multiplier_applied = xpMultiplier;
+          results.bonus_xp = bonusXp;
+        }
+
+        // Update multiplier tracking if active
+        if (multiplierRecord && bonusXp > 0) {
+          await supabase
+            .from("user_xp_multipliers")
+            .update({
+              xp_earned_with_multiplier: (multiplierRecord.xp_earned_with_multiplier || 0) + bonusXp,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", multiplierRecord.id);
+        }
 
         // Mark reward as used
         if (order.applied_reward_id) {

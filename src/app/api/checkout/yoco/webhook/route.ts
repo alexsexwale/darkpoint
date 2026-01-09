@@ -430,7 +430,33 @@ export async function POST(request: NextRequest) {
           .eq("id", order.id);
 
         const orderTotal = (order.total as number) - ((order.discount_amount as number) || 0);
-        const xpAmount = Math.max(Math.floor(orderTotal / 10), 10); // Minimum 10 XP
+        const baseXpAmount = Math.max(Math.floor(orderTotal / 10), 10); // Minimum 10 XP
+
+        // Check for active XP multiplier
+        let xpMultiplier = 1;
+        let multiplierRecord: { id: string; multiplier: number } | null = null;
+        
+        const { data: activeMultiplier } = await supabase
+          .from("user_xp_multipliers")
+          .select("id, multiplier")
+          .eq("user_id", userId)
+          .eq("is_active", true)
+          .gt("expires_at", new Date().toISOString())
+          .order("multiplier", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (activeMultiplier) {
+          xpMultiplier = activeMultiplier.multiplier || 1;
+          multiplierRecord = activeMultiplier;
+          console.log("Active XP multiplier found:", xpMultiplier, "x");
+        }
+
+        // Apply multiplier to XP
+        const xpAmount = Math.floor(baseXpAmount * xpMultiplier);
+        const bonusXp = xpAmount - baseXpAmount;
+
+        console.log("XP calculation:", baseXpAmount, "base *", xpMultiplier, "=", xpAmount, "(bonus:", bonusXp, ")");
 
         // ============================================
         // DIRECT DATABASE OPERATIONS (No RPC functions)
@@ -438,50 +464,83 @@ export async function POST(request: NextRequest) {
 
         // 1. Update user profile stats directly
         console.log("Updating user stats for:", userId);
-      const { data: currentProfile, error: profileFetchError } = await supabase
-        .from("user_profiles")
-        .select("total_xp, total_orders, total_spent")
-        .eq("id", userId)
-        .single();
-
-      if (profileFetchError) {
-        console.error("Failed to fetch user profile:", profileFetchError);
-      } else {
-        const { error: profileUpdateError } = await supabase
+        const { data: currentProfile, error: profileFetchError } = await supabase
           .from("user_profiles")
-          .update({
-            total_xp: (currentProfile?.total_xp || 0) + xpAmount,
-            total_orders: (currentProfile?.total_orders || 0) + 1,
-            total_spent: (currentProfile?.total_spent || 0) + orderTotal,
-            last_purchase_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", userId);
+          .select("total_xp, total_orders, total_spent")
+          .eq("id", userId)
+          .single();
 
-        if (profileUpdateError) {
-          console.error("Failed to update user profile:", profileUpdateError);
+        if (profileFetchError) {
+          console.error("Failed to fetch user profile:", profileFetchError);
         } else {
-          console.log("User profile updated: +", xpAmount, "XP, total_orders +1");
+          const { error: profileUpdateError } = await supabase
+            .from("user_profiles")
+            .update({
+              total_xp: (currentProfile?.total_xp || 0) + xpAmount,
+              total_orders: (currentProfile?.total_orders || 0) + 1,
+              total_spent: (currentProfile?.total_spent || 0) + orderTotal,
+              last_purchase_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", userId);
+
+          if (profileUpdateError) {
+            console.error("Failed to update user profile:", profileUpdateError);
+          } else {
+            console.log("User profile updated: +", xpAmount, "XP, total_orders +1");
+          }
         }
-      }
 
-      // 2. Log XP transaction directly
-      console.log("Logging XP transaction:", xpAmount);
-      const { error: xpError } = await supabase
-        .from("xp_transactions")
-        .insert({
-          user_id: userId,
-          amount: xpAmount,
-          action: "purchase",
-          description: `Purchase: Order ${order.order_number} (R${orderTotal.toFixed(2)})`,
-          created_at: new Date().toISOString(),
-        });
+        // 2. Log XP transaction directly (with multiplier info)
+        console.log("Logging XP transaction:", xpAmount);
+        const xpDescription = xpMultiplier > 1 
+          ? `Purchase: Order ${order.order_number} (R${orderTotal.toFixed(2)}) [${xpMultiplier}x multiplier: ${baseXpAmount} + ${bonusXp} bonus]`
+          : `Purchase: Order ${order.order_number} (R${orderTotal.toFixed(2)})`;
+        
+        const { error: xpError } = await supabase
+          .from("xp_transactions")
+          .insert({
+            user_id: userId,
+            amount: xpAmount,
+            action: "purchase",
+            description: xpDescription,
+            created_at: new Date().toISOString(),
+          });
 
-      if (xpError) {
-        console.error("Failed to log XP transaction:", xpError);
-      } else {
-        console.log("XP transaction logged successfully");
-      }
+        if (xpError) {
+          console.error("Failed to log XP transaction:", xpError);
+        } else {
+          console.log("XP transaction logged successfully");
+        }
+
+        // 3. Update multiplier tracking if active
+        if (multiplierRecord && bonusXp > 0) {
+          await supabase
+            .from("user_xp_multipliers")
+            .update({
+              xp_earned_with_multiplier: supabase.rpc("increment_xp_earned", { 
+                row_id: multiplierRecord.id, 
+                amount: bonusXp 
+              }),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", multiplierRecord.id);
+          
+          // Simpler update if RPC doesn't exist
+          const { data: currentMultiplierData } = await supabase
+            .from("user_xp_multipliers")
+            .select("xp_earned_with_multiplier")
+            .eq("id", multiplierRecord.id)
+            .single();
+          
+          await supabase
+            .from("user_xp_multipliers")
+            .update({
+              xp_earned_with_multiplier: (currentMultiplierData?.xp_earned_with_multiplier || 0) + bonusXp,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", multiplierRecord.id);
+        }
 
       // 3. Award First Timer achievement directly (if this is their first order)
       if ((currentProfile?.total_orders || 0) === 0) {
