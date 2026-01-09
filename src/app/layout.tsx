@@ -91,7 +91,7 @@ export default function RootLayout({
 
           {/* Video Background - Fire/Ember effect */}
           <BackgroundVideo
-            youtubeId="UkeDo1LhUqQ"
+            src="/video/Background.mp4"
             posterImage="/images/page-background.jpg"
             opacity={0.5}
             muted={true}
