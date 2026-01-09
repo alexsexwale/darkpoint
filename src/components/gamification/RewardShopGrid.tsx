@@ -446,7 +446,7 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
           <div className="text-center p-3 bg-[var(--color-dark-3)]">
             <span className="text-xl block mb-1">🤝</span>
             <p className="text-white/60">Referrals</p>
-            <p className="text-[var(--color-main-1)]">+300 XP</p>
+            <p className="text-[var(--color-main-1)]">+300-750 XP</p>
           </div>
         </div>
       </div>
