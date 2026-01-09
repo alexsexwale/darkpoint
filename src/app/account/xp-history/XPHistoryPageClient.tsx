@@ -327,48 +327,64 @@ export function XPHistoryPageClient() {
                           transition={{ delay: index * 0.03 }}
                           className="px-4 md:px-6 py-4 hover:bg-[var(--color-dark-3)]/20 transition-colors"
                         >
-                          <div className="flex items-center gap-4">
-                            {/* Icon */}
-                            <div className={cn(
-                              "w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-xl md:text-2xl flex-shrink-0",
-                              isEarned 
-                                ? "bg-green-500/10" 
-                                : "bg-red-500/10"
-                            )}>
-                              {config.icon}
-                            </div>
+                          {(() => {
+                            const multiplierInfo = parseMultiplierInfo(tx.description);
+                            return (
+                              <div className="flex items-center gap-4">
+                                {/* Icon */}
+                                <div className={cn(
+                                  "w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-xl md:text-2xl flex-shrink-0",
+                                  isEarned 
+                                    ? "bg-green-500/10" 
+                                    : "bg-red-500/10"
+                                )}>
+                                  {config.icon}
+                                </div>
 
-                            {/* Details */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className={cn("font-medium text-sm md:text-base", config.color)}>
-                                  {config.label}
-                                </p>
-                                {tx.action === "purchase" && (
-                                  <span className="hidden sm:inline-flex px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded-full">
-                                    1 XP per R10
-                                  </span>
-                                )}
+                                {/* Details */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className={cn("font-medium text-sm md:text-base", config.color)}>
+                                      {config.label}
+                                    </p>
+                                    {multiplierInfo && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-[10px] rounded-full">
+                                        <span>⚡</span>
+                                        <span>{multiplierInfo.multiplier}x</span>
+                                      </span>
+                                    )}
+                                    {tx.action === "purchase" && !multiplierInfo && (
+                                      <span className="hidden sm:inline-flex px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded-full">
+                                        1 XP per R10
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs md:text-sm text-white/50 truncate">
+                                    {formatDescription(tx.description) || getDefaultDescription(tx.action, tx.amount)}
+                                  </p>
+                                  {multiplierInfo && (
+                                    <p className="text-[10px] text-[var(--color-main-1)]/70 mt-0.5">
+                                      Base: {multiplierInfo.baseXP} XP + {multiplierInfo.bonusXP} bonus
+                                    </p>
+                                  )}
+                                  <p className="text-[10px] md:text-xs text-white/30 mt-1">
+                                    {formatTime(tx.created_at)}
+                                  </p>
+                                </div>
+
+                                {/* Amount */}
+                                <div className={cn(
+                                  "text-right flex-shrink-0",
+                                  isEarned ? "text-green-400" : "text-red-400"
+                                )}>
+                                  <p className="text-lg md:text-xl font-heading">
+                                    {isEarned ? "+" : ""}{tx.amount.toLocaleString()}
+                                  </p>
+                                  <p className="text-[10px] md:text-xs opacity-60">XP</p>
+                                </div>
                               </div>
-                              <p className="text-xs md:text-sm text-white/50 truncate">
-                                {formatDescription(tx.description) || getDefaultDescription(tx.action, tx.amount)}
-                              </p>
-                              <p className="text-[10px] md:text-xs text-white/30 mt-1">
-                                {formatTime(tx.created_at)}
-                              </p>
-                            </div>
-
-                            {/* Amount */}
-                            <div className={cn(
-                              "text-right flex-shrink-0",
-                              isEarned ? "text-green-400" : "text-red-400"
-                            )}>
-                              <p className="text-lg md:text-xl font-heading">
-                                {isEarned ? "+" : ""}{tx.amount.toLocaleString()}
-                              </p>
-                              <p className="text-[10px] md:text-xs opacity-60">XP</p>
-                            </div>
-                          </div>
+                            );
+                          })()}
                         </motion.div>
                       );
                     })}
@@ -419,6 +435,24 @@ export function XPHistoryPageClient() {
   );
 }
 
+// Parse multiplier info from description
+// Format: "... [1.5x: 20 + 10 bonus]" or similar
+function parseMultiplierInfo(description: string | null): { multiplier: number; baseXP: number; bonusXP: number } | null {
+  if (!description) return null;
+  
+  // Match pattern like "[1.5x: 20 + 10 bonus]" or "[2x: 25 + 25 bonus]"
+  const match = description.match(/\[(\d+\.?\d*)x:\s*(\d+)\s*\+\s*(\d+)\s*bonus\]/i);
+  if (match) {
+    return {
+      multiplier: parseFloat(match[1]),
+      baseXP: parseInt(match[2]),
+      bonusXP: parseInt(match[3]),
+    };
+  }
+  
+  return null;
+}
+
 // Quest ID to friendly name mapping
 const QUEST_FRIENDLY_NAMES: Record<string, string> = {
   browse_products: "Browse Products",
@@ -436,16 +470,25 @@ const QUEST_FRIENDLY_NAMES: Record<string, string> = {
 function formatDescription(description: string | null): string {
   if (!description) return "";
   
+  // Remove multiplier info from description (we display it separately)
+  let cleanDesc = description.replace(/\s*\[\d+\.?\d*x:\s*\d+\s*\+\s*\d+\s*bonus\]/gi, "").trim();
+  
   // Check if it's a quest description with technical ID
-  const questMatch = description.match(/Daily quest[:\s]+(\w+)/i);
+  const questMatch = cleanDesc.match(/Daily quest[:\s]+(\w+)/i);
   if (questMatch) {
     const questId = questMatch[1];
     const friendlyName = QUEST_FRIENDLY_NAMES[questId] || questId.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
     return `Daily Quest: ${friendlyName}`;
   }
   
+  // Handle "Quest: Quest Name" format
+  const questFormatMatch = cleanDesc.match(/Quest:\s*(.+)/i);
+  if (questFormatMatch) {
+    return cleanDesc;
+  }
+  
   // Replace any remaining snake_case quest IDs in the description
-  return description.replace(/:\s*(\w+_\w+)/g, (match: string, id: string) => {
+  return cleanDesc.replace(/:\s*(\w+_\w+)/g, (match: string, id: string) => {
     const friendlyName = QUEST_FRIENDLY_NAMES[id] || id.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
     return `: ${friendlyName}`;
   });

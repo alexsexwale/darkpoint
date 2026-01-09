@@ -1602,17 +1602,35 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             get().trackQuestRewardedAction(achievementType);
           }
           
-          // Show quest completion notification immediately
-          get().addNotification({
-            type: "reward",
-            title: "🎯 Quest Complete!",
-            message: `${q.title} - +${q.xpReward} XP`,
-            icon: "✅",
-            xpAmount: q.xpReward,
-          });
-          
-          // Quest completed - add XP (will use local fallback if DB not available)
+          // Quest completed - add XP with multiplier applied
           setTimeout(async () => {
+            // Get active multiplier to show correct XP in notification
+            const activeMultiplier = get().activeMultiplier;
+            const multiplierValue = activeMultiplier?.multiplier_value || activeMultiplier?.multiplier || 1;
+            const baseXP = q.xpReward;
+            const finalXP = multiplierValue > 1 ? Math.round(baseXP * multiplierValue) : baseXP;
+            const bonusXP = finalXP - baseXP;
+            
+            // Show quest completion notification with correct XP (including multiplier)
+            if (multiplierValue > 1 && bonusXP > 0) {
+              get().addNotification({
+                type: "reward",
+                title: "🎯 Quest Complete!",
+                message: `${q.title} - +${finalXP} XP (${baseXP} + ${bonusXP} bonus from ${multiplierValue}x)`,
+                icon: "✅",
+                xpAmount: finalXP,
+              });
+            } else {
+              get().addNotification({
+                type: "reward",
+                title: "🎯 Quest Complete!",
+                message: `${q.title} - +${baseXP} XP`,
+                icon: "✅",
+                xpAmount: baseXP,
+              });
+            }
+            
+            // Add XP via database (will apply multiplier server-side)
             await get().addXP(q.xpReward, "quest", `Quest: ${q.title}`);
             
             // Check achievements after quest completion (with XP dedup)
