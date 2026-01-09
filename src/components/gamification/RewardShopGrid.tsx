@@ -8,10 +8,12 @@ import { useGamificationStore, useRewardsStore } from "@/stores";
 import { useGamification } from "@/hooks";
 import { RewardShopCard, RewardShopCardSkeleton } from "./RewardShopCard";
 import type { Reward } from "@/types/gamification";
+import { getHighestVIPTier, hasVIPAccess, VIP_TIERS, type VIPTier } from "@/types/vip";
 
-// Extended reward type with VIP flag
+// Extended reward type with VIP tier requirement
 interface ExtendedReward extends Reward {
   vip_only?: boolean;
+  required_tier?: VIPTier; // Minimum VIP tier required
 }
 
 interface RewardShopGridProps {
@@ -30,8 +32,9 @@ const CATEGORIES: { id: RewardCategory; name: string; icon: string }[] = [
   { id: "spin", name: "Spins", icon: "🎡" },
 ];
 
-// Sample rewards (would come from Supabase in production)
-const SAMPLE_REWARDS: Reward[] = [
+// Sample rewards with tiered VIP access
+const SAMPLE_REWARDS: ExtendedReward[] = [
+  // === NON-VIP REWARDS (Available to everyone) ===
   {
     id: "discount_5",
     name: "5% Discount",
@@ -57,36 +60,12 @@ const SAMPLE_REWARDS: Reward[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: "discount_15",
-    name: "15% Discount",
-    description: "15% off your next order",
-    category: "discount",
-    xp_cost: 500,
-    value: "15",
-    image_url: null,
-    stock: null,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
     id: "free_shipping",
     name: "Free Shipping",
     description: "Free shipping on any order",
     category: "shipping",
     xp_cost: 150,
     value: "free",
-    image_url: null,
-    stock: null,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "xp_boost_2x",
-    name: "2x XP Boost",
-    description: "Double XP for 24 hours",
-    category: "xp_booster",
-    xp_cost: 300,
-    value: "2x_24h",
     image_url: null,
     stock: null,
     is_active: true,
@@ -104,10 +83,12 @@ const SAMPLE_REWARDS: Reward[] = [
     is_active: true,
     created_at: new Date().toISOString(),
   },
+
+  // === VIP BADGES (Purchase to unlock tiers) ===
   {
     id: "badge_fire",
     name: "Fire Badge",
-    description: "Exclusive profile badge",
+    description: "🔥 Bronze VIP - Unlocks entry-level VIP perks!",
     category: "cosmetic",
     xp_cost: 500,
     value: "badge_fire",
@@ -119,7 +100,7 @@ const SAMPLE_REWARDS: Reward[] = [
   {
     id: "badge_crown",
     name: "Crown Badge",
-    description: "Royal profile badge",
+    description: "👑 Gold VIP - Unlocks premium rewards & early access!",
     category: "cosmetic",
     xp_cost: 1000,
     value: "badge_crown",
@@ -131,7 +112,7 @@ const SAMPLE_REWARDS: Reward[] = [
   {
     id: "frame_gold",
     name: "Gold Frame",
-    description: "Gold avatar frame",
+    description: "✨ Platinum VIP - Ultimate tier with all benefits!",
     category: "cosmetic",
     xp_cost: 1500,
     value: "frame_gold",
@@ -140,24 +121,70 @@ const SAMPLE_REWARDS: Reward[] = [
     is_active: true,
     created_at: new Date().toISOString(),
   },
-  // VIP-only rewards
+
+  // === BRONZE VIP REWARDS (Fire Badge required) ===
+  {
+    id: "vip_discount_15",
+    name: "VIP 15% Discount",
+    description: "15% off your next order - Bronze VIP exclusive!",
+    category: "exclusive",
+    xp_cost: 400,
+    value: "15",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+    required_tier: "bronze",
+  },
+  {
+    id: "vip_xp_boost_2x",
+    name: "2x XP Boost",
+    description: "Double XP for 24 hours - Bronze VIP perk!",
+    category: "exclusive",
+    xp_cost: 300,
+    value: "2x_24h",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+    required_tier: "bronze",
+  },
+  {
+    id: "vip_mystery_box_standard",
+    name: "VIP Mystery Box",
+    description: "Standard VIP mystery box with bonus items",
+    category: "exclusive",
+    xp_cost: 600,
+    value: "mystery_vip_standard",
+    image_url: null,
+    stock: 100,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+    required_tier: "bronze",
+  },
+
+  // === GOLD VIP REWARDS (Crown Badge required) ===
   {
     id: "vip_discount_25",
     name: "VIP 25% Discount",
-    description: "Exclusive 25% off - VIP members only!",
+    description: "Exclusive 25% off - Gold VIP members only!",
     category: "exclusive",
-    xp_cost: 800,
+    xp_cost: 700,
     value: "25",
     image_url: null,
     stock: null,
     is_active: true,
     created_at: new Date().toISOString(),
     vip_only: true,
-  } as ExtendedReward,
+    required_tier: "gold",
+  },
   {
     id: "vip_triple_xp",
-    name: "Triple XP Boost",
-    description: "3x XP for 24 hours - VIP exclusive!",
+    name: "3x XP Boost",
+    description: "Triple XP for 24 hours - Gold VIP exclusive!",
     category: "exclusive",
     xp_cost: 500,
     value: "3x_24h",
@@ -166,37 +193,112 @@ const SAMPLE_REWARDS: Reward[] = [
     is_active: true,
     created_at: new Date().toISOString(),
     vip_only: true,
-  } as ExtendedReward,
+    required_tier: "gold",
+  },
+  {
+    id: "vip_mystery_box_premium",
+    name: "Premium Mystery Box",
+    description: "Premium VIP mystery box - Higher chance of rare items!",
+    category: "exclusive",
+    xp_cost: 800,
+    value: "mystery_vip_premium",
+    image_url: null,
+    stock: 50,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+    required_tier: "gold",
+  },
+  {
+    id: "vip_extra_spins_3",
+    name: "3 Bonus Spins",
+    description: "Three extra wheel spins - Gold VIP exclusive!",
+    category: "exclusive",
+    xp_cost: 450,
+    value: "3",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+    required_tier: "gold",
+  },
+
+  // === PLATINUM VIP REWARDS (Gold Frame required) ===
+  {
+    id: "vip_discount_35",
+    name: "VIP 35% Discount",
+    description: "Maximum 35% off - Platinum VIP exclusive!",
+    category: "exclusive",
+    xp_cost: 900,
+    value: "35",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+    required_tier: "platinum",
+  },
+  {
+    id: "vip_quad_xp",
+    name: "4x XP Boost",
+    description: "Quadruple XP for 24 hours - Platinum VIP only!",
+    category: "exclusive",
+    xp_cost: 600,
+    value: "4x_24h",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+    required_tier: "platinum",
+  },
   {
     id: "vip_diamond_frame",
     name: "Diamond Frame",
-    description: "Ultra-rare diamond avatar frame",
+    description: "Ultra-rare diamond avatar frame - Platinum exclusive!",
     category: "exclusive",
-    xp_cost: 2500,
+    xp_cost: 2000,
     value: "frame_diamond",
     image_url: null,
     stock: 10,
     is_active: true,
     created_at: new Date().toISOString(),
     vip_only: true,
-  } as ExtendedReward,
+    required_tier: "platinum",
+  },
   {
-    id: "vip_mystery_box",
-    name: "VIP Mystery Box",
-    description: "Contains rare items only available to VIP members",
+    id: "vip_mystery_box_elite",
+    name: "Elite Mystery Box",
+    description: "Elite VIP mystery box - Guaranteed rare+ items!",
     category: "exclusive",
     xp_cost: 1000,
-    value: "mystery_vip",
+    value: "mystery_vip_elite",
     image_url: null,
-    stock: 50,
+    stock: 25,
     is_active: true,
     created_at: new Date().toISOString(),
     vip_only: true,
-  } as ExtendedReward,
+    required_tier: "platinum",
+  },
+  {
+    id: "vip_extra_spins_5",
+    name: "5 Bonus Spins",
+    description: "Five extra wheel spins - Platinum VIP exclusive!",
+    category: "exclusive",
+    xp_cost: 600,
+    value: "5",
+    image_url: null,
+    stock: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    vip_only: true,
+    required_tier: "platinum",
+  },
 ];
 
 export function RewardShopGrid({ className }: RewardShopGridProps) {
-  const { userProfile, rewards: storeRewards, addNotification, isLoading: gamificationLoading, fetchRewards: fetchGamificationRewards, hasAnyBadge } = useGamificationStore();
+  const { userProfile, rewards: storeRewards, addNotification, isLoading: gamificationLoading, fetchRewards: fetchGamificationRewards, hasAnyBadge, userBadges } = useGamificationStore();
   const { fetchRewards } = useRewardsStore();
   const { purchaseReward } = useGamification();
   const [selectedCategory, setSelectedCategory] = useState<RewardCategory>("all");
@@ -205,6 +307,8 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const isVIP = hasAnyBadge();
+  // Get the user's highest VIP tier based on their badges
+  const userVIPTier = getHighestVIPTier(userBadges.map(b => b.badge_id));
 
   // Fetch rewards on mount
   useEffect(() => {
@@ -217,13 +321,18 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
   }, [fetchGamificationRewards]);
 
   // Use store rewards or sample data
-  const allRewards = storeRewards.length > 0 ? storeRewards : SAMPLE_REWARDS;
+  const allRewards = (storeRewards.length > 0 ? storeRewards : SAMPLE_REWARDS) as ExtendedReward[];
   
-  // Filter VIP-only rewards for non-VIP members (hide them entirely or show as locked)
-  const rewards = allRewards.filter((reward) => {
-    const isVIPReward = (reward as ExtendedReward).vip_only;
-    // Show all rewards to VIP members, hide VIP-only from non-VIP
-    return !isVIPReward || isVIP;
+  // Filter rewards based on VIP tier access
+  // Show all rewards but mark locked ones appropriately
+  const rewards = allRewards.map((reward) => {
+    const requiredTier = reward.required_tier;
+    const isAccessible = !requiredTier || hasVIPAccess(userVIPTier, requiredTier);
+    return {
+      ...reward,
+      isLocked: reward.vip_only && !isAccessible,
+      requiredTierName: requiredTier ? VIP_TIERS[requiredTier]?.name : undefined,
+    };
   });
   const userXP = userProfile?.total_xp || 0;
   const isLoading = isInitialLoading || gamificationLoading;
@@ -387,25 +496,55 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
         </div>
       )}
 
-      {/* VIP Section */}
-      {isVIP ? (
+      {/* VIP Section with Tier Info */}
+      {userVIPTier ? (
         <Link href="/vip" className="block">
           <motion.div
             whileHover={{ scale: 1.01 }}
-            className="bg-gradient-to-r from-amber-900/30 to-[var(--color-dark-2)] border-2 border-amber-500/30 p-6 cursor-pointer hover:border-amber-500/50 transition-colors"
+            className={cn(
+              "border-2 p-6 cursor-pointer transition-colors",
+              userVIPTier === "platinum" 
+                ? "bg-gradient-to-r from-amber-900/30 to-[var(--color-dark-2)] border-amber-400/50 hover:border-amber-400/70"
+                : userVIPTier === "gold"
+                ? "bg-gradient-to-r from-yellow-900/30 to-[var(--color-dark-2)] border-yellow-500/50 hover:border-yellow-500/70"
+                : "bg-gradient-to-r from-orange-900/30 to-[var(--color-dark-2)] border-orange-500/50 hover:border-orange-500/70"
+            )}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="text-4xl">👑</div>
+                <div className="text-4xl">
+                  {userVIPTier === "platinum" ? "✨" : userVIPTier === "gold" ? "👑" : "🔥"}
+                </div>
                 <div>
-                  <h3 className="font-heading text-xl text-amber-400">VIP Lounge Access</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className={cn(
+                      "font-heading text-xl",
+                      userVIPTier === "platinum" ? "text-amber-400" 
+                        : userVIPTier === "gold" ? "text-yellow-400" 
+                        : "text-orange-400"
+                    )}>
+                      {VIP_TIERS[userVIPTier].name}
+                    </h3>
+                    {userVIPTier !== "platinum" && (
+                      <span className="text-xs px-2 py-0.5 bg-white/10 rounded-full text-white/60">
+                        Upgrade available
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-white/60">
-                    As a badge holder, you have access to exclusive perks and secret features!
+                    {userVIPTier === "platinum" 
+                      ? "You have access to all exclusive perks and the VIP lounge!"
+                      : `Upgrade to ${userVIPTier === "gold" ? "Platinum" : "Gold or Platinum"} for more rewards!`
+                    }
                   </p>
                 </div>
               </div>
-              <div className="text-amber-400">
-                Enter →
+              <div className={cn(
+                userVIPTier === "platinum" ? "text-amber-400" 
+                  : userVIPTier === "gold" ? "text-yellow-400" 
+                  : "text-orange-400"
+              )}>
+                Enter VIP Lounge →
               </div>
             </div>
           </motion.div>
@@ -415,10 +554,15 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
           <div className="flex items-center gap-4">
             <div className="text-4xl opacity-50">🔒</div>
             <div>
-              <h3 className="font-heading text-lg text-purple-400/80">Unlock VIP Perks</h3>
-              <p className="text-sm text-white/60">
-                Purchase a badge above to unlock exclusive VIP rewards, secret deals, and hidden features!
+              <h3 className="font-heading text-lg text-purple-400/80">Unlock VIP Tiers</h3>
+              <p className="text-sm text-white/60 mb-3">
+                Purchase a badge above to unlock tiered VIP rewards and exclusive benefits!
               </p>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded">🔥 Bronze: 500 XP</span>
+                <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">👑 Gold: 1,000 XP</span>
+                <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded">✨ Platinum: 1,500 XP</span>
+              </div>
             </div>
           </div>
         </div>

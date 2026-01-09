@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { BADGE_TIER_INFO, type VIPTier } from "@/types/vip";
 
 export type BadgeType = "badge_fire" | "badge_crown" | "frame_gold";
 export type BadgeSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -12,11 +13,14 @@ export interface BadgeConfig {
   name: string;
   icon: string;
   description: string;
+  tierDescription: string;
   rarity: "rare" | "epic" | "legendary";
+  vipTier: VIPTier;
   glowColor: string;
   particleColors: string[];
   borderGradient: string;
   secretHint?: string;
+  keyBenefits: string[];
 }
 
 export const BADGE_CONFIGS: Record<BadgeType, BadgeConfig> = {
@@ -24,34 +28,61 @@ export const BADGE_CONFIGS: Record<BadgeType, BadgeConfig> = {
     id: "badge_fire",
     name: "Fire Badge",
     icon: "🔥",
-    description: "Blazing hot profile badge",
+    description: "Blazing hot profile badge - Unlocks VIP features!",
+    tierDescription: "Bronze VIP - Entry Level",
     rarity: "rare",
+    vipTier: "bronze",
     glowColor: "rgba(255, 100, 0, 0.6)",
     particleColors: ["#ff6600", "#ff3300", "#ffaa00", "#ff0000"],
     borderGradient: "linear-gradient(135deg, #ff6600, #ff3300, #ffaa00)",
     secretHint: "The flames whisper of hidden paths...",
+    keyBenefits: [
+      "Up to 15% discount coupons",
+      "2x XP boost available",
+      "Standard VIP mystery boxes",
+      "Secret areas unlocked",
+    ],
   },
   badge_crown: {
     id: "badge_crown",
     name: "Crown Badge",
     icon: "👑",
-    description: "Royal profile badge",
+    description: "Royal profile badge - Unlocks Gold VIP features!",
+    tierDescription: "Gold VIP - Premium Tier",
     rarity: "epic",
+    vipTier: "gold",
     glowColor: "rgba(255, 215, 0, 0.6)",
     particleColors: ["#ffd700", "#fff700", "#ffb700", "#ffffff"],
     borderGradient: "linear-gradient(135deg, #ffd700, #fff700, #ffc700)",
     secretHint: "Royalty has its privileges... seek the hidden court.",
+    keyBenefits: [
+      "Up to 25% discount coupons",
+      "3x XP boost available",
+      "Premium VIP mystery boxes",
+      "24-hour early sale access",
+      "Priority support",
+    ],
   },
   frame_gold: {
     id: "frame_gold",
     name: "Gold Frame",
     icon: "✨",
-    description: "Prestigious gold avatar frame",
+    description: "Prestigious gold avatar frame - Unlocks Platinum VIP!",
+    tierDescription: "Platinum VIP - Ultimate Tier",
     rarity: "legendary",
+    vipTier: "platinum",
     glowColor: "rgba(218, 165, 32, 0.7)",
     particleColors: ["#daa520", "#ffd700", "#b8860b", "#ffffff"],
     borderGradient: "linear-gradient(135deg, #daa520, #ffd700, #b8860b, #ffd700)",
     secretHint: "The golden ones see what others cannot...",
+    keyBenefits: [
+      "Up to 35% discount coupons",
+      "4x XP boost available",
+      "Elite VIP mystery boxes",
+      "48-hour early sale access",
+      "Monthly 100 XP + free spin",
+      "Diamond Frame available",
+    ],
   },
 };
 
@@ -260,9 +291,9 @@ export function BadgeDisplay({
               )}
             />
 
-            {/* Rarity Label */}
+            {/* Tier Label */}
             <div className={cn("text-[10px] font-bold tracking-widest mb-1", rarityStyle.text)}>
-              {rarityStyle.label}
+              {config.tierDescription}
             </div>
 
             {/* Badge Name */}
@@ -270,6 +301,24 @@ export function BadgeDisplay({
 
             {/* Description */}
             <div className="text-xs text-white/60 mt-1">{config.description}</div>
+
+            {/* Key Benefits Preview */}
+            {!isOwned && config.keyBenefits.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-white/10">
+                <div className="text-[10px] text-white/40 mb-1">Key Benefits:</div>
+                <ul className="space-y-0.5">
+                  {config.keyBenefits.slice(0, 3).map((benefit, idx) => (
+                    <li key={idx} className="text-[10px] text-white/60 flex items-start gap-1">
+                      <span className="text-green-400">✓</span>
+                      <span>{benefit}</span>
+                    </li>
+                  ))}
+                  {config.keyBenefits.length > 3 && (
+                    <li className="text-[10px] text-white/40">+{config.keyBenefits.length - 3} more...</li>
+                  )}
+                </ul>
+              </div>
+            )}
 
             {/* Secret Hint - Only for owners */}
             {showSecretHint && isOwned && (
@@ -288,7 +337,7 @@ export function BadgeDisplay({
             {/* VIP Indicator */}
             {isOwned && (
               <div className="flex items-center gap-1 mt-2 pt-2 border-t border-white/10">
-                <span className="text-[10px] text-green-400">✓ VIP Member</span>
+                <span className="text-[10px] text-green-400">✓ {config.tierDescription}</span>
               </div>
             )}
           </motion.div>

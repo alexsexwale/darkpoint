@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { Reward } from "@/types/gamification";
 import { Button } from "@/components/ui";
+import type { VIPTier } from "@/types/vip";
 
 // Skeleton loader for the reward card
 export function RewardShopCardSkeleton() {
@@ -47,8 +48,15 @@ export function RewardShopCardSkeleton() {
   );
 }
 
+// Extended reward type with lock info
+interface ExtendedReward extends Reward {
+  isLocked?: boolean;
+  requiredTierName?: string;
+  required_tier?: VIPTier;
+}
+
 interface RewardShopCardProps {
-  reward: Reward;
+  reward: ExtendedReward;
   userXP: number;
   onRedeem?: () => void;
   isRedeeming?: boolean;
@@ -64,6 +72,7 @@ export function RewardShopCard({
 }: RewardShopCardProps) {
   const canAfford = userXP >= reward.xp_cost;
   const isOutOfStock = reward.stock !== null && reward.stock <= 0;
+  const isLocked = reward.isLocked || false;
 
   // Category styling
   const categoryConfig: Record<
@@ -106,11 +115,13 @@ export function RewardShopCard({
 
   return (
     <motion.div
-      whileHover={{ scale: canAfford && !isOutOfStock ? 1.02 : 1 }}
+      whileHover={{ scale: canAfford && !isOutOfStock && !isLocked ? 1.02 : 1 }}
       className={cn(
         "relative group overflow-hidden h-full",
         "bg-[var(--color-dark-2)] border transition-all duration-300",
-        canAfford && !isOutOfStock
+        isLocked
+          ? "border-[var(--color-dark-4)] opacity-70"
+          : canAfford && !isOutOfStock
           ? "border-[var(--color-dark-3)] hover:border-[var(--color-main-1)]"
           : "border-[var(--color-dark-4)] opacity-60",
         className
@@ -120,9 +131,24 @@ export function RewardShopCard({
       <div
         className={cn(
           "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity",
-          config.gradient
+          isLocked ? "from-gray-500/10 to-transparent" : config.gradient
         )}
       />
+
+      {/* Locked overlay */}
+      {isLocked && (
+        <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center">
+          <div className="text-center px-4">
+            <div className="text-3xl mb-2">🔒</div>
+            <div className="text-sm font-medium text-white/80">
+              {reward.requiredTierName || "VIP"} Required
+            </div>
+            <div className="text-xs text-white/50 mt-1">
+              Purchase the required badge to unlock
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="relative p-5 h-full flex flex-col">
@@ -130,14 +156,26 @@ export function RewardShopCard({
         <div className="flex items-start justify-between mb-4">
           {/* Icon */}
           <div
-            className="w-12 h-12 flex items-center justify-center text-2xl border"
+            className={cn(
+              "w-12 h-12 flex items-center justify-center text-2xl border",
+              isLocked && "grayscale"
+            )}
             style={{ borderColor: `${config.color}50`, background: `${config.color}10` }}
           >
             {config.icon}
           </div>
 
-          {/* Stock badge */}
-          {reward.stock !== null && (
+          {/* Stock badge or tier badge */}
+          {isLocked && reward.required_tier ? (
+            <span className={cn(
+              "px-2 py-0.5 text-xs uppercase tracking-wider",
+              reward.required_tier === "platinum" ? "bg-amber-500/20 text-amber-400"
+                : reward.required_tier === "gold" ? "bg-yellow-500/20 text-yellow-400"
+                : "bg-orange-500/20 text-orange-400"
+            )}>
+              {reward.required_tier === "platinum" ? "✨" : reward.required_tier === "gold" ? "👑" : "🔥"} {reward.requiredTierName}
+            </span>
+          ) : reward.stock !== null ? (
             <span
               className={cn(
                 "px-2 py-0.5 text-xs uppercase tracking-wider",
@@ -148,7 +186,7 @@ export function RewardShopCard({
             >
               {isOutOfStock ? "Sold Out" : `${reward.stock} left`}
             </span>
-          )}
+          ) : null}
         </div>
 
         {/* Name */}
@@ -178,10 +216,10 @@ export function RewardShopCard({
           </div>
 
           <Button
-            variant={canAfford && !isOutOfStock ? "primary" : "outline"}
+            variant={canAfford && !isOutOfStock && !isLocked ? "primary" : "outline"}
             size="sm"
             onClick={onRedeem}
-            disabled={!canAfford || isOutOfStock || isRedeeming}
+            disabled={!canAfford || isOutOfStock || isRedeeming || isLocked}
             className="whitespace-nowrap"
           >
             {isRedeeming ? (
@@ -191,7 +229,7 @@ export function RewardShopCard({
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               </span>
-            ) : isOutOfStock ? "Unavailable" : canAfford ? "Redeem" : "Need More XP"}
+            ) : isLocked ? "Locked" : isOutOfStock ? "Unavailable" : canAfford ? "Redeem" : "Need More XP"}
           </Button>
         </div>
 
@@ -214,7 +252,7 @@ export function RewardShopCard({
       </div>
 
       {/* Hover glow */}
-      {canAfford && !isOutOfStock && (
+      {canAfford && !isOutOfStock && !isLocked && (
         <div
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
           style={{

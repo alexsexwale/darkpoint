@@ -1,0 +1,216 @@
+-- =====================================================
+-- VIP TIER SYSTEM MIGRATION
+-- Adds tier-specific VIP rewards and badge tier column
+-- =====================================================
+
+-- =====================================================
+-- 1. ADD REQUIRED_TIER COLUMN TO REWARDS TABLE
+-- =====================================================
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS required_tier TEXT;
+
+-- Update existing badge descriptions with tier info
+UPDATE rewards SET 
+  description = '🔥 Bronze VIP - Unlocks entry-level VIP perks!',
+  required_tier = NULL
+WHERE id = 'badge_fire';
+
+UPDATE rewards SET 
+  description = '👑 Gold VIP - Unlocks premium rewards & early access!',
+  required_tier = NULL
+WHERE id = 'badge_crown';
+
+UPDATE rewards SET 
+  description = '✨ Platinum VIP - Ultimate tier with all benefits!',
+  required_tier = NULL
+WHERE id = 'frame_gold';
+
+-- =====================================================
+-- 2. INSERT BRONZE VIP REWARDS (Fire Badge required)
+-- =====================================================
+INSERT INTO rewards (id, name, description, category, xp_cost, value, stock, is_active, vip_only, required_tier)
+VALUES
+  ('vip_discount_15', 'VIP 15% Discount', '15% off your next order - Bronze VIP exclusive!', 'exclusive', 400, '15', NULL, true, true, 'bronze'),
+  ('vip_xp_boost_2x', '2x XP Boost', 'Double XP for 24 hours - Bronze VIP perk!', 'exclusive', 300, '2x_24h', NULL, true, true, 'bronze'),
+  ('vip_mystery_box_standard', 'VIP Mystery Box', 'Standard VIP mystery box with bonus items', 'exclusive', 600, 'mystery_vip_standard', 100, true, true, 'bronze')
+ON CONFLICT (id) DO UPDATE SET
+  description = EXCLUDED.description,
+  xp_cost = EXCLUDED.xp_cost,
+  required_tier = EXCLUDED.required_tier;
+
+-- =====================================================
+-- 3. UPDATE GOLD VIP REWARDS (Crown Badge required)
+-- =====================================================
+-- Update existing 25% discount to be gold-tier
+UPDATE rewards SET 
+  xp_cost = 700,
+  required_tier = 'gold'
+WHERE id = 'vip_discount_25';
+
+-- Update existing 3x XP to be gold-tier
+UPDATE rewards SET 
+  xp_cost = 500,
+  required_tier = 'gold'
+WHERE id = 'vip_triple_xp';
+
+-- Add new gold-tier rewards
+INSERT INTO rewards (id, name, description, category, xp_cost, value, stock, is_active, vip_only, required_tier)
+VALUES
+  ('vip_mystery_box_premium', 'Premium Mystery Box', 'Premium VIP mystery box - Higher chance of rare items!', 'exclusive', 800, 'mystery_vip_premium', 50, true, true, 'gold'),
+  ('vip_extra_spins_3', '3 Bonus Spins', 'Three extra wheel spins - Gold VIP exclusive!', 'exclusive', 450, '3', NULL, true, true, 'gold')
+ON CONFLICT (id) DO UPDATE SET
+  description = EXCLUDED.description,
+  xp_cost = EXCLUDED.xp_cost,
+  required_tier = EXCLUDED.required_tier;
+
+-- =====================================================
+-- 4. ADD PLATINUM VIP REWARDS (Gold Frame required)
+-- =====================================================
+-- Update existing diamond frame to be platinum-tier
+UPDATE rewards SET 
+  xp_cost = 2000,
+  required_tier = 'platinum'
+WHERE id = 'vip_diamond_frame';
+
+-- Update existing VIP mystery box to be platinum elite
+UPDATE rewards SET 
+  id = 'vip_mystery_box_elite',
+  name = 'Elite Mystery Box',
+  description = 'Elite VIP mystery box - Guaranteed rare+ items!',
+  xp_cost = 1000,
+  required_tier = 'platinum'
+WHERE id = 'vip_mystery_box';
+
+-- Add new platinum-tier rewards
+INSERT INTO rewards (id, name, description, category, xp_cost, value, stock, is_active, vip_only, required_tier)
+VALUES
+  ('vip_discount_35', 'VIP 35% Discount', 'Maximum 35% off - Platinum VIP exclusive!', 'exclusive', 900, '35', NULL, true, true, 'platinum'),
+  ('vip_quad_xp', '4x XP Boost', 'Quadruple XP for 24 hours - Platinum VIP only!', 'exclusive', 600, '4x_24h', NULL, true, true, 'platinum'),
+  ('vip_extra_spins_5', '5 Bonus Spins', 'Five extra wheel spins - Platinum VIP exclusive!', 'exclusive', 600, '5', NULL, true, true, 'platinum')
+ON CONFLICT (id) DO UPDATE SET
+  description = EXCLUDED.description,
+  xp_cost = EXCLUDED.xp_cost,
+  required_tier = EXCLUDED.required_tier;
+
+-- =====================================================
+-- 5. CREATE FUNCTION TO CHECK VIP TIER ACCESS
+-- =====================================================
+CREATE OR REPLACE FUNCTION get_user_vip_tier(p_user_id UUID)
+RETURNS TEXT AS $$
+DECLARE
+  v_tier TEXT;
+BEGIN
+  -- Check badges in order of priority (highest first)
+  SELECT 
+    CASE badge_id
+      WHEN 'frame_gold' THEN 'platinum'
+      WHEN 'badge_crown' THEN 'gold'
+      WHEN 'badge_fire' THEN 'bronze'
+      ELSE NULL
+    END INTO v_tier
+  FROM user_badges
+  WHERE user_id = p_user_id
+  ORDER BY 
+    CASE badge_id
+      WHEN 'frame_gold' THEN 1
+      WHEN 'badge_crown' THEN 2
+      WHEN 'badge_fire' THEN 3
+      ELSE 4
+    END
+  LIMIT 1;
+  
+  RETURN v_tier;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =====================================================
+-- 6. CREATE FUNCTION TO CHECK IF USER CAN ACCESS REWARD
+-- =====================================================
+CREATE OR REPLACE FUNCTION can_access_reward(p_user_id UUID, p_reward_id TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user_tier TEXT;
+  v_required_tier TEXT;
+  v_tier_order TEXT[];
+  v_user_tier_index INT;
+  v_required_tier_index INT;
+BEGIN
+  -- Get user's VIP tier
+  v_user_tier := get_user_vip_tier(p_user_id);
+  
+  -- Get required tier for the reward
+  SELECT required_tier INTO v_required_tier
+  FROM rewards
+  WHERE id = p_reward_id;
+  
+  -- If no tier required, anyone can access
+  IF v_required_tier IS NULL THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- If user has no tier, they can't access tier-restricted rewards
+  IF v_user_tier IS NULL THEN
+    RETURN FALSE;
+  END IF;
+  
+  -- Define tier order (0 = lowest, 2 = highest)
+  v_tier_order := ARRAY['bronze', 'gold', 'platinum'];
+  
+  -- Find indices
+  v_user_tier_index := array_position(v_tier_order, v_user_tier);
+  v_required_tier_index := array_position(v_tier_order, v_required_tier);
+  
+  -- User can access if their tier >= required tier
+  RETURN v_user_tier_index >= v_required_tier_index;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant permissions
+GRANT EXECUTE ON FUNCTION get_user_vip_tier(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION can_access_reward(UUID, TEXT) TO authenticated, service_role;
+
+-- =====================================================
+-- 7. CREATE VIEW FOR TIER-ACCESSIBLE REWARDS
+-- =====================================================
+-- This view shows all rewards a user can access based on their tier
+CREATE OR REPLACE VIEW user_accessible_rewards AS
+SELECT 
+  r.*,
+  CASE 
+    WHEN r.required_tier = 'platinum' THEN '✨ Platinum VIP'
+    WHEN r.required_tier = 'gold' THEN '👑 Gold VIP'
+    WHEN r.required_tier = 'bronze' THEN '🔥 Bronze VIP'
+    ELSE 'Everyone'
+  END AS tier_label
+FROM rewards r
+WHERE r.is_active = true;
+
+-- =====================================================
+-- SUMMARY OF VIP TIERS
+-- =====================================================
+-- Bronze VIP (Fire Badge - 500 XP):
+--   - Up to 15% discount coupons
+--   - 2x XP boost
+--   - Standard VIP mystery boxes
+--   - VIP Lounge access
+--   - Secret areas unlocked
+--
+-- Gold VIP (Crown Badge - 1000 XP):
+--   - All Bronze benefits, PLUS:
+--   - Up to 25% discount coupons
+--   - 3x XP boost
+--   - Premium VIP mystery boxes
+--   - 24-hour early access to sales
+--   - Priority support
+--   - 3 bonus spins package
+--
+-- Platinum VIP (Gold Frame - 1500 XP):
+--   - All Gold benefits, PLUS:
+--   - Up to 35% discount coupons
+--   - 4x XP boost
+--   - Elite VIP mystery boxes (guaranteed rare+)
+--   - 48-hour early access to sales
+--   - Diamond Frame available
+--   - Monthly 100 XP + 1 free spin
+--   - 5 bonus spins package
+-- =====================================================
+

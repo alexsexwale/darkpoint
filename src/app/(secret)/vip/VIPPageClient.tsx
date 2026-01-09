@@ -10,40 +10,118 @@ import { ParticleEmitter } from "@/components/effects";
 import { useConfettiBurst } from "@/components/effects/ParticleEmitter";
 import { useGamificationStore, useAuthStore, useRewardsStore, getCurrentVIPPrize, type VIPWeeklyPrize } from "@/stores";
 import { useBadgeSound } from "@/hooks";
+import { getHighestVIPTier, VIP_TIERS, type VIPTier } from "@/types/vip";
+import { cn } from "@/lib/utils";
 
-// Exclusive deals for VIP members
-const VIP_DEALS = [
+// Tier-specific VIP perks
+interface VIPPerk {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  tier: VIPTier;
+  tierColor: string;
+}
+
+const VIP_PERKS: VIPPerk[] = [
+  // Bronze (Fire Badge) Perks
   {
-    id: "vip_extra_5",
-    name: "Extra 5% Off",
-    description: "Stack with any other discount",
-    type: "discount",
-    value: 5,
-    icon: "💎",
+    id: "bronze_discounts",
+    name: "Up to 15% Discounts",
+    description: "Access VIP discount coupons in the reward shop",
+    icon: "🏷️",
+    tier: "bronze",
+    tierColor: "orange",
   },
   {
-    id: "vip_free_express",
-    name: "Free Express Shipping",
-    description: "On orders over R300",
-    type: "shipping",
-    value: 0,
-    icon: "🚀",
-  },
-  {
-    id: "vip_triple_xp",
-    name: "Triple XP Weekend",
-    description: "Active every weekend",
-    type: "xp",
-    value: 3,
+    id: "bronze_2x_xp",
+    name: "2x XP Boost",
+    description: "Double your XP earnings for 24 hours",
     icon: "⚡",
+    tier: "bronze",
+    tierColor: "orange",
   },
   {
-    id: "vip_early_access",
-    name: "Early Access",
-    description: "New products 24h early",
-    type: "access",
-    value: 24,
+    id: "bronze_mystery",
+    name: "VIP Mystery Boxes",
+    description: "Standard tier mystery boxes with bonus items",
+    icon: "🎁",
+    tier: "bronze",
+    tierColor: "orange",
+  },
+  {
+    id: "bronze_secrets",
+    name: "Secret Areas",
+    description: "Access to hidden pages and easter eggs",
     icon: "🔓",
+    tier: "bronze",
+    tierColor: "orange",
+  },
+  // Gold (Crown Badge) Perks
+  {
+    id: "gold_discounts",
+    name: "Up to 25% Discounts",
+    description: "Higher tier discount coupons available",
+    icon: "💎",
+    tier: "gold",
+    tierColor: "yellow",
+  },
+  {
+    id: "gold_3x_xp",
+    name: "3x XP Boost",
+    description: "Triple your XP earnings for 24 hours",
+    icon: "⚡",
+    tier: "gold",
+    tierColor: "yellow",
+  },
+  {
+    id: "gold_early_access",
+    name: "24h Early Access",
+    description: "Shop new products 24 hours before everyone",
+    icon: "🚀",
+    tier: "gold",
+    tierColor: "yellow",
+  },
+  {
+    id: "gold_support",
+    name: "Priority Support",
+    description: "Get faster responses from our support team",
+    icon: "🎯",
+    tier: "gold",
+    tierColor: "yellow",
+  },
+  // Platinum (Gold Frame) Perks
+  {
+    id: "platinum_discounts",
+    name: "Up to 35% Discounts",
+    description: "Maximum discount coupons available",
+    icon: "👑",
+    tier: "platinum",
+    tierColor: "amber",
+  },
+  {
+    id: "platinum_4x_xp",
+    name: "4x XP Boost",
+    description: "Quadruple your XP earnings for 24 hours",
+    icon: "⚡",
+    tier: "platinum",
+    tierColor: "amber",
+  },
+  {
+    id: "platinum_early_access",
+    name: "48h Early Access",
+    description: "Shop new products 48 hours before everyone",
+    icon: "🚀",
+    tier: "platinum",
+    tierColor: "amber",
+  },
+  {
+    id: "platinum_monthly",
+    name: "Monthly Bonuses",
+    description: "100 XP + 1 free spin every month",
+    icon: "🎁",
+    tier: "platinum",
+    tierColor: "amber",
   },
 ];
 
@@ -138,6 +216,28 @@ export function VIPPageClient() {
   const memberSince = userProfile?.created_at 
     ? new Date(userProfile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })
     : "Recently";
+  
+  // Get user's VIP tier
+  const userVIPTier = getHighestVIPTier(userBadges.map(b => b.badge_id));
+  const tierConfig = userVIPTier ? VIP_TIERS[userVIPTier] : null;
+  
+  // Filter perks based on user's tier (show all at or below their tier)
+  const accessiblePerks = VIP_PERKS.filter(perk => {
+    if (!userVIPTier) return false;
+    const tierOrder: VIPTier[] = ["bronze", "gold", "platinum"];
+    const userTierIndex = tierOrder.indexOf(userVIPTier);
+    const perkTierIndex = perk.tier ? tierOrder.indexOf(perk.tier) : -1;
+    return perkTierIndex <= userTierIndex;
+  });
+  
+  // Get locked perks (perks above user's tier)
+  const lockedPerks = VIP_PERKS.filter(perk => {
+    if (!userVIPTier) return true;
+    const tierOrder: VIPTier[] = ["bronze", "gold", "platinum"];
+    const userTierIndex = tierOrder.indexOf(userVIPTier);
+    const perkTierIndex = perk.tier ? tierOrder.indexOf(perk.tier) : -1;
+    return perkTierIndex > userTierIndex;
+  });
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -205,14 +305,21 @@ export function VIPPageClient() {
           </p>
         </motion.div>
 
-        {/* Member Card */}
+        {/* Member Card with Tier Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="max-w-2xl mx-auto mb-12"
         >
-          <div className="relative bg-gradient-to-br from-amber-900/30 to-[var(--color-dark-2)] border-2 border-amber-500/30 rounded-xl p-8 overflow-hidden">
+          <div className={cn(
+            "relative border-2 rounded-xl p-8 overflow-hidden",
+            userVIPTier === "platinum" 
+              ? "bg-gradient-to-br from-amber-900/30 to-[var(--color-dark-2)] border-amber-400/50"
+              : userVIPTier === "gold"
+              ? "bg-gradient-to-br from-yellow-900/30 to-[var(--color-dark-2)] border-yellow-500/50"
+              : "bg-gradient-to-br from-orange-900/30 to-[var(--color-dark-2)] border-orange-500/50"
+          )}>
             {/* Card Shine Effect */}
             <motion.div
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
@@ -220,15 +327,20 @@ export function VIPPageClient() {
               transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
             />
 
-            <div className="relative flex items-center gap-6">
+            <div className="relative flex flex-col sm:flex-row items-center gap-6">
               {/* Badge Display */}
               <div className="flex-shrink-0">
                 <BadgeCollection badges={ownedBadges} size="lg" />
               </div>
 
-              <div className="flex-1">
-                <div className="text-xs text-amber-400 font-semibold tracking-widest mb-1">
-                  VIP MEMBER
+              <div className="flex-1 text-center sm:text-left">
+                <div className={cn(
+                  "text-xs font-semibold tracking-widest mb-1",
+                  userVIPTier === "platinum" ? "text-amber-400"
+                    : userVIPTier === "gold" ? "text-yellow-400"
+                    : "text-orange-400"
+                )}>
+                  {tierConfig?.icon} {tierConfig?.name?.toUpperCase() || "VIP MEMBER"}
                 </div>
                 <h2 className="text-2xl font-heading text-white mb-1">
                   {userProfile?.display_name || "VIP Member"}
@@ -236,8 +348,12 @@ export function VIPPageClient() {
                 <p className="text-sm text-white/60">
                   Member since {memberSince}
                 </p>
-                <div className="flex items-center gap-4 mt-3 text-sm">
-                  <span className="text-amber-400">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3 text-sm">
+                  <span className={cn(
+                    userVIPTier === "platinum" ? "text-amber-400"
+                      : userVIPTier === "gold" ? "text-yellow-400"
+                      : "text-orange-400"
+                  )}>
                     {userProfile?.total_xp?.toLocaleString() || 0} XP
                   </span>
                   <span className="text-white/40">•</span>
@@ -250,7 +366,38 @@ export function VIPPageClient() {
                   </span>
                 </div>
               </div>
+              
+              {/* Tier Benefits Summary */}
+              {tierConfig && (
+                <div className="flex-shrink-0 text-center sm:text-right">
+                  <div className="text-xs text-white/40 mb-1">Your Tier Benefits</div>
+                  <div className="space-y-1">
+                    <div className="text-sm text-white/80">Up to {tierConfig.discountMax}% discounts</div>
+                    <div className="text-sm text-white/80">{tierConfig.xpBoostMax}x XP boost available</div>
+                    {tierConfig.earlyAccessHours > 0 && (
+                      <div className="text-sm text-white/80">{tierConfig.earlyAccessHours}h early access</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+            
+            {/* Upgrade prompt for non-platinum */}
+            {userVIPTier !== "platinum" && (
+              <div className="relative mt-6 pt-4 border-t border-white/10">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/50">
+                    Upgrade to {userVIPTier === "gold" ? "Platinum" : "Gold"} for more benefits!
+                  </span>
+                  <Link href="/rewards/shop" className={cn(
+                    "font-medium hover:underline",
+                    userVIPTier === "gold" ? "text-amber-400" : "text-yellow-400"
+                  )}>
+                    View Badges →
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -396,41 +543,118 @@ export function VIPPageClient() {
           </div>
         </motion.div>
 
-        {/* Exclusive Deals */}
+        {/* Your VIP Perks (Unlocked) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="mb-12"
         >
-          <h2 className="text-2xl font-heading text-center mb-8">
-            <span className="text-amber-400">Exclusive</span> VIP Perks
+          <h2 className="text-2xl font-heading text-center mb-2">
+            <span className={cn(
+              userVIPTier === "platinum" ? "text-amber-400"
+                : userVIPTier === "gold" ? "text-yellow-400"
+                : "text-orange-400"
+            )}>Your</span> VIP Perks
           </h2>
+          <p className="text-center text-white/50 text-sm mb-8">
+            {accessiblePerks.length} perks unlocked with your {tierConfig?.name}
+          </p>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {VIP_DEALS.map((deal, index) => (
+            {accessiblePerks.map((perk, index) => (
               <motion.div
-                key={deal.id}
+                key={perk.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + index * 0.1 }}
-                className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 hover:border-amber-500/30 transition-colors group"
+                transition={{ delay: 0.5 + index * 0.05 }}
+                className={cn(
+                  "bg-[var(--color-dark-2)] border p-6 transition-colors group",
+                  perk.tierColor === "platinum" || perk.tierColor === "amber"
+                    ? "border-amber-500/30 hover:border-amber-500/50"
+                    : perk.tierColor === "gold" || perk.tierColor === "yellow"
+                    ? "border-yellow-500/30 hover:border-yellow-500/50"
+                    : "border-orange-500/30 hover:border-orange-500/50"
+                )}
               >
                 <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">
-                  {deal.icon}
+                  {perk.icon}
                 </div>
-                <h3 className="font-heading text-lg mb-1">{deal.name}</h3>
-                <p className="text-sm text-white/60">{deal.description}</p>
+                <h3 className="font-heading text-lg mb-1">{perk.name}</h3>
+                <p className="text-sm text-white/60">{perk.description}</p>
                 
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <span className="text-xs text-amber-400 font-semibold">
-                    VIP EXCLUSIVE
+                <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
+                  <span className={cn(
+                    "text-xs font-semibold",
+                    perk.tierColor === "platinum" || perk.tierColor === "amber" ? "text-amber-400"
+                      : perk.tierColor === "gold" || perk.tierColor === "yellow" ? "text-yellow-400"
+                      : "text-orange-400"
+                  )}>
+                    {perk.tier === "platinum" ? "✨ PLATINUM" : perk.tier === "gold" ? "👑 GOLD" : "🔥 BRONZE"}
                   </span>
+                  <span className="text-xs text-green-400">✓ Unlocked</span>
                 </div>
               </motion.div>
             ))}
           </div>
         </motion.div>
+
+        {/* Locked Perks (Upgrade Incentive) */}
+        {lockedPerks.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mb-12"
+          >
+            <h2 className="text-2xl font-heading text-center mb-2">
+              <span className="text-white/40">Upgrade</span> to Unlock More
+            </h2>
+            <p className="text-center text-white/40 text-sm mb-8">
+              These perks are available with higher tier badges
+            </p>
+            
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {lockedPerks.map((perk, index) => (
+                <motion.div
+                  key={perk.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 + index * 0.05 }}
+                  className="relative bg-[var(--color-dark-2)] border border-[var(--color-dark-4)] p-6 opacity-60"
+                >
+                  {/* Lock overlay */}
+                  <div className="absolute top-3 right-3 text-xl">🔒</div>
+                  
+                  <div className="text-4xl mb-4 grayscale opacity-50">
+                    {perk.icon}
+                  </div>
+                  <h3 className="font-heading text-lg mb-1 text-white/60">{perk.name}</h3>
+                  <p className="text-sm text-white/40">{perk.description}</p>
+                  
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <span className={cn(
+                      "text-xs font-semibold",
+                      perk.tierColor === "platinum" || perk.tierColor === "amber" ? "text-amber-400/60"
+                        : perk.tierColor === "gold" || perk.tierColor === "yellow" ? "text-yellow-400/60"
+                        : "text-orange-400/60"
+                    )}>
+                      Requires {perk.tier === "platinum" ? "✨ Platinum" : perk.tier === "gold" ? "👑 Gold" : "🔥 Bronze"}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            
+            <div className="text-center mt-6">
+              <Link href="/rewards/shop">
+                <Button variant="outline" className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10">
+                  Upgrade Your Tier →
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        )}
 
         {/* Secret Hints */}
         <motion.div
