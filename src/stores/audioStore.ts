@@ -2,11 +2,19 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { AUDIO_CONFIG } from "@/lib/constants";
 
+// Available background tracks
+export const AUDIO_TRACKS = [
+  "/audio/purpleplanetmusic-desolation.mp3",
+  "/audio/purpleplanetmusic-molten-alloy.mp3",
+  "/audio/purpleplanetmusic-lost-souls.mp3",
+] as const;
+
 interface AudioState {
   isPlaying: boolean;
   isMuted: boolean;
   volume: number;
   currentTrack: string | null;
+  trackIndex: number;
   progress: number;
   duration: number;
 }
@@ -22,6 +30,8 @@ interface AudioActions {
   setCurrentTrack: (track: string) => void;
   setProgress: (progress: number) => void;
   setDuration: (duration: number) => void;
+  nextTrack: () => void;
+  prevTrack: () => void;
   reset: () => void;
 }
 
@@ -31,7 +41,8 @@ const initialState: AudioState = {
   isPlaying: false,
   isMuted: false, // false = music should play, true = music should be muted
   volume: AUDIO_CONFIG.defaultVolume,
-  currentTrack: null,
+  currentTrack: AUDIO_TRACKS[0],
+  trackIndex: 0,
   progress: 0,
   duration: 0,
 };
@@ -64,6 +75,28 @@ export const useAudioStore = create<AudioStore>()(
       
       setDuration: (duration) => set({ duration }),
       
+      nextTrack: () => {
+        const { trackIndex } = get();
+        const newIndex = (trackIndex + 1) % AUDIO_TRACKS.length;
+        set({ 
+          trackIndex: newIndex, 
+          currentTrack: AUDIO_TRACKS[newIndex],
+          progress: 0,
+          duration: 0,
+        });
+      },
+      
+      prevTrack: () => {
+        const { trackIndex } = get();
+        const newIndex = (trackIndex - 1 + AUDIO_TRACKS.length) % AUDIO_TRACKS.length;
+        set({ 
+          trackIndex: newIndex, 
+          currentTrack: AUDIO_TRACKS[newIndex],
+          progress: 0,
+          duration: 0,
+        });
+      },
+      
       reset: () => set(initialState),
     }),
     {
@@ -73,6 +106,7 @@ export const useAudioStore = create<AudioStore>()(
         isMuted: state.isMuted,
         progress: state.progress,
         currentTrack: state.currentTrack,
+        trackIndex: state.trackIndex,
       }),
     }
   )

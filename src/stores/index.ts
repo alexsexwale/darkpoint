@@ -1,6 +1,6 @@
 export { useCartStore } from "./cartStore";
 export { useUIStore } from "./uiStore";
-export { useAudioStore } from "./audioStore";
+export { useAudioStore, AUDIO_TRACKS } from "./audioStore";
 export { useWishlistStore } from "./wishlistStore";
 export { useGamificationStore } from "./gamificationStore";
 export { useEmulatorStore } from "./emulatorStore";

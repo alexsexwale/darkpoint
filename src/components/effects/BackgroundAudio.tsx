@@ -2,18 +2,16 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { Howl } from "howler";
-import { useAudioStore } from "@/stores";
+import { useAudioStore, AUDIO_TRACKS } from "@/stores";
 import { AUDIO_CONFIG } from "@/lib/constants";
 
 interface BackgroundAudioProps {
-  src: string;
   loop?: boolean;
   volume?: number;
   pauseOnBlur?: boolean;
 }
 
 export function BackgroundAudio({
-  src,
   loop = true,
   volume: initialVolume = AUDIO_CONFIG.defaultVolume,
   pauseOnBlur = true,
@@ -23,18 +21,23 @@ export function BackgroundAudio({
   const wasPausedOnBlurRef = useRef(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const prevTrackRef = useRef<string | null>(null);
 
   const {
     isPlaying,
     isMuted,
     volume,
+    currentTrack,
+    trackIndex,
     play,
     pause,
     setVolume,
     setProgress,
     setDuration,
-    setCurrentTrack,
   } = useAudioStore();
+  
+  // Get the actual track src - use currentTrack from store or default to first track
+  const src = currentTrack || AUDIO_TRACKS[trackIndex] || AUDIO_TRACKS[0];
 
   // Wait for Zustand to hydrate from localStorage before acting on muted state
   useEffect(() => {
@@ -114,6 +117,19 @@ export function BackgroundAudio({
 
   // Initialize Howl
   useEffect(() => {
+    // If track hasn't changed, don't reinitialize
+    if (prevTrackRef.current === src && howlRef.current) {
+      return;
+    }
+    
+    // Track changed - unload previous track
+    const wasPlaying = howlRef.current?.playing() || (!isMuted && isHydrated);
+    if (howlRef.current) {
+      howlRef.current.unload();
+    }
+    
+    prevTrackRef.current = src;
+    
     howlRef.current = new Howl({
       src: [src],
       loop,
@@ -122,7 +138,6 @@ export function BackgroundAudio({
       onload: () => {
         if (howlRef.current) {
           setDuration(howlRef.current.duration());
-          setCurrentTrack(src);
         }
       },
       onplay: () => {
@@ -155,15 +170,16 @@ export function BackgroundAudio({
     // Mark as initialized after a small delay (to let zustand hydrate from localStorage)
     const timer = setTimeout(() => {
       setHasInitialized(true);
+      // If was playing before track change, start playing the new track
+      if (wasPlaying && howlRef.current && !isMuted) {
+        howlRef.current.play();
+      }
     }, 100);
 
     return () => {
       clearTimeout(timer);
       if (fadeIntervalRef.current) {
         clearInterval(fadeIntervalRef.current);
-      }
-      if (howlRef.current) {
-        howlRef.current.unload();
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -149,10 +149,7 @@ export default function RootLayout({
           <Footer />
 
           {/* Background Audio - auto-plays if user hasn't muted, persists mute state */}
-          <BackgroundAudio
-            src="/audio/purpleplanetmusic-desolation.mp3"
-            loop={true}
-          />
+          <BackgroundAudio loop={true} />
 
           {/* Side Buttons - Bottom Right (Keep in Touch + Audio Toggle) */}
           <SideButtons />
