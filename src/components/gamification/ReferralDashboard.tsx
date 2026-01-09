@@ -123,20 +123,7 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
       }
 
       try {
-        // Try RPC first (using type assertion since function may not be in generated types)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase.rpc as any)("get_referral_stats", {
-          p_user_id: userProfile.id,
-        }) as { data: { success?: boolean; pending_referrals?: ReferralRecord[]; completed_referrals?: ReferralRecord[] } | null; error: unknown };
-
-        if (!error && data?.success) {
-          setPendingReferrals(data.pending_referrals || []);
-          setCompletedReferrals(data.completed_referrals || []);
-          setReferralsLoading(false);
-          return;
-        }
-
-        // Fallback: Query referrals table directly
+        // Query referrals table directly (skip RPC as it may have outdated status logic)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: referralsData } = await (supabase as any)
           .from("referrals")
