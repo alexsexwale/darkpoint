@@ -152,18 +152,18 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
             const record: ReferralRecord = {
               id: ref.id,
               referred_name: "Friend",
-              status: (ref.status === "pending" || ref.status === "pending_purchase") ? "pending" : "completed",
+              status: (ref.status === "pending" || ref.status === "signed_up") ? "pending" : "completed",
               created_at: ref.created_at,
               completed_at: ref.updated_at,
             };
 
-            // 'pending' = just signed up
-            // 'pending_purchase' = signed up and made a purchase (awaiting delivery)
-            // 'signed_up' = old status from before purchase-based system (treat as pending)
-            // 'completed' = order was delivered, referrer got XP
-            if (ref.status === "pending_purchase" || ref.status === "pending" || ref.status === "signed_up") {
+            // ENUM values: 'pending', 'signed_up', 'converted'
+            // 'pending' = just signed up via referral link
+            // 'signed_up' = signed up and made a purchase (awaiting delivery)
+            // 'converted' = order was delivered, referrer got XP
+            if (ref.status === "pending" || ref.status === "signed_up") {
               pending.push(record);
-            } else if (ref.status === "completed") {
+            } else if (ref.status === "converted") {
               completed.push(record);
             }
           }
@@ -251,13 +251,14 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
               const record: ReferralRecord = {
                 id: ref.id,
                 referred_name: "Friend",
-                status: (ref.status === "pending" || ref.status === "pending_purchase") ? "pending" : "completed",
+                status: (ref.status === "pending" || ref.status === "signed_up") ? "pending" : "completed",
                 created_at: ref.created_at,
                 completed_at: ref.updated_at,
               };
-              if (ref.status === "pending_purchase" || ref.status === "pending") {
+              // ENUM values: 'pending', 'signed_up', 'converted'
+              if (ref.status === "pending" || ref.status === "signed_up") {
                 pending.push(record);
-              } else if (ref.status === "completed") {
+              } else if (ref.status === "converted") {
                 completed.push(record);
               }
             }

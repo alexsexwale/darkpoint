@@ -596,33 +596,34 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 4. Update referral status to 'pending_purchase' (if this user was referred)
-      // NOTE: Referral is only COMPLETED when the order is DELIVERED, not at payment time
+      // 4. Update referral status to 'signed_up' (if this user was referred and still pending)
+      // NOTE: Referral is only CONVERTED when the order is DELIVERED, not at payment time
       // This prevents fraud/refund abuse - referrer only gets XP when order is actually delivered
-      console.log("Checking for pending referral to mark as pending_purchase...");
+      // ENUM values are: 'pending', 'signed_up', 'converted'
+      console.log("Checking for pending referral to mark as signed_up...");
       const { data: pendingReferral } = await supabase
         .from("referrals")
         .select("id, referrer_id, status")
         .eq("referred_id", userId)
-        .in("status", ["pending", "signed_up"]) // Only update if not already pending_purchase
+        .eq("status", "pending") // Only update if still pending
         .eq("reward_claimed", false)
         .single();
 
       if (pendingReferral) {
-        console.log("Found referral! Updating status to pending_purchase. Referrer:", pendingReferral.referrer_id);
+        console.log("Found pending referral! Updating status to signed_up. Referrer:", pendingReferral.referrer_id);
         
-        // Update referral status to pending_purchase (awaiting delivery)
+        // Update referral status to signed_up (user has made a purchase, awaiting delivery)
         await supabase
           .from("referrals")
           .update({
-            status: "pending_purchase",
+            status: "signed_up",
             updated_at: new Date().toISOString(),
           })
           .eq("id", pendingReferral.id);
 
-        console.log("Referral status updated to pending_purchase. Will complete when order is delivered.");
+        console.log("Referral status updated to signed_up. Will convert when order is delivered.");
       } else {
-        console.log("No pending referral found for this user (or already pending_purchase)");
+        console.log("No pending referral found for this user (or already signed_up/converted)");
       }
 
       // 5. Grant bonus spin for big spenders (R1000+)

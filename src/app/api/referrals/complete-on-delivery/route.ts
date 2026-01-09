@@ -42,11 +42,12 @@ export async function POST(request: Request) {
     };
 
     // Find all pending referrals (optionally filtered by referred user)
-    // Note: status is an ENUM, so we use .in() with valid pending statuses
+    // Note: status is an ENUM with values: 'pending', 'signed_up', 'converted'
+    // We want referrals that are NOT yet converted
     let query = supabase
       .from("referrals")
       .select("id, referrer_id, referred_id, status, reward_claimed")
-      .in("status", ["pending", "pending_purchase", "signed_up"]);
+      .in("status", ["pending", "signed_up"]);
     
     if (userId) {
       query = query.eq("referred_id", userId);
@@ -157,11 +158,11 @@ export async function POST(request: Request) {
         created_at: new Date().toISOString(),
       });
 
-      // Update referral status to completed
+      // Update referral status to converted (ENUM value)
       const { error: referralUpdateError } = await supabase
         .from("referrals")
         .update({
-          status: "completed",
+          status: "converted",
           reward_claimed: true,
           updated_at: new Date().toISOString(),
         })
@@ -180,7 +181,7 @@ export async function POST(request: Request) {
         referrer_id: referral.referrer_id,
         referred_id: referral.referred_id,
         xp_awarded: referrerXp,
-        status: "completed",
+        status: "converted",
       });
     }
 

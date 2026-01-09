@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
           .from("referrals")
           .select("id, referrer_id")
           .eq("referred_id", userId)
-          .in("status", ["pending", "pending_purchase", "signed_up"]) // Include signed_up status
+          .in("status", ["pending", "signed_up"]) // ENUM values: pending, signed_up, converted
           .eq("reward_claimed", false)
           .single();
 
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
           await supabase
             .from("referrals")
             .update({
-              status: "completed",
+              status: "converted", // ENUM value
               reward_claimed: true,
               updated_at: new Date().toISOString(),
             })
