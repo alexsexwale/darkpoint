@@ -75,11 +75,6 @@ export function Footer() {
             <h3 className="font-heading text-sm uppercase tracking-wider text-white mb-4">Shop</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/store" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
-                  All Products
-                </Link>
-              </li>
-              <li>
                 <Link href="/store?category=gaming" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
                   Gaming Gear
                 </Link>
@@ -141,11 +136,6 @@ export function Footer() {
               <li>
                 <Link href="/track-order" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
                   Track Order
-                </Link>
-              </li>
-              <li>
-                <Link href="/shipping" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
-                  Shipping Info
                 </Link>
               </li>
               <li>
