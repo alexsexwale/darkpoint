@@ -106,7 +106,7 @@ function ReferralDashboardSkeleton({ className }: { className?: string }) {
 }
 
 export function ReferralDashboard({ className }: ReferralDashboardProps) {
-  const { userProfile, isLoading, refreshProfile } = useGamificationStore();
+  const { userProfile, isLoading, fetchUserProfile } = useGamificationStore();
   const [copied, setCopied] = useState(false);
   const [pendingReferrals, setPendingReferrals] = useState<ReferralRecord[]>([]);
   const [completedReferrals, setCompletedReferrals] = useState<ReferralRecord[]>([]);
@@ -231,7 +231,7 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
           text: `${data.completed} referral${data.completed > 1 ? "s" : ""} completed! You earned XP.`,
         });
         // Refresh profile to get updated XP and referral counts
-        await refreshProfile();
+        await fetchUserProfile();
         // Refresh referrals list
         setReferralsLoading(true);
         // Re-fetch referrals after a short delay
