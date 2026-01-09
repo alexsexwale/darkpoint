@@ -8,7 +8,7 @@ import { useGamificationStore, useRewardsStore } from "@/stores";
 import { useGamification } from "@/hooks";
 import { RewardShopCard, RewardShopCardSkeleton } from "./RewardShopCard";
 import type { Reward } from "@/types/gamification";
-import { getHighestVIPTier, hasVIPAccess, VIP_TIERS, type VIPTier } from "@/types/vip";
+import { getHighestVIPTier, hasVIPAccess, VIP_TIERS, BADGE_TIER_INFO, type VIPTier } from "@/types/vip";
 
 // Extended reward type with VIP tier requirement
 interface ExtendedReward extends Reward {
@@ -84,11 +84,11 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
     created_at: new Date().toISOString(),
   },
 
-  // === VIP BADGES (Purchase to unlock tiers) ===
+  // === VIP BADGES (Purchase to unlock tiers - requires orders) ===
   {
     id: "badge_fire",
     name: "Fire Badge",
-    description: "🔥 Bronze VIP - Unlocks entry-level VIP perks!",
+    description: "🔥 Bronze VIP - Unlocks entry-level VIP perks! Requires 1+ order.",
     category: "cosmetic",
     xp_cost: 500,
     value: "badge_fire",
@@ -100,7 +100,7 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
   {
     id: "badge_crown",
     name: "Crown Badge",
-    description: "👑 Gold VIP - Unlocks premium rewards & early access!",
+    description: "👑 Gold VIP - Unlocks premium rewards & early access! Requires 3+ orders.",
     category: "cosmetic",
     xp_cost: 1000,
     value: "badge_crown",
@@ -112,7 +112,7 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
   {
     id: "frame_gold",
     name: "Gold Frame",
-    description: "✨ Platinum VIP - Ultimate tier with all benefits!",
+    description: "✨ Platinum VIP - Ultimate tier with all benefits! Requires 5+ orders.",
     category: "cosmetic",
     xp_cost: 1500,
     value: "frame_gold",
@@ -309,6 +309,8 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
   const isVIP = hasAnyBadge();
   // Get the user's highest VIP tier based on their badges
   const userVIPTier = getHighestVIPTier(userBadges.map(b => b.badge_id));
+  // Get user's order count for badge purchase requirements
+  const userOrderCount = userProfile?.total_orders || 0;
 
   // Fetch rewards on mount
   useEffect(() => {
@@ -323,15 +325,29 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
   // Use store rewards or sample data
   const allRewards = (storeRewards.length > 0 ? storeRewards : SAMPLE_REWARDS) as ExtendedReward[];
   
-  // Filter rewards based on VIP tier access
+  // Filter rewards based on VIP tier access and badge order requirements
   // Show all rewards but mark locked ones appropriately
   const rewards = allRewards.map((reward) => {
     const requiredTier = reward.required_tier;
     const isAccessible = !requiredTier || hasVIPAccess(userVIPTier, requiredTier);
+    
+    // Check if this is a badge that requires orders
+    const badgeInfo = BADGE_TIER_INFO[reward.id];
+    const isBadge = !!badgeInfo;
+    const requiredOrders = badgeInfo?.requiredOrders || 0;
+    const hasEnoughOrders = userOrderCount >= requiredOrders;
+    const isAlreadyOwned = isBadge && userBadges.some(b => b.badge_id === reward.id);
+    
     return {
       ...reward,
       isLocked: reward.vip_only && !isAccessible,
       requiredTierName: requiredTier ? VIP_TIERS[requiredTier]?.name : undefined,
+      // Badge-specific fields
+      isBadge,
+      requiredOrders,
+      hasEnoughOrders,
+      isAlreadyOwned,
+      isBadgeLocked: isBadge && !hasEnoughOrders && !isAlreadyOwned,
     };
   });
   const userXP = userProfile?.total_xp || 0;
@@ -342,9 +358,40 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
     (reward) => selectedCategory === "all" || reward.category === selectedCategory
   );
 
-  const handleRedeem = async (reward: Reward) => {
+  const handleRedeem = async (reward: ExtendedReward & { 
+    isBadge?: boolean; 
+    requiredOrders?: number; 
+    hasEnoughOrders?: boolean;
+    isAlreadyOwned?: boolean;
+    isBadgeLocked?: boolean;
+  }) => {
     if (redeeming) return;
     setErrorMessage(null);
+
+    // Check badge order requirements
+    if (reward.isBadge && reward.isBadgeLocked) {
+      const ordersNeeded = (reward.requiredOrders || 0) - userOrderCount;
+      setErrorMessage(`You need ${ordersNeeded} more order${ordersNeeded === 1 ? '' : 's'} to purchase this badge.`);
+      addNotification({
+        type: "info",
+        title: "Orders Required",
+        message: `Complete ${ordersNeeded} more order${ordersNeeded === 1 ? '' : 's'} to unlock this badge!`,
+        icon: "🛒",
+      });
+      return;
+    }
+
+    // Check if badge is already owned
+    if (reward.isAlreadyOwned) {
+      setErrorMessage("You already own this badge!");
+      addNotification({
+        type: "info",
+        title: "Badge Owned",
+        message: "You've already purchased this badge",
+        icon: "✅",
+      });
+      return;
+    }
 
     // Check if user has enough XP
     if (userXP < reward.xp_cost) {
@@ -479,6 +526,7 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
                 <RewardShopCard
                   reward={reward}
                   userXP={userXP}
+                  userOrderCount={userOrderCount}
                   onRedeem={() => handleRedeem(reward)}
                   isRedeeming={redeeming === reward.id}
                 />
@@ -553,16 +601,73 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
         <div className="bg-gradient-to-r from-purple-900/20 to-[var(--color-dark-2)] border border-purple-500/20 p-6">
           <div className="flex items-center gap-4">
             <div className="text-4xl opacity-50">🔒</div>
-            <div>
+            <div className="flex-1">
               <h3 className="font-heading text-lg text-purple-400/80">Unlock VIP Tiers</h3>
               <p className="text-sm text-white/60 mb-3">
-                Purchase a badge above to unlock tiered VIP rewards and exclusive benefits!
+                Complete orders to unlock badges and VIP rewards!
               </p>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded">🔥 Bronze: 500 XP</span>
-                <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">👑 Gold: 1,000 XP</span>
-                <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded">✨ Platinum: 1,500 XP</span>
+              <div className="space-y-2">
+                <div className={cn(
+                  "flex items-center justify-between px-3 py-2 rounded",
+                  userOrderCount >= 1 ? "bg-orange-500/20 border border-orange-500/30" : "bg-[var(--color-dark-3)]"
+                )}>
+                  <span className="flex items-center gap-2 text-sm">
+                    <span>🔥</span>
+                    <span className={userOrderCount >= 1 ? "text-orange-400" : "text-white/60"}>
+                      Fire Badge (Bronze VIP)
+                    </span>
+                  </span>
+                  <span className="text-xs">
+                    {userOrderCount >= 1 ? (
+                      <span className="text-green-400">✓ 1+ order</span>
+                    ) : (
+                      <span className="text-white/40">{userOrderCount}/1 orders</span>
+                    )}
+                    <span className="ml-2 text-orange-400">500 XP</span>
+                  </span>
+                </div>
+                <div className={cn(
+                  "flex items-center justify-between px-3 py-2 rounded",
+                  userOrderCount >= 3 ? "bg-yellow-500/20 border border-yellow-500/30" : "bg-[var(--color-dark-3)]"
+                )}>
+                  <span className="flex items-center gap-2 text-sm">
+                    <span>👑</span>
+                    <span className={userOrderCount >= 3 ? "text-yellow-400" : "text-white/60"}>
+                      Crown Badge (Gold VIP)
+                    </span>
+                  </span>
+                  <span className="text-xs">
+                    {userOrderCount >= 3 ? (
+                      <span className="text-green-400">✓ 3+ orders</span>
+                    ) : (
+                      <span className="text-white/40">{userOrderCount}/3 orders</span>
+                    )}
+                    <span className="ml-2 text-yellow-400">1,000 XP</span>
+                  </span>
+                </div>
+                <div className={cn(
+                  "flex items-center justify-between px-3 py-2 rounded",
+                  userOrderCount >= 5 ? "bg-amber-500/20 border border-amber-500/30" : "bg-[var(--color-dark-3)]"
+                )}>
+                  <span className="flex items-center gap-2 text-sm">
+                    <span>✨</span>
+                    <span className={userOrderCount >= 5 ? "text-amber-400" : "text-white/60"}>
+                      Gold Frame (Platinum VIP)
+                    </span>
+                  </span>
+                  <span className="text-xs">
+                    {userOrderCount >= 5 ? (
+                      <span className="text-green-400">✓ 5+ orders</span>
+                    ) : (
+                      <span className="text-white/40">{userOrderCount}/5 orders</span>
+                    )}
+                    <span className="ml-2 text-amber-400">1,500 XP</span>
+                  </span>
+                </div>
               </div>
+              <p className="text-xs text-white/40 mt-3">
+                Your current orders: {userOrderCount}
+              </p>
             </div>
           </div>
         </div>

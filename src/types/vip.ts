@@ -150,24 +150,39 @@ export const BADGE_TIER_INFO: Record<string, {
   tierName: string;
   shortDescription: string;
   xpCost: number;
+  requiredOrders: number; // Minimum orders required to purchase
 }> = {
   badge_fire: {
     tier: "bronze",
     tierName: "Bronze VIP",
     shortDescription: "Entry-level VIP with basic perks",
     xpCost: 500,
+    requiredOrders: 1,
   },
   badge_crown: {
     tier: "gold",
     tierName: "Gold VIP",
     shortDescription: "Enhanced rewards & early access",
     xpCost: 1000,
+    requiredOrders: 3,
   },
   frame_gold: {
     tier: "platinum",
     tierName: "Platinum VIP",
     shortDescription: "Ultimate VIP with all benefits",
     xpCost: 1500,
+    requiredOrders: 5,
   },
 };
+
+// Get badge order requirement
+export function getBadgeOrderRequirement(badgeId: string): number {
+  return BADGE_TIER_INFO[badgeId]?.requiredOrders || 0;
+}
+
+// Check if user can purchase badge based on order count
+export function canPurchaseBadge(badgeId: string, userOrderCount: number): boolean {
+  const requirement = getBadgeOrderRequirement(badgeId);
+  return userOrderCount >= requirement;
+}
 

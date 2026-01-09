@@ -185,16 +185,79 @@ FROM rewards r
 WHERE r.is_active = true;
 
 -- =====================================================
--- SUMMARY OF VIP TIERS
+-- 8. ADD BADGE PURCHASE REQUIREMENTS
 -- =====================================================
--- Bronze VIP (Fire Badge - 500 XP):
+-- Add required_orders column to rewards for badge purchases
+ALTER TABLE rewards ADD COLUMN IF NOT EXISTS required_orders INTEGER DEFAULT 0;
+
+-- Update badge purchase requirements
+UPDATE rewards SET required_orders = 1 WHERE id = 'badge_fire';
+UPDATE rewards SET required_orders = 3 WHERE id = 'badge_crown';
+UPDATE rewards SET required_orders = 5 WHERE id = 'frame_gold';
+
+-- Update badge descriptions to include order requirements
+UPDATE rewards SET 
+  description = '🔥 Bronze VIP - Unlocks entry-level VIP perks! Requires 1+ order.'
+WHERE id = 'badge_fire';
+
+UPDATE rewards SET 
+  description = '👑 Gold VIP - Unlocks premium rewards & early access! Requires 3+ orders.'
+WHERE id = 'badge_crown';
+
+UPDATE rewards SET 
+  description = '✨ Platinum VIP - Ultimate tier with all benefits! Requires 5+ orders.'
+WHERE id = 'frame_gold';
+
+-- =====================================================
+-- 9. FUNCTION TO CHECK IF USER CAN PURCHASE BADGE
+-- =====================================================
+CREATE OR REPLACE FUNCTION can_purchase_badge(p_user_id UUID, p_badge_id TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_user_orders INTEGER;
+  v_required_orders INTEGER;
+  v_already_owned BOOLEAN;
+BEGIN
+  -- Get user's order count
+  SELECT COALESCE(total_orders, 0) INTO v_user_orders
+  FROM user_profiles
+  WHERE id = p_user_id;
+  
+  -- Get required orders for badge
+  SELECT COALESCE(required_orders, 0) INTO v_required_orders
+  FROM rewards
+  WHERE id = p_badge_id;
+  
+  -- Check if already owned
+  SELECT EXISTS (
+    SELECT 1 FROM user_badges 
+    WHERE user_id = p_user_id AND badge_id = p_badge_id
+  ) INTO v_already_owned;
+  
+  RETURN jsonb_build_object(
+    'can_purchase', v_user_orders >= v_required_orders AND NOT v_already_owned,
+    'user_orders', v_user_orders,
+    'required_orders', v_required_orders,
+    'already_owned', v_already_owned,
+    'orders_needed', GREATEST(0, v_required_orders - v_user_orders)
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION can_purchase_badge(UUID, TEXT) TO authenticated, service_role;
+
+-- =====================================================
+-- SUMMARY OF VIP TIERS WITH ORDER REQUIREMENTS
+-- =====================================================
+-- 
+-- Bronze VIP (Fire Badge - 500 XP, requires 1+ order):
 --   - Up to 15% discount coupons
 --   - 2x XP boost
 --   - Standard VIP mystery boxes
 --   - VIP Lounge access
 --   - Secret areas unlocked
 --
--- Gold VIP (Crown Badge - 1000 XP):
+-- Gold VIP (Crown Badge - 1000 XP, requires 3+ orders):
 --   - All Bronze benefits, PLUS:
 --   - Up to 25% discount coupons
 --   - 3x XP boost
@@ -203,7 +266,7 @@ WHERE r.is_active = true;
 --   - Priority support
 --   - 3 bonus spins package
 --
--- Platinum VIP (Gold Frame - 1500 XP):
+-- Platinum VIP (Gold Frame - 1500 XP, requires 5+ orders):
 --   - All Gold benefits, PLUS:
 --   - Up to 35% discount coupons
 --   - 4x XP boost
@@ -212,5 +275,10 @@ WHERE r.is_active = true;
 --   - Diamond Frame available
 --   - Monthly 100 XP + 1 free spin
 --   - 5 bonus spins package
+--
+-- ORDER REQUIREMENTS:
+--   Fire Badge:  1+ orders  (Entry requirement)
+--   Crown Badge: 3+ orders  (Show commitment)
+--   Gold Frame:  5+ orders  (Loyal customer)
 -- =====================================================
 

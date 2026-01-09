@@ -48,16 +48,23 @@ export function RewardShopCardSkeleton() {
   );
 }
 
-// Extended reward type with lock info
+// Extended reward type with lock info and badge requirements
 interface ExtendedReward extends Reward {
   isLocked?: boolean;
   requiredTierName?: string;
   required_tier?: VIPTier;
+  // Badge-specific fields
+  isBadge?: boolean;
+  requiredOrders?: number;
+  hasEnoughOrders?: boolean;
+  isAlreadyOwned?: boolean;
+  isBadgeLocked?: boolean;
 }
 
 interface RewardShopCardProps {
   reward: ExtendedReward;
   userXP: number;
+  userOrderCount?: number;
   onRedeem?: () => void;
   isRedeeming?: boolean;
   className?: string;
@@ -66,6 +73,7 @@ interface RewardShopCardProps {
 export function RewardShopCard({
   reward,
   userXP,
+  userOrderCount = 0,
   onRedeem,
   isRedeeming = false,
   className,
@@ -73,6 +81,12 @@ export function RewardShopCard({
   const canAfford = userXP >= reward.xp_cost;
   const isOutOfStock = reward.stock !== null && reward.stock <= 0;
   const isLocked = reward.isLocked || false;
+  
+  // Badge-specific states
+  const isBadge = reward.isBadge || false;
+  const isBadgeLocked = reward.isBadgeLocked || false;
+  const isAlreadyOwned = reward.isAlreadyOwned || false;
+  const requiredOrders = reward.requiredOrders || 0;
 
   // Category styling
   const categoryConfig: Record<
@@ -113,13 +127,19 @@ export function RewardShopCard({
 
   const config = categoryConfig[reward.category] || categoryConfig.discount;
 
+  // Determine if card should be locked visually
+  const isVisuallyLocked = isLocked || isBadgeLocked;
+  const canPurchase = canAfford && !isOutOfStock && !isLocked && !isBadgeLocked && !isAlreadyOwned;
+
   return (
     <motion.div
-      whileHover={{ scale: canAfford && !isOutOfStock && !isLocked ? 1.02 : 1 }}
+      whileHover={{ scale: canPurchase ? 1.02 : 1 }}
       className={cn(
         "relative group overflow-hidden h-full",
         "bg-[var(--color-dark-2)] border transition-all duration-300",
-        isLocked
+        isAlreadyOwned
+          ? "border-green-500/50 opacity-80"
+          : isVisuallyLocked
           ? "border-[var(--color-dark-4)] opacity-70"
           : canAfford && !isOutOfStock
           ? "border-[var(--color-dark-3)] hover:border-[var(--color-main-1)]"
@@ -131,12 +151,43 @@ export function RewardShopCard({
       <div
         className={cn(
           "absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity",
-          isLocked ? "from-gray-500/10 to-transparent" : config.gradient
+          isVisuallyLocked ? "from-gray-500/10 to-transparent" : config.gradient
         )}
       />
 
-      {/* Locked overlay */}
-      {isLocked && (
+      {/* Already owned overlay */}
+      {isAlreadyOwned && (
+        <div className="absolute inset-0 bg-green-900/30 z-10 flex items-center justify-center">
+          <div className="text-center px-4">
+            <div className="text-3xl mb-2">✅</div>
+            <div className="text-sm font-medium text-green-400">
+              Already Owned
+            </div>
+            <div className="text-xs text-white/50 mt-1">
+              You already have this badge
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Badge locked overlay (needs more orders) */}
+      {isBadgeLocked && !isAlreadyOwned && (
+        <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center">
+          <div className="text-center px-4">
+            <div className="text-3xl mb-2">🛒</div>
+            <div className="text-sm font-medium text-white/80">
+              {requiredOrders} Order{requiredOrders !== 1 ? 's' : ''} Required
+            </div>
+            <div className="text-xs text-white/50 mt-1">
+              You have {userOrderCount} order{userOrderCount !== 1 ? 's' : ''}
+              {userOrderCount > 0 && ` (${requiredOrders - userOrderCount} more needed)`}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIP tier locked overlay */}
+      {isLocked && !isBadgeLocked && !isAlreadyOwned && (
         <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center">
           <div className="text-center px-4">
             <div className="text-3xl mb-2">🔒</div>
@@ -158,15 +209,31 @@ export function RewardShopCard({
           <div
             className={cn(
               "w-12 h-12 flex items-center justify-center text-2xl border",
-              isLocked && "grayscale"
+              (isVisuallyLocked || isAlreadyOwned) && "grayscale"
             )}
             style={{ borderColor: `${config.color}50`, background: `${config.color}10` }}
           >
             {config.icon}
           </div>
 
-          {/* Stock badge or tier badge */}
-          {isLocked && reward.required_tier ? (
+          {/* Badge order requirement indicator */}
+          {isBadge && !isAlreadyOwned ? (
+            <span className={cn(
+              "px-2 py-0.5 text-xs",
+              isBadgeLocked
+                ? "bg-red-500/20 text-red-400"
+                : "bg-green-500/20 text-green-400"
+            )}>
+              {isBadgeLocked 
+                ? `🛒 ${requiredOrders}+ orders`
+                : `✓ ${requiredOrders}+ orders`
+              }
+            </span>
+          ) : isAlreadyOwned ? (
+            <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400">
+              ✓ Owned
+            </span>
+          ) : isLocked && reward.required_tier ? (
             <span className={cn(
               "px-2 py-0.5 text-xs uppercase tracking-wider",
               reward.required_tier === "platinum" ? "bg-amber-500/20 text-amber-400"
@@ -216,10 +283,10 @@ export function RewardShopCard({
           </div>
 
           <Button
-            variant={canAfford && !isOutOfStock && !isLocked ? "primary" : "outline"}
+            variant={canPurchase ? "primary" : "outline"}
             size="sm"
             onClick={onRedeem}
-            disabled={!canAfford || isOutOfStock || isRedeeming || isLocked}
+            disabled={!canPurchase || isRedeeming}
             className="whitespace-nowrap"
           >
             {isRedeeming ? (
@@ -229,7 +296,7 @@ export function RewardShopCard({
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               </span>
-            ) : isLocked ? "Locked" : isOutOfStock ? "Unavailable" : canAfford ? "Redeem" : "Need More XP"}
+            ) : isAlreadyOwned ? "Owned" : isBadgeLocked ? "Need Orders" : isLocked ? "Locked" : isOutOfStock ? "Unavailable" : canAfford ? "Redeem" : "Need More XP"}
           </Button>
         </div>
 
@@ -252,7 +319,7 @@ export function RewardShopCard({
       </div>
 
       {/* Hover glow */}
-      {canAfford && !isOutOfStock && !isLocked && (
+      {canPurchase && (
         <div
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
           style={{
