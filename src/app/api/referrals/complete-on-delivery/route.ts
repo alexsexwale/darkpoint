@@ -42,13 +42,11 @@ export async function POST(request: Request) {
     };
 
     // Find all pending referrals (optionally filtered by referred user)
-    // Note: We query ALL referrals that haven't been completed yet
+    // Note: status is an ENUM, so we use .in() with valid pending statuses
     let query = supabase
       .from("referrals")
-      .select("id, referrer_id, referred_id, status, reward_claimed");
-    
-    // Filter for non-completed referrals
-    query = query.neq("status", "completed");
+      .select("id, referrer_id, referred_id, status, reward_claimed")
+      .in("status", ["pending", "pending_purchase", "signed_up"]);
     
     if (userId) {
       query = query.eq("referred_id", userId);
