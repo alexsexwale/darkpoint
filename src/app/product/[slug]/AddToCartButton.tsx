@@ -47,9 +47,9 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
   };
 
   return (
-    <div className="nk-product-addtocart flex flex-wrap items-center gap-6">
-      {/* Quantity Picker - Godlike Style */}
-      <div className="nk-form-control-number">
+    <div className="nk-product-addtocart flex flex-wrap items-center gap-3 md:gap-6">
+      {/* Quantity Picker - Compact on mobile */}
+      <div className="nk-form-control-number nk-form-control-number-sm">
         <button
           type="button"
           className="nk-form-control-number-down"
@@ -75,10 +75,10 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
         </button>
       </div>
 
-      {/* Add to Cart Button - Godlike Style */}
+      {/* Add to Cart Button */}
       <button
         type="button"
-        className="nk-btn nk-btn-primary nk-btn-lg link-effect-4"
+        className="nk-btn nk-btn-primary nk-btn-md md:nk-btn-lg link-effect-4"
         onClick={handleAddToCart}
         disabled={!isInStock}
       >
@@ -89,10 +89,10 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
       </button>
 
       {/* Price Display */}
-      <div className="nk-product-price text-2xl font-bold">
+      <div className="nk-product-price text-xl md:text-2xl font-bold">
         {formatPrice(displayPrice)}
         {product.compareAtPrice && displayPrice < product.compareAtPrice && (
-          <del className="ml-4 text-base text-white/50 font-normal">
+          <del className="ml-2 md:ml-4 text-sm md:text-base text-white/50 font-normal">
             {formatPrice(product.compareAtPrice)}
           </del>
         )}

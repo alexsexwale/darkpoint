@@ -369,6 +369,49 @@ select.nk-form-control {
       -webkit-appearance: none;
     }
   }
+  
+  // Small variant - used on product pages
+  &.nk-form-control-number-sm {
+    padding: 2px;
+    
+    > * {
+      min-width: 28px;
+      padding: 6px 8px;
+      font-size: 0.875rem;
+    }
+    
+    .nk-form-control-number-down,
+    .nk-form-control-number-up {
+      min-width: 28px;
+      padding: 6px 6px;
+      font-size: 0.95rem;
+    }
+    
+    input {
+      min-width: 32px;
+    }
+    
+    @media (min-width: 768px) {
+      padding: 4px;
+      
+      > * {
+        min-width: 40px;
+        padding: 10px 12px;
+        font-size: 1rem;
+      }
+      
+      .nk-form-control-number-down,
+      .nk-form-control-number-up {
+        min-width: 40px;
+        padding: 10px 10px;
+        font-size: 1.1rem;
+      }
+      
+      input {
+        min-width: 50px;
+      }
+    }
+  }
 }
 
 // ===========================================
