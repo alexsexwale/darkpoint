@@ -127,7 +127,7 @@ export function XPMultiplierIndicator({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: -10 }}
             className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium
+              flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium
               ${isExpiring 
                 ? "bg-red-500/20 text-red-400 border border-red-500/30" 
                 : "bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] border border-[var(--color-main-1)]/30"
@@ -137,12 +137,12 @@ export function XPMultiplierIndicator({
             <motion.span
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 1, repeat: Infinity }}
-              className="text-base"
+              className="text-sm sm:text-base"
             >
               ⚡
             </motion.span>
-            <span className="font-heading">{activeMultiplier.multiplier_value || activeMultiplier.multiplier}x XP</span>
-            <span className="text-xs opacity-75">
+            <span className="font-heading whitespace-nowrap">{activeMultiplier.multiplier_value || activeMultiplier.multiplier}x</span>
+            <span className="text-[10px] sm:text-xs opacity-75 whitespace-nowrap">
               {formatTime(timeRemaining!)}
             </span>
           </motion.div>
