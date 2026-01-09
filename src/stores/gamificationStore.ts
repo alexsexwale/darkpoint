@@ -1168,103 +1168,130 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     }
   },
 
-  // Add XP
+  // Add XP - uses direct database operations for reliability
   addXP: async (amount, action, description) => {
     if (!isSupabaseConfigured()) {
-      // Fallback: update local state only
-      return get().addXPLocal(amount, action, description);
+      console.warn("Supabase not configured - XP will not persist");
+      return false;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return get().addXPLocal(amount, action, description);
+      console.warn("No user logged in - XP will not persist");
+      return false;
     }
 
     try {
-      const { data, error } = await supabase
-        .rpc("add_xp", { 
-          p_user_id: user.id, 
-          p_amount: amount,
-          p_action: action,
-          p_description: description || null
+      // Get current profile
+      const { data: profile, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("total_xp, level")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError || !profile) {
+        console.error("Failed to fetch profile for XP addition:", profileError);
+        return false;
+      }
+
+      // Get active multiplier
+      const activeMultiplier = get().activeMultiplier;
+      const multiplierValue = activeMultiplier?.multiplier_value || activeMultiplier?.multiplier || 1;
+      const baseXP = amount;
+      const finalXP = multiplierValue > 1 ? Math.round(baseXP * multiplierValue) : baseXP;
+      const bonusXP = finalXP - baseXP;
+
+      // Build description with multiplier info
+      let finalDescription = description || `Earned from ${action}`;
+      if (multiplierValue > 1 && bonusXP > 0) {
+        finalDescription = `${finalDescription} [${multiplierValue}x: ${baseXP} + ${bonusXP} bonus]`;
+      }
+
+      // Calculate new totals
+      const profileData = profile as { total_xp: number; level: number };
+      const newTotalXP = (profileData.total_xp || 0) + finalXP;
+      const newLevel = Math.max(1, Math.floor(newTotalXP / 100) + 1);
+      const oldLevel = profileData.level || 1;
+      const leveledUp = newLevel > oldLevel;
+
+      // Update profile with new XP
+      const { error: updateError } = await supabase
+        .from("user_profiles")
+        .update({
+          total_xp: newTotalXP,
+          level: newLevel,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("Failed to update profile XP:", updateError);
+        return false;
+      }
+
+      // Log the XP transaction
+      const { error: txError } = await supabase
+        .from("xp_transactions")
+        .insert({
+          user_id: user.id,
+          amount: finalXP,
+          action: action,
+          description: finalDescription,
+          created_at: new Date().toISOString(),
         } as never);
 
-      if (error) {
-        // If RPC function doesn't exist, fall back to local update
-        console.warn("RPC add_xp not available, using local fallback:", error);
-        return get().addXPLocal(amount, action, description);
+      if (txError) {
+        console.error("Failed to log XP transaction:", txError);
+        // Don't return false - XP was added, just not logged
       }
 
-      const result = data as unknown as AddXPResponse;
-      if (result?.success) {
-        // Refresh profile and multiplier
-        await get().fetchUserProfile();
-        await get().fetchActiveMultiplier();
+      // Update multiplier tracking if bonus was earned
+      if (multiplierValue > 1 && bonusXP > 0 && activeMultiplier?.id) {
+        await supabase
+          .from("user_xp_multipliers")
+          .update({
+            xp_earned_with_multiplier: (activeMultiplier.xp_earned_with_multiplier || 0) + bonusXP,
+            updated_at: new Date().toISOString(),
+          } as never)
+          .eq("id", activeMultiplier.id);
+      }
 
-        // Build notification message based on whether multiplier was applied
-        const baseXP = result.base_xp || amount;
-        const bonusXP = result.bonus_xp || 0;
-        const totalXP = result.total_xp_earned || amount;
-        const multiplierApplied = result.multiplier_applied && result.multiplier_applied > 1;
+      // Refresh profile to get updated values
+      await get().fetchUserProfile();
 
-        // Add notification (skip for quests - they have their own notification)
-        if (action !== "quest") {
-          if (multiplierApplied && bonusXP > 0) {
-            get().addNotification({
-              type: "xp_gain",
-              title: `+${totalXP} XP`,
-              message: `${description || `Earned from ${action}`} (${baseXP} + ${bonusXP} bonus from ${result.multiplier_applied}x)`,
-              xpAmount: totalXP,
-            });
-          } else {
-            get().addNotification({
-              type: "xp_gain",
-              title: `+${amount} XP`,
-              message: description || `Earned from ${action}`,
-              xpAmount: amount,
-            });
-          }
-        }
-
-        // Check for level up
-        if (result.leveled_up && result.new_level) {
-          const tier = getLevelTier(result.new_level);
-          get().setLevelUpModal(true, {
-            newLevel: result.new_level,
-            newTitle: tier.title,
-            perks: tier.perks,
+      // Add notification (skip for quests - they have their own notification)
+      if (action !== "quest") {
+        if (multiplierValue > 1 && bonusXP > 0) {
+          get().addNotification({
+            type: "xp_gain",
+            title: `+${finalXP} XP`,
+            message: `${description || `Earned from ${action}`} (${baseXP} + ${bonusXP} bonus from ${multiplierValue}x)`,
+            xpAmount: finalXP,
           });
-          
-          // If a reward was granted, show notification
-          if (result.levelup_reward?.reward_granted) {
-            setTimeout(() => {
-              const xpBonus = result.levelup_reward?.xp_bonus || 0;
-              const freeSpin = result.levelup_reward?.free_spin;
-              
-              let message = `+${xpBonus} bonus XP!`;
-              if (freeSpin) {
-                message += " Plus a free spin!";
-              }
-              
-              get().addNotification({
-                type: "reward",
-                title: "🎁 Level Up Reward!",
-                message,
-                icon: "⚡",
-                xpAmount: xpBonus,
-              });
-            }, 2000);
-          }
+        } else {
+          get().addNotification({
+            type: "xp_gain",
+            title: `+${amount} XP`,
+            message: description || `Earned from ${action}`,
+            xpAmount: amount,
+          });
         }
-
-        return true;
       }
 
-      // RPC returned but was not successful - use local fallback
-      return get().addXPLocal(amount, action, description);
+      // Check for level up
+      if (leveledUp) {
+        const tier = getLevelTier(newLevel);
+        get().setLevelUpModal(true, {
+          newLevel: newLevel,
+          newTitle: tier.title,
+          perks: tier.perks,
+        });
+      }
+
+      return true;
     } catch (error) {
-      console.warn("Error adding XP via RPC, using local fallback:", error);
-      return get().addXPLocal(amount, action, description);
+      console.error("Error adding XP:", error);
+      return false;
     }
   },
 
@@ -1602,40 +1629,50 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             get().trackQuestRewardedAction(achievementType);
           }
           
-          // Quest completed - add XP with multiplier applied
-          setTimeout(async () => {
-            // Get active multiplier to show correct XP in notification
+          // Quest completed - add XP with multiplier applied (async, don't wait)
+          (async () => {
+            // Get active multiplier to calculate correct XP
             const activeMultiplier = get().activeMultiplier;
             const multiplierValue = activeMultiplier?.multiplier_value || activeMultiplier?.multiplier || 1;
             const baseXP = q.xpReward;
             const finalXP = multiplierValue > 1 ? Math.round(baseXP * multiplierValue) : baseXP;
             const bonusXP = finalXP - baseXP;
             
-            // Show quest completion notification with correct XP (including multiplier)
-            if (multiplierValue > 1 && bonusXP > 0) {
-              get().addNotification({
-                type: "reward",
-                title: "🎯 Quest Complete!",
-                message: `${q.title} - +${finalXP} XP (${baseXP} + ${bonusXP} bonus from ${multiplierValue}x)`,
-                icon: "✅",
-                xpAmount: finalXP,
-              });
+            // Add XP via database FIRST (this persists the XP)
+            const success = await get().addXP(q.xpReward, "quest", `Quest: ${q.title}`);
+            
+            if (success) {
+              // Show notification ONLY after XP is confirmed saved
+              if (multiplierValue > 1 && bonusXP > 0) {
+                get().addNotification({
+                  type: "reward",
+                  title: "🎯 Quest Complete!",
+                  message: `${q.title} - +${finalXP} XP (${baseXP} + ${bonusXP} bonus from ${multiplierValue}x)`,
+                  icon: "✅",
+                  xpAmount: finalXP,
+                });
+              } else {
+                get().addNotification({
+                  type: "reward",
+                  title: "🎯 Quest Complete!",
+                  message: `${q.title} - +${baseXP} XP`,
+                  icon: "✅",
+                  xpAmount: baseXP,
+                });
+              }
             } else {
+              // XP failed to save - show error
               get().addNotification({
-                type: "reward",
-                title: "🎯 Quest Complete!",
-                message: `${q.title} - +${baseXP} XP`,
-                icon: "✅",
-                xpAmount: baseXP,
+                type: "error",
+                title: "⚠️ Quest Error",
+                message: `${q.title} completed but XP failed to save. Please refresh.`,
+                icon: "❌",
               });
             }
             
-            // Add XP via database (will apply multiplier server-side)
-            await get().addXP(q.xpReward, "quest", `Quest: ${q.title}`);
-            
             // Check achievements after quest completion (with XP dedup)
             await get().checkAchievements();
-          }, 0);
+          })();
         }
 
         return {
