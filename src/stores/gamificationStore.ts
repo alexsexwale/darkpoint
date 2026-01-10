@@ -16,6 +16,7 @@ import {
   getXPProgress,
   getStreakMilestone,
   getDailyQuests,
+  getLevelFromXP,
 } from "@/types/gamification";
 
 // Module-level lock to prevent concurrent achievement checks
@@ -1168,7 +1169,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     }
   },
 
-  // Add XP - uses direct database operations for reliability
+  // Add XP - uses RPC function for proper permissions
   addXP: async (amount, action, description) => {
     if (!isSupabaseConfigured()) {
       console.warn("Supabase not configured - XP will not persist");
@@ -1182,123 +1183,52 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     }
 
     try {
-      // Get current profile
-      const { data: profile, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("total_xp, level")
-        .eq("id", user.id)
-        .single();
+      // Get current profile state for comparison
+      const currentProfile = get().userProfile;
+      const oldLevel = currentProfile?.current_level || 1;
+      const oldXP = currentProfile?.total_xp || 0;
 
-      // If profile doesn't exist, try to create it first
-      let profileData: { total_xp: number; level: number };
-      
-      if (profileError || !profile) {
-        console.warn("Profile not found, attempting to create:", profileError);
-        
-        // Try to create the profile
-        const { error: createError } = await supabase
-          .from("user_profiles")
-          .upsert({
-            id: user.id,
-            total_xp: 0,
-            level: 1,
-            current_streak: 0,
-            longest_streak: 0,
-            total_orders: 0,
-            total_reviews: 0,
-            available_spins: 1,
-            store_credit: 0,
-            referral_count: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          } as never, { onConflict: "id" });
-        
-        if (createError) {
-          console.error("Failed to create profile for XP addition:", createError);
-          // Fall back to local XP update only
-          const state = get();
-          if (state.userProfile) {
-            const newTotalXP = (state.userProfile.total_xp || 0) + amount;
-            set({
-              userProfile: {
-                ...state.userProfile,
-                total_xp: newTotalXP,
-                current_level: Math.max(1, Math.floor(newTotalXP / 100) + 1),
-              },
-            });
-          }
-          return false;
-        }
-        
-        // Profile created, use default values
-        profileData = { total_xp: 0, level: 1 };
-      } else {
-        profileData = profile as { total_xp: number; level: number };
-      }
-
-      // Get active multiplier
+      // Get active multiplier for notification display
       const activeMultiplier = get().activeMultiplier;
       const multiplierValue = activeMultiplier?.multiplier_value || activeMultiplier?.multiplier || 1;
       const baseXP = amount;
-      const finalXP = multiplierValue > 1 ? Math.round(baseXP * multiplierValue) : baseXP;
-      const bonusXP = finalXP - baseXP;
+      const estimatedFinalXP = multiplierValue > 1 ? Math.round(baseXP * multiplierValue) : baseXP;
+      const bonusXP = estimatedFinalXP - baseXP;
 
-      // Build description with multiplier info
-      let finalDescription = description || `Earned from ${action}`;
-      if (multiplierValue > 1 && bonusXP > 0) {
-        finalDescription = `${finalDescription} [${multiplierValue}x: ${baseXP} + ${bonusXP} bonus]`;
-      }
+      // Use RPC function which has proper permissions and handles everything
+      const { data: rpcResult, error: rpcError } = await supabase.rpc("add_xp", {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_action: action,
+        p_description: description || `Earned from ${action}`,
+      });
 
-      // Calculate new totals
-      const newTotalXP = (profileData.total_xp || 0) + finalXP;
-      const newLevel = Math.max(1, Math.floor(newTotalXP / 100) + 1);
-      const oldLevel = profileData.level || 1;
-      const leveledUp = newLevel > oldLevel;
-
-      // Update profile with new XP
-      const { error: updateError } = await supabase
-        .from("user_profiles")
-        .update({
-          total_xp: newTotalXP,
-          level: newLevel,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id", user.id);
-
-      if (updateError) {
-        console.error("Failed to update profile XP:", updateError);
+      if (rpcError) {
+        console.error("Failed to add XP via RPC:", rpcError);
+        // Fall back to local update only
+        if (currentProfile) {
+          const newTotalXP = oldXP + estimatedFinalXP;
+          set({
+            userProfile: {
+              ...currentProfile,
+              total_xp: newTotalXP,
+              current_level: getLevelFromXP(newTotalXP),
+            },
+          });
+        }
         return false;
       }
 
-      // Log the XP transaction
-      const { error: txError } = await supabase
-        .from("xp_transactions")
-        .insert({
-          user_id: user.id,
-          amount: finalXP,
-          action: action,
-          description: finalDescription,
-          created_at: new Date().toISOString(),
-        } as never);
-
-      if (txError) {
-        console.error("Failed to log XP transaction:", txError);
-        // Don't return false - XP was added, just not logged
-      }
-
-      // Update multiplier tracking if bonus was earned
-      if (multiplierValue > 1 && bonusXP > 0 && activeMultiplier?.id) {
-        await supabase
-          .from("user_xp_multipliers")
-          .update({
-            xp_earned_with_multiplier: (activeMultiplier.xp_earned_with_multiplier || 0) + bonusXP,
-            updated_at: new Date().toISOString(),
-          } as never)
-          .eq("id", activeMultiplier.id);
-      }
-
-      // Refresh profile to get updated values
+      // Refresh profile to get updated values from database
       await get().fetchUserProfile();
+
+      // Get new values after refresh
+      const newProfile = get().userProfile;
+      const newLevel = newProfile?.current_level || oldLevel;
+      const leveledUp = newLevel > oldLevel;
+
+      // Calculate actual XP awarded (from RPC result or estimate)
+      const finalXP = rpcResult?.xp_awarded || estimatedFinalXP;
 
       // Add notification (skip for quests - they have their own notification)
       if (action !== "quest") {

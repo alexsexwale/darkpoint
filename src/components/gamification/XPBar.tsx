@@ -26,8 +26,10 @@ export function XPBar({
   const tier = getLevelTier(userProfile.current_level);
   const currentLevelXP = getXPForLevel(userProfile.current_level);
   const nextLevelXP = getXPForLevel(userProfile.current_level + 1);
-  const xpIntoLevel = userProfile.total_xp - currentLevelXP;
   const xpNeeded = nextLevelXP - currentLevelXP;
+  // Calculate XP into current level, capped at xpNeeded to prevent overflow display
+  const rawXpIntoLevel = userProfile.total_xp - currentLevelXP;
+  const xpIntoLevel = Math.min(rawXpIntoLevel, xpNeeded);
 
   return (
     <div className={cn("w-full", className)}>
