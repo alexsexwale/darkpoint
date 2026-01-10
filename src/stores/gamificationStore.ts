@@ -1169,7 +1169,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
     }
   },
 
-  // Add XP - uses RPC function for proper permissions
+  // Add XP - uses server-side API for proper permissions
   addXP: async (amount, action, description) => {
     if (!isSupabaseConfigured()) {
       console.warn("Supabase not configured - XP will not persist");
@@ -1188,27 +1188,34 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       const oldLevel = currentProfile?.current_level || 1;
       const oldXP = currentProfile?.total_xp || 0;
 
-      // Get active multiplier for notification display
-      const activeMultiplier = get().activeMultiplier;
-      const multiplierValue = activeMultiplier?.multiplier_value || activeMultiplier?.multiplier || 1;
-      const baseXP = amount;
-      const estimatedFinalXP = multiplierValue > 1 ? Math.round(baseXP * multiplierValue) : baseXP;
-      const bonusXP = estimatedFinalXP - baseXP;
+      // Get auth session for API call
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.warn("No auth session - XP will not persist");
+        return false;
+      }
 
-      // Use RPC function which has proper permissions and handles everything
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)("add_xp", {
-        p_user_id: user.id,
-        p_amount: amount,
-        p_action: action,
-        p_description: description || `Earned from ${action}`,
+      // Call server-side API which has proper permissions
+      const response = await fetch("/api/gamification/add-xp", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          amount,
+          action,
+          description: description || `Earned from ${action}`,
+        }),
       });
 
-      if (rpcError) {
-        console.error("Failed to add XP via RPC:", rpcError);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error("Failed to add XP via API:", result.error);
         // Fall back to local update only
         if (currentProfile) {
-          const newTotalXP = oldXP + estimatedFinalXP;
+          const newTotalXP = oldXP + amount;
           set({
             userProfile: {
               ...currentProfile,
@@ -1223,13 +1230,12 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       // Refresh profile to get updated values from database
       await get().fetchUserProfile();
 
-      // Get new values after refresh
-      const newProfile = get().userProfile;
-      const newLevel = newProfile?.current_level || oldLevel;
-      const leveledUp = newLevel > oldLevel;
-
-      // Calculate actual XP awarded (from RPC result or estimate)
-      const finalXP = rpcResult?.xp_awarded || estimatedFinalXP;
+      // Get values from API response
+      const finalXP = result.xp_awarded || amount;
+      const bonusXP = result.bonus_xp || 0;
+      const multiplierValue = result.multiplier || 1;
+      const leveledUp = result.leveled_up || false;
+      const newLevel = result.new_level || oldLevel;
 
       // Add notification (skip for quests - they have their own notification)
       if (action !== "quest") {
@@ -1237,7 +1243,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           get().addNotification({
             type: "xp_gain",
             title: `+${finalXP} XP`,
-            message: `${description || `Earned from ${action}`} (${baseXP} + ${bonusXP} bonus from ${multiplierValue}x)`,
+            message: `${description || `Earned from ${action}`} (${amount} + ${bonusXP} bonus from ${multiplierValue}x)`,
             xpAmount: finalXP,
           });
         } else {
