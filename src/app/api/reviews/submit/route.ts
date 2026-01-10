@@ -104,12 +104,110 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Use service client to check and award achievements (bypasses RLS)
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
+    
+    let totalXPAwarded = result.xp_awarded || 25;
+    const achievementsUnlocked: string[] = [];
+
+    // Get user's current review count
+    const { data: profile } = await serviceClient
+      .from("user_profiles")
+      .select("total_reviews")
+      .eq("id", userId)
+      .single();
+
+    const reviewCount = profile?.total_reviews || 1;
+
+    // Define review achievements to check
+    const reviewAchievements = [
+      { id: "review_1", requirement: 1, name: "First Review", xp: 50 },
+      { id: "review_5", requirement: 5, name: "Reviewer", xp: 150 },
+      { id: "review_10", requirement: 10, name: "Expert Reviewer", xp: 300 },
+    ];
+
+    for (const achievement of reviewAchievements) {
+      if (reviewCount >= achievement.requirement) {
+        // Check if achievement exists in DB
+        const { data: achievementExists } = await serviceClient
+          .from("achievements")
+          .select("id")
+          .eq("id", achievement.id)
+          .maybeSingle();
+
+        if (!achievementExists) {
+          console.log(`Achievement ${achievement.id} not found in DB, skipping`);
+          continue;
+        }
+
+        // Check if already unlocked
+        const { data: existingUnlock } = await serviceClient
+          .from("user_achievements")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("achievement_id", achievement.id)
+          .maybeSingle();
+
+        if (!existingUnlock) {
+          // Award the achievement
+          const { error: insertError } = await serviceClient
+            .from("user_achievements")
+            .insert({
+              user_id: userId,
+              achievement_id: achievement.id,
+              progress: reviewCount,
+              unlocked_at: new Date().toISOString(),
+            });
+
+          if (!insertError) {
+            // Award achievement XP
+            await serviceClient
+              .from("user_profiles")
+              .update({ 
+                total_xp: (profile?.total_reviews || 0) + achievement.xp 
+              })
+              .eq("id", userId);
+
+            // Get current XP for proper update
+            const { data: currentProfile } = await serviceClient
+              .from("user_profiles")
+              .select("total_xp")
+              .eq("id", userId)
+              .single();
+
+            if (currentProfile) {
+              await serviceClient
+                .from("user_profiles")
+                .update({ total_xp: currentProfile.total_xp + achievement.xp })
+                .eq("id", userId);
+            }
+
+            // Log XP transaction
+            await serviceClient
+              .from("xp_transactions")
+              .insert({
+                user_id: userId,
+                amount: achievement.xp,
+                action: "achievement",
+                description: `Achievement unlocked: ${achievement.name}`,
+              });
+
+            achievementsUnlocked.push(achievement.name);
+            totalXPAwarded += achievement.xp;
+            console.log(`Awarded achievement: ${achievement.name} (+${achievement.xp} XP)`);
+          } else {
+            console.error(`Failed to award achievement ${achievement.id}:`, insertError);
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       review_id: result.review_id,
-      xp_awarded: result.xp_awarded || 25,
-      achievements_unlocked: [],
-      message: result.message || `Review submitted! +${result.xp_awarded || 25} XP`,
+      xp_awarded: totalXPAwarded,
+      achievements_unlocked: achievementsUnlocked,
+      message: `Review submitted! +${totalXPAwarded} XP${achievementsUnlocked.length > 0 ? ` 🏆 ${achievementsUnlocked.join(", ")}` : ""}`,
     });
   } catch (error) {
     console.error("Error in submit review:", error);
