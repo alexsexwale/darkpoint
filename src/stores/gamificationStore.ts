@@ -1196,7 +1196,8 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       const bonusXP = estimatedFinalXP - baseXP;
 
       // Use RPC function which has proper permissions and handles everything
-      const { data: rpcResult, error: rpcError } = await supabase.rpc("add_xp", {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)("add_xp", {
         p_user_id: user.id,
         p_amount: amount,
         p_action: action,
