@@ -392,6 +392,21 @@ export const useAccountStore = create<AccountState>((set, get) => ({
           (p) => p.order_item_id !== review.order_item_id
         ),
       }));
+
+      // Refresh gamification profile to update XP display and show notification
+      const { useGamificationStore } = await import("./gamificationStore");
+      const gamificationStore = useGamificationStore.getState();
+      await gamificationStore.fetchUserProfile();
+      
+      // Show XP notification
+      if (result.xp_awarded) {
+        gamificationStore.addNotification({
+          type: "xp_gain",
+          title: `+${result.xp_awarded} XP`,
+          message: "Review submitted successfully!",
+          xpAmount: result.xp_awarded,
+        });
+      }
       
       return { 
         success: true, 

@@ -3,30 +3,40 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function POST(request: NextRequest) {
+  console.log("=== Review Submit API Called ===");
+  
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Get auth token
+    // Get auth token to verify user
     const authHeader = request.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
     
     const token = authHeader.split(" ")[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
+    // Create client with user's token for auth and RPC call
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    });
+    
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: "Invalid token" }, { status: 401 });
     }
+    
+    const userId = user.id;
+    console.log("User authenticated:", userId);
 
     const body = await request.json();
     const { productId, rating, title, content, authorName, images } = body;
 
     // Validate input
     if (!productId || !rating || !title || !content || !authorName) {
-      console.error("Missing fields:", { productId: !!productId, rating: !!rating, title: !!title, content: !!content, authorName: !!authorName });
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
@@ -34,181 +44,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Rating must be between 1 and 5" }, { status: 400 });
     }
 
-    // Check if user has purchased this product
-    // First get the user's paid orders
-    const { data: orders } = await supabase
+    // Find order for verified purchase badge
+    let orderId: string | null = null;
+    let isVerifiedPurchase = false;
+
+    const { data: orders } = await userClient
       .from("orders")
       .select("id")
-      .eq("user_id", user.id)
-      .eq("payment_status", "paid");
+      .eq("user_id", userId);
 
-    if (!orders || orders.length === 0) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "You must purchase this product before leaving a review" 
-      }, { status: 400 });
-    }
+    if (orders && orders.length > 0) {
+      const orderIds = orders.map(o => o.id);
+      const { data: orderItem } = await userClient
+        .from("order_items")
+        .select("order_id")
+        .in("order_id", orderIds)
+        .eq("product_id", productId)
+        .limit(1)
+        .maybeSingle();
 
-    // Then check if any of those orders contain this product
-    const orderIds = orders.map(o => o.id);
-    const { data: orderItem } = await supabase
-      .from("order_items")
-      .select("order_id")
-      .in("order_id", orderIds)
-      .eq("product_id", productId)
-      .limit(1)
-      .single();
-
-    if (!orderItem) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "You must purchase this product before leaving a review" 
-      }, { status: 400 });
-    }
-    
-    const orderData = { id: orderItem.order_id };
-
-    // Check if user already reviewed this product
-    const { data: existingReview } = await supabase
-      .from("product_reviews")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("product_id", productId)
-      .single();
-
-    if (existingReview) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "You have already reviewed this product" 
-      }, { status: 400 });
-    }
-
-    // Insert the review
-    const { data: review, error: insertError } = await supabase
-      .from("product_reviews")
-      .insert({
-        user_id: user.id,
-        product_id: productId,
-        order_id: orderData.id,
-        rating,
-        title,
-        content,
-        author_name: authorName,
-        is_verified_purchase: true,
-        verified_purchase: true,
-        images: images || [],
-        status: "published",
-        is_approved: true,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error("Error inserting review:", insertError);
-      return NextResponse.json({ success: false, error: "Failed to submit review" }, { status: 500 });
-    }
-
-    // Calculate XP reward
-    let xpAwarded = 25; // Base XP for review
-    
-    // Bonus for detailed review (longer content)
-    if (content.length > 200) {
-      xpAwarded += 15;
-    }
-    
-    // Bonus for photo review
-    if (images && images.length > 0) {
-      xpAwarded += 10;
-    }
-
-    // Update user profile - increment total_reviews and add XP
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("total_reviews, total_xp")
-      .eq("id", user.id)
-      .single();
-
-    const newReviewCount = (profile?.total_reviews || 0) + 1;
-    const newTotalXP = (profile?.total_xp || 0) + xpAwarded;
-
-    await supabase
-      .from("user_profiles")
-      .update({
-        total_reviews: newReviewCount,
-        total_xp: newTotalXP,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
-
-    // Log XP transaction
-    await supabase
-      .from("xp_transactions")
-      .insert({
-        user_id: user.id,
-        amount: xpAwarded,
-        action: "review",
-        description: `Wrote a review (${content.length > 200 ? "detailed" : "standard"}${images?.length > 0 ? " with photos" : ""})`,
-      });
-
-    // Check and award review achievements
-    const reviewAchievements = [
-      { id: "first_review", requirement: 1, name: "First Review", xp: 50 },
-      { id: "reviewer_5", requirement: 5, name: "Active Reviewer", xp: 100 },
-      { id: "reviewer_10", requirement: 10, name: "Expert Reviewer", xp: 200 },
-    ];
-
-    const achievementsUnlocked: string[] = [];
-
-    for (const achievement of reviewAchievements) {
-      if (newReviewCount >= achievement.requirement) {
-        // Check if already unlocked
-        const { data: existing } = await supabase
-          .from("user_achievements")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("achievement_id", achievement.id)
-          .single();
-
-        if (!existing) {
-          // Unlock achievement
-          await supabase
-            .from("user_achievements")
-            .insert({
-              user_id: user.id,
-              achievement_id: achievement.id,
-              progress: newReviewCount,
-              unlocked_at: new Date().toISOString(),
-            });
-
-          // Award achievement XP
-          await supabase
-            .from("user_profiles")
-            .update({
-              total_xp: newTotalXP + achievement.xp,
-            })
-            .eq("id", user.id);
-
-          await supabase
-            .from("xp_transactions")
-            .insert({
-              user_id: user.id,
-              amount: achievement.xp,
-              action: "achievement",
-              description: `Achievement unlocked: ${achievement.name}`,
-            });
-
-          achievementsUnlocked.push(achievement.name);
-          xpAwarded += achievement.xp;
-        }
+      if (orderItem) {
+        orderId = orderItem.order_id;
+        isVerifiedPurchase = true;
       }
+    }
+
+    console.log("Verified purchase:", isVerifiedPurchase, "Order ID:", orderId);
+
+    // Call the new SECURITY DEFINER function that bypasses RLS
+    console.log("Calling insert_review_bypass_rls RPC...");
+    
+    const { data: result, error: rpcError } = await userClient.rpc("insert_review_bypass_rls", {
+      p_user_id: userId,
+      p_product_id: productId,
+      p_order_id: orderId,
+      p_rating: rating,
+      p_title: title,
+      p_content: content,
+      p_author_name: authorName,
+      p_is_verified_purchase: isVerifiedPurchase,
+      p_images: images || [],
+    });
+
+    console.log("RPC result:", result);
+    console.log("RPC error:", rpcError);
+
+    if (rpcError) {
+      console.error("RPC error:", rpcError);
+      return NextResponse.json({ 
+        success: false, 
+        error: rpcError.message || "Failed to submit review" 
+      }, { status: 500 });
+    }
+
+    if (!result?.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: result?.error || "Failed to submit review" 
+      }, { status: 400 });
     }
 
     return NextResponse.json({
       success: true,
-      review_id: review.id,
-      xp_awarded: xpAwarded,
-      achievements_unlocked: achievementsUnlocked,
-      message: `Review submitted! +${xpAwarded} XP${achievementsUnlocked.length > 0 ? ` 🏆 ${achievementsUnlocked.join(", ")}` : ""}`,
+      review_id: result.review_id,
+      xp_awarded: result.xp_awarded || 25,
+      achievements_unlocked: [],
+      message: result.message || `Review submitted! +${result.xp_awarded || 25} XP`,
     });
   } catch (error) {
     console.error("Error in submit review:", error);
@@ -218,4 +119,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
