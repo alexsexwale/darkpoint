@@ -1189,9 +1189,51 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         .eq("id", user.id)
         .single();
 
+      // If profile doesn't exist, try to create it first
+      let profileData: { total_xp: number; level: number };
+      
       if (profileError || !profile) {
-        console.error("Failed to fetch profile for XP addition:", profileError);
-        return false;
+        console.warn("Profile not found, attempting to create:", profileError);
+        
+        // Try to create the profile
+        const { error: createError } = await supabase
+          .from("user_profiles")
+          .upsert({
+            id: user.id,
+            total_xp: 0,
+            level: 1,
+            current_streak: 0,
+            longest_streak: 0,
+            total_orders: 0,
+            total_reviews: 0,
+            available_spins: 1,
+            store_credit: 0,
+            referral_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as never, { onConflict: "id" });
+        
+        if (createError) {
+          console.error("Failed to create profile for XP addition:", createError);
+          // Fall back to local XP update only
+          const state = get();
+          if (state.userProfile) {
+            const newTotalXP = (state.userProfile.total_xp || 0) + amount;
+            set({
+              userProfile: {
+                ...state.userProfile,
+                total_xp: newTotalXP,
+                current_level: Math.max(1, Math.floor(newTotalXP / 100) + 1),
+              },
+            });
+          }
+          return false;
+        }
+        
+        // Profile created, use default values
+        profileData = { total_xp: 0, level: 1 };
+      } else {
+        profileData = profile as { total_xp: number; level: number };
       }
 
       // Get active multiplier
@@ -1208,7 +1250,6 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
       }
 
       // Calculate new totals
-      const profileData = profile as { total_xp: number; level: number };
       const newTotalXP = (profileData.total_xp || 0) + finalXP;
       const newLevel = Math.max(1, Math.floor(newTotalXP / 100) + 1);
       const oldLevel = profileData.level || 1;
