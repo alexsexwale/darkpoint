@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Validate input
     if (!productId || !rating || !title || !content || !authorName) {
+      console.error("Missing fields:", { productId: !!productId, rating: !!rating, title: !!title, content: !!content, authorName: !!authorName });
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
@@ -34,24 +35,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has purchased this product
-    const { data: orderData, error: orderError } = await supabase
+    // First get the user's paid orders
+    const { data: orders } = await supabase
       .from("orders")
-      .select(`
-        id,
-        order_items!inner(product_id)
-      `)
+      .select("id")
       .eq("user_id", user.id)
-      .eq("payment_status", "paid")
-      .eq("order_items.product_id", productId)
-      .limit(1)
-      .single();
+      .eq("payment_status", "paid");
 
-    if (orderError || !orderData) {
+    if (!orders || orders.length === 0) {
       return NextResponse.json({ 
         success: false, 
         error: "You must purchase this product before leaving a review" 
       }, { status: 400 });
     }
+
+    // Then check if any of those orders contain this product
+    const orderIds = orders.map(o => o.id);
+    const { data: orderItem } = await supabase
+      .from("order_items")
+      .select("order_id")
+      .in("order_id", orderIds)
+      .eq("product_id", productId)
+      .limit(1)
+      .single();
+
+    if (!orderItem) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "You must purchase this product before leaving a review" 
+      }, { status: 400 });
+    }
+    
+    const orderData = { id: orderItem.order_id };
 
     // Check if user already reviewed this product
     const { data: existingReview } = await supabase

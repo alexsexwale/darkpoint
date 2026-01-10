@@ -356,6 +356,10 @@ export const useAccountStore = create<AccountState>((set, get) => ({
         return { success: false, error: "Please sign in to submit a review" };
       }
 
+      // Get user info for author name
+      const { data: { user } } = await supabase.auth.getUser();
+      const authorName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Customer";
+
       // Use API endpoint for XP and achievement rewards
       const response = await fetch("/api/reviews/submit", {
         method: "POST",
@@ -368,7 +372,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
           rating: review.rating,
           title: review.title,
           content: review.content,
-          authorName: review.product_name?.slice(0, 50) || "Anonymous", // Use product name as author placeholder
+          authorName: authorName,
           images: [],
         }),
       });
