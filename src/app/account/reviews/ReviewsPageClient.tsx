@@ -272,13 +272,22 @@ export function ReviewsPageClient() {
 
       if (!result.success) throw new Error(result.error);
 
-      setMessage({ type: "success", text: "Review submitted successfully! It will be visible after moderation." });
+      // Build success message with XP info
+      let successText = "Review submitted successfully!";
+      if (result.xpAwarded) {
+        successText += ` +${result.xpAwarded} XP`;
+      }
+      if (result.achievementsUnlocked && result.achievementsUnlocked.length > 0) {
+        successText += ` 🏆 ${result.achievementsUnlocked.join(", ")}`;
+      }
+
+      setMessage({ type: "success", text: successText });
       setWriteModal({ isOpen: false, product: null });
       setActiveTab("reviews");
     } catch (error) {
       setMessage({
         type: "error",
-        text: "Unable to submit review. Please try again.",
+        text: error instanceof Error ? error.message : "Unable to submit review. Please try again.",
       });
     } finally {
       setIsSubmitting(false);

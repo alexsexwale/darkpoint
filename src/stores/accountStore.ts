@@ -350,25 +350,53 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     }
     
     try {
-      const { data, error } = await supabase
-        .from("product_reviews")
-        // @ts-expect-error - Supabase type inference issue, types are correct
-        .insert([review])
-        .select()
-        .single();
+      // Get auth session for API call
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        return { success: false, error: "Please sign in to submit a review" };
+      }
+
+      // Use API endpoint for XP and achievement rewards
+      const response = await fetch("/api/reviews/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          productId: review.product_id,
+          rating: review.rating,
+          title: review.title,
+          content: review.content,
+          authorName: review.product_name?.slice(0, 50) || "Anonymous", // Use product name as author placeholder
+          images: [],
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        return { success: false, error: result.error || "Unable to submit review" };
+      }
       
-      if (error) throw error;
+      // Refresh reviews list
+      await get().fetchReviews();
       
+      // Remove from reviewable products
       set((state) => ({
-        reviews: [data, ...state.reviews],
-        // Remove from reviewable products
         reviewableProducts: state.reviewableProducts.filter(
           (p) => p.order_item_id !== review.order_item_id
         ),
       }));
       
-      return { success: true };
+      return { 
+        success: true, 
+        xpAwarded: result.xp_awarded,
+        achievementsUnlocked: result.achievements_unlocked,
+        message: result.message,
+      };
     } catch (error) {
+      console.error("Error submitting review:", error);
       return { success: false, error: "Unable to submit review. Please try again." };
     }
   },

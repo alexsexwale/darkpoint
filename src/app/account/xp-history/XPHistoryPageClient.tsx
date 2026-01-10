@@ -44,9 +44,102 @@ const ACTION_CONFIG: Record<XPAction, { icon: string; label: string; color: stri
 type FilterType = "all" | "earned" | "spent";
 type TimeFilter = "all" | "today" | "week" | "month";
 
+// Skeleton component for loading state
+function XPHistoryPageSkeleton() {
+  return (
+    <AccountLayout title="XP History">
+      {/* Stats Cards Skeleton */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {[1, 2, 3, 4].map((i) => (
+          <div 
+            key={i} 
+            className={cn(
+              "p-4 md:p-6 rounded-lg border animate-pulse",
+              i === 1 
+                ? "bg-gradient-to-br from-[var(--color-main-1)]/10 to-[var(--color-dark-2)] border-[var(--color-main-1)]/20"
+                : "bg-[var(--color-dark-2)] border-[var(--color-dark-3)]"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-full bg-[var(--color-dark-3)]" />
+              <div className="h-3 bg-[var(--color-dark-3)] rounded w-20" />
+            </div>
+            <div className="h-8 bg-[var(--color-dark-3)] rounded w-24 mb-2" />
+            <div className="h-3 bg-[var(--color-dark-3)] rounded w-16" />
+          </div>
+        ))}
+      </div>
+
+      {/* Filters Skeleton */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex gap-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-10 w-20 bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="flex gap-2 sm:ml-auto">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-10 w-16 bg-[var(--color-dark-3)]/50 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+
+      {/* Timeline Skeleton */}
+      <div className="bg-[var(--color-dark-2)] rounded-lg border border-[var(--color-dark-3)] overflow-hidden">
+        {/* Date header skeleton */}
+        <div className="bg-[var(--color-dark-3)]/30 px-4 md:px-6 py-3">
+          <div className="h-4 bg-[var(--color-dark-3)] rounded w-20 animate-pulse" />
+        </div>
+        
+        {/* Transaction skeletons */}
+        <div className="divide-y divide-[var(--color-dark-3)]/50">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="px-4 md:px-6 py-4 animate-pulse">
+              <div className="flex items-center gap-4">
+                {/* Icon skeleton */}
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[var(--color-dark-3)]" />
+                
+                {/* Details skeleton */}
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-[var(--color-dark-3)] rounded w-32" />
+                  <div className="h-3 bg-[var(--color-dark-3)] rounded w-48" />
+                  <div className="h-2 bg-[var(--color-dark-3)] rounded w-16" />
+                </div>
+                
+                {/* Amount skeleton */}
+                <div className="text-right space-y-1">
+                  <div className="h-6 bg-[var(--color-dark-3)] rounded w-16 ml-auto" />
+                  <div className="h-3 bg-[var(--color-dark-3)] rounded w-8 ml-auto" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* XP Guide Skeleton */}
+      <div className="mt-8 bg-[var(--color-dark-2)] rounded-lg border border-[var(--color-dark-3)] p-6">
+        <div className="h-6 bg-[var(--color-dark-3)] rounded w-40 mb-4 animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className="p-3 bg-[var(--color-dark-3)]/50 rounded-lg animate-pulse">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded bg-[var(--color-dark-3)]" />
+                <div className="h-4 bg-[var(--color-dark-3)] rounded w-16" />
+              </div>
+              <div className="h-4 bg-[var(--color-dark-3)] rounded w-12 mb-1" />
+              <div className="h-2 bg-[var(--color-dark-3)] rounded w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </AccountLayout>
+  );
+}
+
 export function XPHistoryPageClient() {
   const { isAuthenticated, isInitialized, isEmailVerified } = useAuthStore();
-  const { userProfile } = useGamificationStore();
+  const { userProfile, isLoading: profileLoading } = useGamificationStore();
   
   const [transactions, setTransactions] = useState<XPTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -163,6 +256,11 @@ export function XPHistoryPageClient() {
         </VerificationRequired>
       </AccountLayout>
     );
+  }
+
+  // Show skeleton while loading initial data
+  if (!isInitialized || (isLoading && transactions.length === 0) || profileLoading) {
+    return <XPHistoryPageSkeleton />;
   }
 
   return (

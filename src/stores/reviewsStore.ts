@@ -72,7 +72,7 @@ interface ReviewsActions {
       authorName: string;
       images?: string[];
     }
-  ) => Promise<{ success: boolean; error?: string; xpAwarded?: number }>;
+  ) => Promise<{ success: boolean; error?: string; xpAwarded?: number; achievementsUnlocked?: string[]; message?: string }>;
   checkCanReview: (productId: string) => Promise<CanReviewResponse>;
   voteHelpful: (
     reviewId: string,
@@ -154,25 +154,32 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => ({
     set({ isSubmitting: true });
 
     try {
-      const { data: result, error } = await supabase.rpc("submit_review", {
-        p_product_id: productId,
-        p_rating: data.rating,
-        p_title: data.title,
-        p_content: data.content,
-        p_author_name: data.authorName,
-        p_images: data.images || [],
-      } as never);
+      // Get auth session for API call
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        return { success: false, error: "Please sign in to submit a review" };
+      }
 
-      if (error) throw error;
+      // Use API endpoint for better reliability
+      const response = await fetch("/api/reviews/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          productId,
+          rating: data.rating,
+          title: data.title,
+          content: data.content,
+          authorName: data.authorName,
+          images: data.images || [],
+        }),
+      });
 
-      const response = result as {
-        success: boolean;
-        error?: string;
-        xp_awarded?: number;
-        message?: string;
-      };
+      const result = await response.json();
 
-      if (response?.success) {
+      if (result.success) {
         // Refresh reviews
         await get().fetchProductReviews(productId);
         // Update can review status
@@ -185,12 +192,14 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => ({
         });
         return {
           success: true,
-          xpAwarded: response.xp_awarded,
+          xpAwarded: result.xp_awarded,
+          achievementsUnlocked: result.achievements_unlocked,
+          message: result.message,
         };
       } else {
         return {
           success: false,
-          error: "Unable to submit review. Please try again.",
+          error: result.error || "Unable to submit review. Please try again.",
         };
       }
     } catch (error) {
