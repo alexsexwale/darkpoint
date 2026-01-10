@@ -69,7 +69,7 @@ interface AccountState {
   fetchReviews: () => Promise<void>;
   fetchReports: () => Promise<void>;
   fetchReviewableProducts: () => Promise<void>;
-  addReview: (review: InsertTables<"product_reviews">) => Promise<{ success: boolean; error?: string }>;
+  addReview: (review: InsertTables<"product_reviews">) => Promise<{ success: boolean; error?: string; xpAwarded?: number; achievementsUnlocked?: string[]; message?: string }>;
   updateReview: (id: string, updates: UpdateTables<"product_reviews">) => Promise<{ success: boolean; error?: string }>;
   deleteReview: (id: string) => Promise<{ success: boolean; error?: string }>;
   
