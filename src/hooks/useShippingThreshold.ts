@@ -20,7 +20,7 @@ export interface ShippingTier {
   color: string;
 }
 
-export const SHIPPING_TIERS: Record<VIPTier | "none", ShippingTier> = {
+export const SHIPPING_TIERS: Record<Exclude<VIPTier, null> | "none", ShippingTier> = {
   none: {
     name: "Standard",
     freeThreshold: FREE_SHIPPING_THRESHOLD,
