@@ -50,17 +50,17 @@ export const VIP_WEEKLY_PRIZES: VIPWeeklyPrize[] = [
   {
     id: 2,
     name: "R75 VIP Credit",
-    description: "R75 off any order over R300 - this week only!",
+    description: "R75 off any order over R500 - this week only!",
     discount_type: "fixed",
     discount_value: 75,
-    min_order_value: 300,
+    min_order_value: 500,
     icon: "💎",
     color: "from-cyan-500 to-blue-600",
   },
   {
     id: 3,
-    name: "Free Express Shipping",
-    description: "Free express delivery on any order - no minimum!",
+    name: "Free Shipping",
+    description: "Free delivery on any order - no minimum!",
     discount_type: "shipping",
     discount_value: 100,
     min_order_value: 0,
@@ -80,10 +80,10 @@ export const VIP_WEEKLY_PRIZES: VIPWeeklyPrize[] = [
   {
     id: 5,
     name: "R100 Power Deal",
-    description: "R100 off orders over R500 - massive savings!",
+    description: "R100 off orders over R700 - massive savings!",
     discount_type: "fixed",
     discount_value: 100,
-    min_order_value: 500,
+    min_order_value: 700,
     icon: "🔥",
     color: "from-orange-500 to-red-600",
   },
@@ -100,10 +100,10 @@ export const VIP_WEEKLY_PRIZES: VIPWeeklyPrize[] = [
   {
     id: 7,
     name: "R50 Instant Savings",
-    description: "R50 off any order over R200 - quick & easy!",
+    description: "R50 off any order over R300 - quick & easy!",
     discount_type: "fixed",
     discount_value: 50,
-    min_order_value: 200,
+    min_order_value: 300,
     icon: "💰",
     color: "from-emerald-500 to-teal-600",
   },
@@ -120,10 +120,10 @@ export const VIP_WEEKLY_PRIZES: VIPWeeklyPrize[] = [
   {
     id: 9,
     name: "R125 Mega Deal",
-    description: "R125 off orders over R600 - our biggest weekly prize!",
+    description: "R125 off orders over R800 - our biggest weekly prize!",
     discount_type: "fixed",
     discount_value: 125,
-    min_order_value: 600,
+    min_order_value: 800,
     icon: "🏆",
     color: "from-rose-500 to-pink-600",
   },
@@ -159,7 +159,6 @@ export const VIP_WEEKLY_PRIZES: VIPWeeklyPrize[] = [
   },
 ];
 
-// Get the current week number of the year
 function getWeekNumber(): number {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 1);
