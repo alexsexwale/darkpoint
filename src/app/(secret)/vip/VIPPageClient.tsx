@@ -132,14 +132,17 @@ export function VIPPageClient() {
   const { 
     activateVIPPrize, 
     isVIPPrizeActive, 
+    isVIPPrizeUsed,
     vipPrize, 
-    getVIPPrizeTimeRemaining 
+    getVIPPrizeTimeRemaining,
+    fetchVIPPrizeStatus,
   } = useRewardsStore();
   const { playVIPAccess, playSecret } = useBadgeSound();
   const { triggerConfetti } = useConfettiBurst();
 
   const [showParticles, setShowParticles] = useState(false);
   const [prizeActivated, setPrizeActivated] = useState(false);
+  const [prizeUsed, setPrizeUsed] = useState(false);
   const [showPrizeReveal, setShowPrizeReveal] = useState(false);
   const [currentPrize, setCurrentPrize] = useState<VIPWeeklyPrize | null>(null);
   const [timeRemaining, setTimeRemaining] = useState("");
@@ -148,7 +151,14 @@ export function VIPPageClient() {
   // Both auth and gamification must be initialized before checking access
   const fullyInitialized = authInitialized && gamificationInitialized;
 
-  // Check VIP access - only after both stores are initialized
+  // Fetch VIP prize status from database on mount
+  useEffect(() => {
+    if (fullyInitialized && isAuthenticated && hasAnyBadge()) {
+      fetchVIPPrizeStatus();
+    }
+  }, [fullyInitialized, isAuthenticated, hasAnyBadge, fetchVIPPrizeStatus]);
+
+  // Check VIP access and update local state from store
   useEffect(() => {
     if (!fullyInitialized) return;
     
@@ -164,14 +174,29 @@ export function VIPPageClient() {
       playVIPAccess();
       // Show particles celebration
       setTimeout(() => setShowParticles(true), 500);
-      
-      // Check if prize is already activated
-      if (isVIPPrizeActive()) {
-        setCurrentPrize(vipPrize.activatedPrize);
-        setPrizeActivated(true);
-      }
     }
-  }, [fullyInitialized, accessChecked, isAuthenticated, hasAnyBadge, router, playVIPAccess, isVIPPrizeActive, vipPrize]);
+  }, [fullyInitialized, accessChecked, isAuthenticated, hasAnyBadge, router, playVIPAccess]);
+
+  // Update local component state when store state changes
+  useEffect(() => {
+    // Check if prize has been used this week
+    if (isVIPPrizeUsed()) {
+      setCurrentPrize(vipPrize.activatedPrize);
+      setPrizeActivated(true);
+      setPrizeUsed(true);
+    }
+    // Check if prize is already activated but not used
+    else if (isVIPPrizeActive()) {
+      setCurrentPrize(vipPrize.activatedPrize);
+      setPrizeActivated(true);
+      setPrizeUsed(false);
+    } else {
+      // Reset if no prize activated
+      setPrizeActivated(false);
+      setPrizeUsed(false);
+      setCurrentPrize(null);
+    }
+  }, [vipPrize, isVIPPrizeActive, isVIPPrizeUsed]);
 
   // Update time remaining
   useEffect(() => {
@@ -453,6 +478,43 @@ export function VIPPageClient() {
                   <p className="text-xs text-white/40 mt-4">
                     Prize changes every week. Use it or lose it!
                   </p>
+                </div>
+              ) : prizeUsed ? (
+                // Prize already used this week
+                <div className="text-center py-4">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-6xl mb-4 grayscale opacity-60"
+                  >
+                    {currentPrize?.icon || "🎁"}
+                  </motion.div>
+                  
+                  <h3 className="font-heading text-2xl mb-2 text-white/60">
+                    Prize Already Used
+                  </h3>
+                  
+                  <p className="text-white/40 mb-4 max-w-md mx-auto">
+                    You&apos;ve already used your <span className="text-white/60">{currentPrize?.name}</span> this week. 
+                    Come back next week for a new prize!
+                  </p>
+                  
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-xs px-3 py-1 bg-white/10 text-white/50 rounded-full">
+                      ✓ Used
+                    </span>
+                    <span className="text-xs text-white/40">
+                      New prize in {timeRemaining || "next week"}
+                    </span>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-white/10">
+                    <Link href="/store">
+                      <Button variant="outline" className="border-white/20 text-white/60 hover:bg-white/5">
+                        Continue Shopping →
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 // Prize activated - show details

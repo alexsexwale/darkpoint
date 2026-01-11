@@ -191,6 +191,7 @@ export interface VIPPrizeState {
   activatedAt: string | null;
   expiresAt: string | null;
   weekNumber: number | null;
+  usedAt: string | null; // Track when prize was used
 }
 
 interface RewardsState {
@@ -220,8 +221,10 @@ interface RewardsActions {
   removeVIPPrize: () => void;
   isVIPPrizeActive: () => boolean;
   isVIPPrizeExpired: () => boolean;
+  isVIPPrizeUsed: () => boolean;
   getVIPPrizeTimeRemaining: () => string;
-  markVIPPrizeUsed: () => void;
+  markVIPPrizeUsed: () => Promise<void>;
+  fetchVIPPrizeStatus: () => Promise<void>;
 }
 
 interface RewardsGetters {
@@ -306,6 +309,7 @@ export const useRewardsStore = create<RewardsStore>()(
         activatedAt: null,
         expiresAt: null,
         weekNumber: null,
+        usedAt: null,
       },
       appliedVIPPrize: null,
 
@@ -406,6 +410,7 @@ export const useRewardsStore = create<RewardsStore>()(
             activatedAt: null,
             expiresAt: null,
             weekNumber: null,
+            usedAt: null,
           },
           appliedVIPPrize: null,
         });
@@ -413,12 +418,59 @@ export const useRewardsStore = create<RewardsStore>()(
 
       // ========== VIP WEEKLY PRIZE ACTIONS ==========
       
+      // Fetch VIP prize status from database
+      fetchVIPPrizeStatus: async () => {
+        if (!isSupabaseConfigured()) return;
+        
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) return;
+          
+          const response = await fetch("/api/vip-prize", {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+          
+          if (!response.ok) return;
+          
+          const data = await response.json();
+          
+          if (data.activated && data.prize) {
+            // Reconstruct the prize object with color from our static list
+            const staticPrize = VIP_WEEKLY_PRIZES.find(p => p.id === data.prize.id);
+            const prize: VIPWeeklyPrize = {
+              id: data.prize.id,
+              name: data.prize.name,
+              description: data.prize.description || "",
+              icon: data.prize.icon || "🎁",
+              discount_type: data.prize.discount_type,
+              discount_value: data.prize.discount_value,
+              min_order_value: data.prize.min_order_value || 0,
+              color: staticPrize?.color || "from-purple-500 to-pink-500",
+            };
+            
+            set({
+              vipPrize: {
+                activatedPrize: prize,
+                activatedAt: data.activated_at,
+                expiresAt: data.expires_at,
+                weekNumber: data.weekNumber,
+                usedAt: data.used_at,
+              },
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching VIP prize status:", error);
+        }
+      },
+      
       // Activate this week's VIP prize
       activateVIPPrize: () => {
         const currentWeek = getWeekNumber();
         const { vipPrize } = get();
         
-        // Check if already activated this week and not expired
+        // Check if already activated this week and not expired (from local state)
         if (vipPrize.weekNumber === currentWeek && vipPrize.activatedPrize) {
           const expiresAt = vipPrize.expiresAt ? new Date(vipPrize.expiresAt) : null;
           if (expiresAt && expiresAt > new Date()) {
@@ -431,14 +483,15 @@ export const useRewardsStore = create<RewardsStore>()(
         const now = new Date();
         const expiresAt = getWeekEnd();
         
+        // Update local state immediately
         set({
           vipPrize: {
             activatedPrize: prize,
             activatedAt: now.toISOString(),
             expiresAt: expiresAt.toISOString(),
             weekNumber: currentWeek,
+            usedAt: null,
           },
-          // Clear any previously applied VIP prize when activating new one
           appliedVIPPrize: null,
         });
         
@@ -446,6 +499,25 @@ export const useRewardsStore = create<RewardsStore>()(
         if (get().appliedReward) {
           set({ appliedReward: null });
         }
+        
+        // Sync to database in background
+        (async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) return;
+            
+            await fetch("/api/vip-prize", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ prize }),
+            });
+          } catch (error) {
+            console.error("Error saving VIP prize to database:", error);
+          }
+        })();
         
         return { success: true, prize, alreadyActivated: false };
       },
@@ -493,6 +565,17 @@ export const useRewardsStore = create<RewardsStore>()(
         return new Date(vipPrize.expiresAt) < new Date();
       },
 
+      // Check if VIP prize has been used this week
+      isVIPPrizeUsed: () => {
+        const { vipPrize } = get();
+        const currentWeek = getWeekNumber();
+        // Prize is used if it was activated this week and has usedAt set
+        if (vipPrize.weekNumber === currentWeek && vipPrize.usedAt) {
+          return true;
+        }
+        return false;
+      },
+
       // Get time remaining for VIP prize
       getVIPPrizeTimeRemaining: () => {
         const { vipPrize } = get();
@@ -514,16 +597,32 @@ export const useRewardsStore = create<RewardsStore>()(
       },
 
       // Mark VIP prize as used (after checkout)
-      markVIPPrizeUsed: () => {
+      markVIPPrizeUsed: async () => {
+        const { vipPrize } = get();
+        
+        // Update local state immediately
         set({ 
           appliedVIPPrize: null,
           vipPrize: {
-            activatedPrize: null,
-            activatedAt: null,
-            expiresAt: null,
-            weekNumber: null,
+            ...vipPrize,
+            usedAt: new Date().toISOString(),
           },
         });
+        
+        // Sync to database
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) return;
+          
+          await fetch("/api/vip-prize", {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+        } catch (error) {
+          console.error("Error marking VIP prize as used in database:", error);
+        }
       },
 
       // Get available (unused, not expired) rewards
