@@ -55,6 +55,14 @@ export const CURRENCY_LOCALE = "en-ZA";
 export const PRODUCTS_PER_PAGE = 12;
 
 // Shipping - configurable via environment variables
-export const FREE_SHIPPING_THRESHOLD = Number(process.env.NEXT_PUBLIC_FREE_SHIPPING_THRESHOLD) || 500;
-export const VIP_FREE_SHIPPING_THRESHOLD = Number(process.env.NEXT_PUBLIC_VIP_FREE_SHIPPING_THRESHOLD) || 300;
-export const STANDARD_SHIPPING_FEE = Number(process.env.NEXT_PUBLIC_STANDARD_SHIPPING_FEE) || 65;
+// Tiered shipping: Free above threshold, reduced between, full below
+export const FREE_SHIPPING_THRESHOLD = Number(process.env.NEXT_PUBLIC_FREE_SHIPPING_THRESHOLD) || 1050;
+export const BELOW_590_THRESHOLD = Number(process.env.NEXT_PUBLIC_BELOW_590_SHIPPING_THRESHOLD) || 590;
+export const STANDARD_SHIPPING_FEE = Number(process.env.NEXT_PUBLIC_STANDARD_SHIPPING_FEE) || 150;
+export const BETWEEN_590_AND_1050_SHIPPING_FEE = Number(process.env.NEXT_PUBLIC_BETWEEN_590_AND_1050_SHIPPING_FEE) || 75;
+
+// VIP Tiered free shipping thresholds
+export const VIP_FREE_SHIPPING_THRESHOLD = Number(process.env.NEXT_PUBLIC_VIP_FREE_SHIPPING_THRESHOLD) || 300; // Legacy fallback
+export const VIP_BRONZE_FREE_SHIPPING_THRESHOLD = Number(process.env.NEXT_PUBLIC_VIP_BRONZE_FREE_SHIPPING_THRESHOLD) || 950;
+export const VIP_GOLD_FREE_SHIPPING_THRESHOLD = Number(process.env.NEXT_PUBLIC_VIP_GOLD_FREE_SHIPPING_THRESHOLD) || 850;
+export const VIP_PLATINUM_FREE_SHIPPING_THRESHOLD = Number(process.env.NEXT_PUBLIC_VIP_PLATNIUM_FREE_SHIPPING_THRESHOLD) || 750;

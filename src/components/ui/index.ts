@@ -10,7 +10,7 @@ export { SignInModal } from "./SignInModal";
 export { ForgotPasswordModal } from "./ForgotPasswordModal";
 export { LinkEffect } from "./LinkEffect";
 export { NavLinkEffect } from "./NavLinkEffect";
-export { FreeDeliveryIndicator } from "./FreeDeliveryIndicator";
+export { FreeDeliveryIndicator, ShippingTierBreakdown } from "./FreeDeliveryIndicator";
 export { ReportReviewModal } from "./ReportReviewModal";
 export { 
   Skeleton, 

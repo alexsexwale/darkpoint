@@ -12,7 +12,6 @@ import { Button, Input, TextArea, FreeDeliveryIndicator, PhoneInput, parsePhoneT
 import { VerificationRequired } from "@/components/auth";
 import { RewardSelector } from "@/components/cart/RewardSelector";
 import { formatPrice } from "@/lib/utils";
-import { STANDARD_SHIPPING_FEE } from "@/lib/constants";
 
 interface BillingDetails {
   firstName: string;
@@ -48,7 +47,7 @@ export function CheckoutContent() {
     removeVIPPrize,
     markVIPPrizeUsed,
   } = useRewardsStore();
-  const { threshold: freeShippingThreshold, isVIP } = useShippingThreshold();
+  const { threshold: freeShippingThreshold, isVIP, calculateFee, tierInfo } = useShippingThreshold();
   
   // If user is logged in but not verified, show verification required
   // (Guest checkout is allowed - only logged-in unverified users are blocked)
@@ -180,7 +179,7 @@ export function CheckoutContent() {
   }, [addresses, user, userProfile, isAuthenticated]);
 
   const total = subtotal();
-  const baseShippingCost = total >= freeShippingThreshold ? 0 : STANDARD_SHIPPING_FEE;
+  const baseShippingCost = calculateFee(total);
   
   // Calculate reward discounts
   const discountAmount = getDiscountAmount(total);
@@ -617,11 +616,11 @@ export function CheckoutContent() {
               </svg>
               <p>
                 {isFreeShipping ? (
-                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!{isVIP && <span className="text-amber-400 ml-1">(VIP Perk)</span>}</>
+                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!{isVIP && <span className={`ml-1 ${tierInfo.color}`}>({tierInfo.icon} {tierInfo.name} Perk)</span>}</>
                 ) : total >= freeShippingThreshold ? (
-                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!{isVIP && <span className="text-amber-400 ml-1">(VIP Perk)</span>}</>
+                  <>Your order qualifies for <span className="text-green-500 font-medium">FREE delivery</span>!{isVIP && <span className={`ml-1 ${tierInfo.color}`}>({tierInfo.icon} {tierInfo.name} Perk)</span>}</>
                 ) : (
-                  <>Standard delivery fee of <span className="text-white font-medium">{formatPrice(STANDARD_SHIPPING_FEE)}</span> applies. Spend <span className="text-[var(--color-main-1)] font-medium">{formatPrice(freeShippingThreshold - total)}</span> more for free delivery!{isVIP && <span className="text-amber-400 ml-1">(VIP: R300 threshold)</span>}</>
+                  <>Delivery fee of <span className="text-white font-medium">{formatPrice(shippingCost)}</span> applies. Spend <span className="text-[var(--color-main-1)] font-medium">{formatPrice(freeShippingThreshold - total)}</span> more for free delivery!{isVIP && <span className={`ml-1 ${tierInfo.color}`}>({tierInfo.icon} {tierInfo.name}: {formatPrice(freeShippingThreshold)} threshold)</span>}</>
                 )}
               </p>
             </div>

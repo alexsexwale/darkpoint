@@ -11,6 +11,7 @@ import { NavIcons } from "./NavIcons";
 import { MobileNav } from "./MobileNav";
 import { XPBar, StreakIndicator, LevelBadge } from "@/components/gamification";
 import { useGamificationStore, useAuthStore } from "@/stores";
+import { useShippingThreshold } from "@/hooks";
 
 export function Navbar() {
   const [isHidden, setIsHidden] = useState(false);
@@ -18,6 +19,7 @@ export function Navbar() {
   const { scrollY } = useScroll();
   const { userProfile } = useGamificationStore();
   const { isAuthenticated } = useAuthStore();
+  const { threshold: freeShippingThreshold, isVIP, tierInfo } = useShippingThreshold();
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     const previous = scrollY.getPrevious() ?? 0;
@@ -51,7 +53,10 @@ export function Navbar() {
           <div className="container">
             <div className="flex items-center justify-between py-2 text-xs text-[var(--muted-foreground)]">
               <div className="flex items-center gap-4">
-                <span>Free shipping on orders over R500</span>
+                <span>
+                  Free shipping on orders over R{freeShippingThreshold}
+                  {isVIP && <span className={`ml-1 ${tierInfo.color}`}>({tierInfo.icon} {tierInfo.name})</span>}
+                </span>
                 {/* Rewards link */}
                 <Link href="/rewards" className="text-[var(--color-main-1)] hover:text-white transition-colors">
                   🎁 Rewards

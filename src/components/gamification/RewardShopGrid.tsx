@@ -7,9 +7,39 @@ import { cn } from "@/lib/utils";
 import { useGamificationStore, useRewardsStore, useAuthStore } from "@/stores";
 import { useGamification } from "@/hooks";
 import { RewardShopCard, RewardShopCardSkeleton } from "./RewardShopCard";
+import { Button } from "@/components/ui";
 import type { Reward } from "@/types/gamification";
 import { getHighestVIPTier, hasVIPAccess, VIP_TIERS, BADGE_TIER_INFO, type VIPTier } from "@/types/vip";
 import { supabase } from "@/lib/supabase";
+import { 
+  VIP_BRONZE_FREE_SHIPPING_THRESHOLD, 
+  VIP_GOLD_FREE_SHIPPING_THRESHOLD, 
+  VIP_PLATINUM_FREE_SHIPPING_THRESHOLD 
+} from "@/lib/constants";
+import { formatPrice } from "@/lib/utils";
+
+// Helper to check if a reward is an XP booster
+function isXPBoosterReward(reward: Reward): boolean {
+  if (reward.category === "xp_booster") return true;
+  // Check for VIP XP boosters in exclusive category
+  if (reward.category === "exclusive" && reward.value?.includes("x_")) return true;
+  return false;
+}
+
+// Helper to format time remaining
+function formatTimeRemaining(expiresAt: string): string {
+  const now = new Date();
+  const expires = new Date(expiresAt);
+  const diff = expires.getTime() - now.getTime();
+  
+  if (diff <= 0) return "expired";
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
 
 // Extended reward type with VIP tier requirement
 interface ExtendedReward extends Reward {
@@ -323,7 +353,7 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
 ];
 
 export function RewardShopGrid({ className }: RewardShopGridProps) {
-  const { userProfile, rewards: storeRewards, addNotification, isLoading: gamificationLoading, fetchRewards: fetchGamificationRewards, hasAnyBadge, userBadges } = useGamificationStore();
+  const { userProfile, rewards: storeRewards, addNotification, isLoading: gamificationLoading, fetchRewards: fetchGamificationRewards, hasAnyBadge, userBadges, activeMultiplier } = useGamificationStore();
   const { user } = useAuthStore();
   const { fetchRewards } = useRewardsStore();
   const { purchaseReward } = useGamification();
@@ -332,6 +362,10 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [actualOrderCount, setActualOrderCount] = useState<number | null>(null);
+  
+  // Multiplier confirmation modal state
+  const [showMultiplierConfirm, setShowMultiplierConfirm] = useState(false);
+  const [pendingMultiplierReward, setPendingMultiplierReward] = useState<ExtendedReward | null>(null);
 
   const isVIP = hasAnyBadge();
   // Get the user's highest VIP tier based on their badges
@@ -417,7 +451,7 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
     hasEnoughOrders?: boolean;
     isAlreadyOwned?: boolean;
     isBadgeLocked?: boolean;
-  }) => {
+  }, forceRedeem = false) => {
     if (redeeming) return;
     setErrorMessage(null);
 
@@ -458,6 +492,18 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
       return;
     }
 
+    // Check if this is an XP booster and there's already an active multiplier
+    if (isXPBoosterReward(reward) && activeMultiplier && !forceRedeem) {
+      // Check if multiplier hasn't expired
+      const expiresAt = activeMultiplier.multiplier_expires_at || activeMultiplier.expires_at;
+      if (expiresAt && new Date(expiresAt) > new Date()) {
+        // Show confirmation modal
+        setPendingMultiplierReward(reward);
+        setShowMultiplierConfirm(true);
+        return;
+      }
+    }
+
     setRedeeming(reward.id);
     const result = await purchaseReward(reward.id);
     setRedeeming(null);
@@ -476,9 +522,100 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
       });
     }
   };
+  
+  // Handle confirmation to replace multiplier
+  const handleConfirmReplaceMultiplier = async () => {
+    if (!pendingMultiplierReward) return;
+    setShowMultiplierConfirm(false);
+    await handleRedeem(pendingMultiplierReward, true);
+    setPendingMultiplierReward(null);
+  };
+  
+  // Handle cancel - close modal
+  const handleCancelReplaceMultiplier = () => {
+    setShowMultiplierConfirm(false);
+    setPendingMultiplierReward(null);
+  };
 
   return (
     <div className={cn("space-y-6", className)}>
+      {/* Multiplier Replacement Confirmation Modal */}
+      <AnimatePresence>
+        {showMultiplierConfirm && pendingMultiplierReward && activeMultiplier && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={handleCancelReplaceMultiplier}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-6 max-w-md w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Warning icon */}
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-500/20 rounded-full mb-3">
+                  <span className="text-3xl">⚠️</span>
+                </div>
+                <h3 className="font-heading text-xl text-amber-400">Active XP Boost</h3>
+              </div>
+              
+              {/* Current multiplier info */}
+              <div className="bg-[var(--color-dark-3)] rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white/60 text-sm">Current Boost:</span>
+                  <span className="text-[var(--color-main-1)] font-bold text-lg">
+                    {activeMultiplier.multiplier_value || activeMultiplier.multiplier || 1}x XP
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-white/60 text-sm">Time Remaining:</span>
+                  <span className="text-amber-400 font-semibold">
+                    {formatTimeRemaining(activeMultiplier.multiplier_expires_at || activeMultiplier.expires_at || "")}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Warning message */}
+              <p className="text-white/80 text-sm mb-4 text-center">
+                You already have an active XP multiplier. Purchasing a new boost will <span className="text-red-400 font-semibold">replace</span> your current one and reset the timer.
+              </p>
+              
+              {/* New boost info */}
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 mb-6">
+                <div className="text-center">
+                  <span className="text-white/60 text-xs">New Boost:</span>
+                  <p className="text-green-400 font-bold">{pendingMultiplierReward.name}</p>
+                  <p className="text-white/60 text-xs">{pendingMultiplierReward.description}</p>
+                </div>
+              </div>
+              
+              {/* Action buttons */}
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleCancelReplaceMultiplier}
+                  className="flex-1"
+                >
+                  Keep Current
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleConfirmReplaceMultiplier}
+                  className="flex-1"
+                >
+                  Replace Boost
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* XP balance */}
       <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6">
         <div className="flex items-center justify-between">
@@ -779,6 +916,9 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
                   <div className="flex items-center gap-2 text-white/70">
                     <span className="text-green-400">✓</span> 2x XP boost (24h)
                   </div>
+                  <div className="flex items-center gap-2 text-orange-400 font-medium">
+                    <span className="text-green-400">✓</span> Free shipping at {formatPrice(VIP_BRONZE_FREE_SHIPPING_THRESHOLD)}+
+                  </div>
                   <div className="flex items-center gap-2 text-white/70">
                     <span className="text-green-400">✓</span> VIP Mystery Boxes
                   </div>
@@ -827,14 +967,14 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
                   <div className="flex items-center gap-2 text-white/70">
                     <span className="text-green-400">✓</span> 3x XP boost (24h)
                   </div>
+                  <div className="flex items-center gap-2 text-yellow-400 font-medium">
+                    <span className="text-green-400">✓</span> Free shipping at {formatPrice(VIP_GOLD_FREE_SHIPPING_THRESHOLD)}+
+                  </div>
                   <div className="flex items-center gap-2 text-white/70">
                     <span className="text-green-400">✓</span> Premium Mystery Boxes
                   </div>
                   <div className="flex items-center gap-2 text-white/70">
                     <span className="text-green-400">✓</span> 24h early sale access
-                  </div>
-                  <div className="flex items-center gap-2 text-white/70">
-                    <span className="text-green-400">✓</span> Priority support
                   </div>
                 </div>
               </div>
@@ -878,6 +1018,9 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
                   <div className="flex items-center gap-2 text-white/70">
                     <span className="text-green-400">✓</span> 4x XP boost (24h)
                   </div>
+                  <div className="flex items-center gap-2 text-amber-400 font-medium">
+                    <span className="text-green-400">✓</span> Free shipping at {formatPrice(VIP_PLATINUM_FREE_SHIPPING_THRESHOLD)}+
+                  </div>
                   <div className="flex items-center gap-2 text-white/70">
                     <span className="text-green-400">✓</span> Elite Mystery Boxes
                   </div>
@@ -886,9 +1029,6 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
                   </div>
                   <div className="flex items-center gap-2 text-white/70">
                     <span className="text-green-400">✓</span> Monthly 100 XP + spin
-                  </div>
-                  <div className="flex items-center gap-2 text-white/70">
-                    <span className="text-green-400">✓</span> Diamond Frame access
                   </div>
                 </div>
               </div>

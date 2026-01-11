@@ -2,28 +2,50 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { STANDARD_SHIPPING_FEE } from "@/lib/constants";
-import { useShippingThreshold } from "@/hooks/useShippingThreshold";
+import { useShippingThreshold, SHIPPING_TIERS } from "@/hooks/useShippingThreshold";
 import { formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface FreeDeliveryIndicatorProps {
   subtotal: number;
   variant?: "default" | "compact";
+  showVIPBenefits?: boolean;
 }
 
-export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDeliveryIndicatorProps) {
-  const { threshold: FREE_SHIPPING_THRESHOLD, isVIP } = useShippingThreshold();
-  
+export function FreeDeliveryIndicator({ 
+  subtotal, 
+  variant = "default",
+  showVIPBenefits = false,
+}: FreeDeliveryIndicatorProps) {
+  const { 
+    threshold: freeShippingThreshold, 
+    isVIP, 
+    vipTier,
+    tierInfo,
+    calculateFee,
+    getShippingInfo,
+    standardFee,
+    reducedFee,
+    midThreshold,
+    regularThreshold,
+    bronzeThreshold,
+    goldThreshold,
+    platinumThreshold,
+  } = useShippingThreshold();
+
+  const shippingInfo = getShippingInfo(subtotal);
+  const currentFee = calculateFee(subtotal);
+
   const { progress, amountRemaining, isFreeShipping } = useMemo(() => {
-    const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
-    const progressPercent = Math.min((subtotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
+    const remaining = freeShippingThreshold - subtotal;
+    const progressPercent = Math.min((subtotal / freeShippingThreshold) * 100, 100);
     
     return {
       progress: progressPercent,
       amountRemaining: Math.max(0, remaining),
-      isFreeShipping: subtotal >= FREE_SHIPPING_THRESHOLD,
+      isFreeShipping: subtotal >= freeShippingThreshold,
     };
-  }, [subtotal, FREE_SHIPPING_THRESHOLD]);
+  }, [subtotal, freeShippingThreshold]);
 
   if (variant === "compact") {
     return (
@@ -43,9 +65,18 @@ export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDel
                 🎉 You&apos;ve unlocked FREE delivery!
               </p>
             ) : (
-              <p className="text-sm">
-                Add <span className="font-bold text-[var(--color-main-1)]">{formatPrice(amountRemaining)}</span> for <span className="font-bold text-[var(--color-main-2)]">FREE</span> delivery
-              </p>
+              <div>
+                <p className="text-sm">
+                  {shippingInfo.amountToNextTier && shippingInfo.nextTierThreshold === freeShippingThreshold ? (
+                    <>Add <span className="font-bold text-[var(--color-main-1)]">{formatPrice(amountRemaining)}</span> for <span className="font-bold text-[var(--color-main-2)]">FREE</span> delivery</>
+                  ) : shippingInfo.amountToNextTier ? (
+                    <>Add <span className="font-bold text-[var(--color-main-1)]">{formatPrice(shippingInfo.amountToNextTier)}</span> to save <span className="font-bold text-[var(--color-main-2)]">{formatPrice(standardFee - reducedFee)}</span> on shipping</>
+                  ) : null}
+                </p>
+                <p className="text-xs text-white/50 mt-0.5">
+                  Current delivery: {formatPrice(currentFee)}
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -76,7 +107,7 @@ export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDel
         {/* Progress labels */}
         <div className="flex justify-between mt-2 text-xs text-[var(--muted-foreground)]">
           <span>R0</span>
-          <span>{formatPrice(FREE_SHIPPING_THRESHOLD)}</span>
+          <span>{formatPrice(freeShippingThreshold)}</span>
         </div>
       </div>
     );
@@ -116,7 +147,11 @@ export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDel
                 🎉 FREE Delivery Unlocked!
               </motion.p>
               <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                Your order qualifies for free shipping
+                {isVIP ? (
+                  <span className={tierInfo.color}>{tierInfo.icon} {tierInfo.name} perk applied!</span>
+                ) : (
+                  "Your order qualifies for free shipping"
+                )}
               </p>
             </>
           ) : (
@@ -126,9 +161,9 @@ export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDel
               </p>
               <p className="text-sm text-[var(--muted-foreground)] mt-1">
                 {isVIP ? (
-                  <span className="text-amber-400">👑 VIP: Orders over {formatPrice(FREE_SHIPPING_THRESHOLD)} ship free!</span>
+                  <span className={tierInfo.color}>{tierInfo.icon} {tierInfo.name}: Free shipping at {formatPrice(freeShippingThreshold)}+</span>
                 ) : (
-                  <>Orders over {formatPrice(FREE_SHIPPING_THRESHOLD)} ship free!</>
+                  <>Orders over {formatPrice(freeShippingThreshold)} ship free!</>
                 )}
               </p>
             </>
@@ -136,7 +171,7 @@ export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDel
         </div>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar with tier markers */}
       <div className="relative">
         <div className="relative h-3 bg-[var(--color-dark-4)] rounded-full overflow-hidden">
           <motion.div
@@ -164,9 +199,12 @@ export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDel
             <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${progress > 0 ? 'bg-[var(--color-main-1)]' : 'bg-[var(--color-dark-4)]'}`} />
             <span className="text-xs text-[var(--muted-foreground)]">R0</span>
           </div>
-          <div className="text-center">
-            <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${progress >= 50 ? 'bg-[var(--color-main-3)]' : 'bg-[var(--color-dark-4)]'}`} />
-            <span className="text-xs text-[var(--muted-foreground)]">{formatPrice(FREE_SHIPPING_THRESHOLD / 2)}</span>
+          {/* R590 marker - reduced shipping */}
+          <div className="text-center" style={{ marginLeft: `${(midThreshold / freeShippingThreshold) * 100 - 8}%` }}>
+            <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${subtotal >= midThreshold ? 'bg-amber-500' : 'bg-[var(--color-dark-4)]'}`} />
+            <span className={`text-xs ${subtotal >= midThreshold ? 'text-amber-400' : 'text-[var(--muted-foreground)]'}`}>
+              {formatPrice(midThreshold)}
+            </span>
           </div>
           <div className="text-center">
             <motion.div 
@@ -175,20 +213,163 @@ export function FreeDeliveryIndicator({ subtotal, variant = "default" }: FreeDel
               transition={{ duration: 0.5, repeat: isFreeShipping ? 3 : 0 }}
             />
             <span className={`text-xs ${isFreeShipping ? 'text-[var(--color-main-2)] font-bold' : 'text-[var(--muted-foreground)]'}`}>
-              {formatPrice(FREE_SHIPPING_THRESHOLD)}
+              {formatPrice(freeShippingThreshold)}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Current shipping cost indicator */}
+      {/* Current shipping cost & tier info */}
       {!isFreeShipping && (
-        <p className="text-center text-xs text-[var(--muted-foreground)] mt-4">
-          Current delivery fee: <span className="text-white">{formatPrice(STANDARD_SHIPPING_FEE)}</span>
-        </p>
+        <div className="mt-4 space-y-2">
+          <div className="flex justify-between items-center text-sm bg-[var(--color-dark-3)]/50 px-3 py-2 rounded">
+            <span className="text-white/60">Current delivery fee:</span>
+            <span className="font-bold text-white">{formatPrice(currentFee)}</span>
+          </div>
+          
+          {/* Show savings opportunity */}
+          {subtotal < midThreshold && (
+            <p className="text-xs text-center text-amber-400">
+              💡 Add {formatPrice(midThreshold - subtotal)} to reduce shipping to {formatPrice(reducedFee)}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* VIP Benefits section */}
+      {(showVIPBenefits || (!isVIP && subtotal >= 500)) && !isVIP && (
+        <div className="mt-4 pt-4 border-t border-[var(--color-dark-3)]">
+          <p className="text-xs text-center text-white/50 mb-3">
+            🎁 VIP Members get lower free shipping thresholds!
+          </p>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="text-center p-2 bg-orange-500/10 rounded border border-orange-500/20">
+              <span className="block text-orange-400">🔥 Bronze</span>
+              <span className="text-white/70">Free at {formatPrice(bronzeThreshold)}</span>
+            </div>
+            <div className="text-center p-2 bg-yellow-500/10 rounded border border-yellow-500/20">
+              <span className="block text-yellow-400">👑 Gold</span>
+              <span className="text-white/70">Free at {formatPrice(goldThreshold)}</span>
+            </div>
+            <div className="text-center p-2 bg-amber-500/10 rounded border border-amber-500/20">
+              <span className="block text-amber-400">✨ Platinum</span>
+              <span className="text-white/70">Free at {formatPrice(platinumThreshold)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Show VIP advantage if VIP */}
+      {isVIP && !isFreeShipping && freeShippingThreshold < regularThreshold && (
+        <div className="mt-4 pt-4 border-t border-[var(--color-dark-3)]">
+          <p className="text-xs text-center">
+            <span className={tierInfo.color}>{tierInfo.icon} {tierInfo.name} Perk:</span>{" "}
+            <span className="text-white/60">
+              You save {formatPrice(regularThreshold - freeShippingThreshold)} on your free shipping threshold!
+            </span>
+          </p>
+        </div>
       )}
     </div>
   );
 }
 
+/**
+ * Shipping tier breakdown component for info pages
+ */
+export function ShippingTierBreakdown({ className }: { className?: string }) {
+  const { 
+    isVIP, 
+    vipTier, 
+    tierInfo,
+    standardFee,
+    reducedFee,
+    midThreshold,
+    regularThreshold,
+    bronzeThreshold,
+    goldThreshold,
+    platinumThreshold,
+  } = useShippingThreshold();
 
+  return (
+    <div className={cn("space-y-6", className)}>
+      {/* Standard Shipping Tiers */}
+      <div>
+        <h3 className="font-heading text-lg mb-4 flex items-center gap-2">
+          <span>📦</span> Standard Shipping Rates
+        </h3>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center p-3 bg-[var(--color-dark-3)] rounded">
+            <span className="text-white/70">Below {formatPrice(midThreshold)}</span>
+            <span className="font-bold">{formatPrice(standardFee)}</span>
+          </div>
+          <div className="flex justify-between items-center p-3 bg-[var(--color-dark-3)] rounded">
+            <span className="text-white/70">{formatPrice(midThreshold)} - {formatPrice(regularThreshold - 1)}</span>
+            <span className="font-bold text-amber-400">{formatPrice(reducedFee)}</span>
+          </div>
+          <div className="flex justify-between items-center p-3 bg-green-500/10 border border-green-500/30 rounded">
+            <span className="text-white/70">{formatPrice(regularThreshold)}+</span>
+            <span className="font-bold text-green-400">FREE</span>
+          </div>
+        </div>
+      </div>
+
+      {/* VIP Free Shipping Thresholds */}
+      <div>
+        <h3 className="font-heading text-lg mb-4 flex items-center gap-2">
+          <span>👑</span> VIP Free Shipping Thresholds
+        </h3>
+        <p className="text-sm text-white/50 mb-4">
+          VIP members unlock lower free shipping thresholds!
+        </p>
+        <div className="space-y-2">
+          <div className={cn(
+            "flex justify-between items-center p-3 rounded border",
+            vipTier === "bronze" 
+              ? "bg-orange-500/20 border-orange-500/50" 
+              : "bg-[var(--color-dark-3)] border-transparent"
+          )}>
+            <span className="flex items-center gap-2">
+              <span>🔥</span>
+              <span className="text-orange-400">Bronze VIP</span>
+              {vipTier === "bronze" && <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded">Your Tier</span>}
+            </span>
+            <span className="font-bold">Free at {formatPrice(bronzeThreshold)}+</span>
+          </div>
+          <div className={cn(
+            "flex justify-between items-center p-3 rounded border",
+            vipTier === "gold" 
+              ? "bg-yellow-500/20 border-yellow-500/50" 
+              : "bg-[var(--color-dark-3)] border-transparent"
+          )}>
+            <span className="flex items-center gap-2">
+              <span>👑</span>
+              <span className="text-yellow-400">Gold VIP</span>
+              {vipTier === "gold" && <span className="text-xs bg-yellow-500 text-black px-2 py-0.5 rounded">Your Tier</span>}
+            </span>
+            <span className="font-bold">Free at {formatPrice(goldThreshold)}+</span>
+          </div>
+          <div className={cn(
+            "flex justify-between items-center p-3 rounded border",
+            vipTier === "platinum" 
+              ? "bg-amber-500/20 border-amber-400/50" 
+              : "bg-[var(--color-dark-3)] border-transparent"
+          )}>
+            <span className="flex items-center gap-2">
+              <span>✨</span>
+              <span className="text-amber-400">Platinum VIP</span>
+              {vipTier === "platinum" && <span className="text-xs bg-amber-400 text-black px-2 py-0.5 rounded">Your Tier</span>}
+            </span>
+            <span className="font-bold">Free at {formatPrice(platinumThreshold)}+</span>
+          </div>
+        </div>
+        
+        {!isVIP && (
+          <p className="text-xs text-center text-white/40 mt-4">
+            Become a VIP to unlock lower free shipping thresholds!
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}

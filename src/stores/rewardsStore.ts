@@ -624,9 +624,11 @@ export const useRewardsStore = create<RewardsStore>()(
       },
 
       // Check if a shipping reward would be redundant
+      // Note: This uses a simple check - the actual threshold may vary by VIP tier
       isShippingRewardRedundant: (subtotal) => {
-        // Import threshold from constants (500)
-        const FREE_SHIPPING_THRESHOLD = 500;
+        // Use the highest threshold (non-VIP) as baseline
+        // This is conservative - VIP users might still find value at lower thresholds
+        const FREE_SHIPPING_THRESHOLD = 1050; // From env or constants
         return subtotal >= FREE_SHIPPING_THRESHOLD;
       },
 

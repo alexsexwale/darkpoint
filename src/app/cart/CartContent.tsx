@@ -9,15 +9,14 @@ import { useShippingThreshold } from "@/hooks";
 import { Button, FreeDeliveryIndicator } from "@/components/ui";
 import { RewardSelector } from "@/components/cart/RewardSelector";
 import { formatPrice } from "@/lib/utils";
-import { STANDARD_SHIPPING_FEE } from "@/lib/constants";
 
 export function CartContent() {
   const { items, removeItem, updateQuantity, subtotal, clearCart } = useCartStore();
   const { appliedReward, appliedVIPPrize, getDiscountAmount, getShippingDiscount } = useRewardsStore();
-  const { threshold: freeShippingThreshold, isVIP } = useShippingThreshold();
+  const { threshold: freeShippingThreshold, isVIP, calculateFee, tierInfo } = useShippingThreshold();
 
   const total = subtotal();
-  const baseShippingCost = total >= freeShippingThreshold ? 0 : STANDARD_SHIPPING_FEE;
+  const baseShippingCost = calculateFee(total);
   
   // Calculate reward discounts
   const discountAmount = getDiscountAmount(total);
