@@ -1609,6 +1609,9 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           
           // Quest completed - add XP with multiplier applied (async, don't wait)
           (async () => {
+            console.log(`=== Quest Completed: ${q.title} ===`);
+            console.log(`Quest XP Reward: ${q.xpReward}`);
+            
             // Get active multiplier to calculate correct XP
             const activeMultiplier = get().activeMultiplier;
             const multiplierValue = activeMultiplier?.multiplier_value || activeMultiplier?.multiplier || 1;
@@ -1616,8 +1619,12 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             const finalXP = multiplierValue > 1 ? Math.round(baseXP * multiplierValue) : baseXP;
             const bonusXP = finalXP - baseXP;
             
+            console.log(`Multiplier: ${multiplierValue}, Base XP: ${baseXP}, Final XP: ${finalXP}`);
+            
             // Add XP via database FIRST (this persists the XP)
+            console.log("Calling addXP...");
             const success = await get().addXP(q.xpReward, "quest", `Quest: ${q.title}`);
+            console.log(`addXP result: ${success}`);
             
             if (success) {
               // Show notification ONLY after XP is confirmed saved
