@@ -18,16 +18,41 @@ interface Card {
 }
 
 const MEMORY_EMOJIS = ["🎮", "🕹️", "💎", "⚡", "🔥", "👑", "🏆", "✨"];
+const MAX_MEMORY_GAMES_PER_DAY = 3;
 
-function MemoryGame({ onWin }: { onWin: (xp: number) => void }) {
+function MemoryGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; onGameComplete?: () => void }) {
   const [cards, setCards] = useState<Card[]>([]);
   const [flippedCards, setFlippedCards] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
+  const [dailyGamesLeft, setDailyGamesLeft] = useState(MAX_MEMORY_GAMES_PER_DAY);
+  const [canPlay, setCanPlay] = useState(true);
 
-  // Initialize game
+  // Initialize game and check daily limit
   useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const savedDate = localStorage.getItem("memoryGamesDate");
+    const savedGames = localStorage.getItem("memoryGamesPlayed");
+    
+    let gamesPlayed = 0;
+    if (savedDate === today) {
+      gamesPlayed = parseInt(savedGames || "0");
+    } else {
+      localStorage.setItem("memoryGamesDate", today);
+      localStorage.setItem("memoryGamesPlayed", "0");
+    }
+    
+    const remaining = MAX_MEMORY_GAMES_PER_DAY - gamesPlayed;
+    setDailyGamesLeft(remaining);
+    setCanPlay(remaining > 0);
+    
+    if (remaining > 0) {
+      initializeCards();
+    }
+  }, []);
+
+  const initializeCards = () => {
     const shuffled = [...MEMORY_EMOJIS, ...MEMORY_EMOJIS]
       .sort(() => Math.random() - 0.5)
       .map((emoji, index) => ({
@@ -37,10 +62,10 @@ function MemoryGame({ onWin }: { onWin: (xp: number) => void }) {
         isMatched: false,
       }));
     setCards(shuffled);
-  }, []);
+  };
 
   const handleCardClick = (id: number) => {
-    if (isLocked || cards[id].isFlipped || cards[id].isMatched) return;
+    if (isLocked || cards[id].isFlipped || cards[id].isMatched || !canPlay) return;
 
     const newCards = [...cards];
     newCards[id].isFlipped = true;
@@ -64,11 +89,20 @@ function MemoryGame({ onWin }: { onWin: (xp: number) => void }) {
           setFlippedCards([]);
           setIsLocked(false);
 
-          // Check win
-          if (matched.every((c) => c.isMatched)) {
+          // Check win - need to include the 2 cards we just matched
+          const totalMatched = matched.filter(c => c.isMatched).length;
+          if (totalMatched === matched.length) {
             setGameComplete(true);
-            const xpReward = Math.max(50 - moves * 2, 10); // Less moves = more XP
+            const currentMoves = moves + 1; // Include this move
+            const xpReward = Math.max(50 - currentMoves * 2, 10); // Less moves = more XP
             onWin(xpReward);
+            
+            // Update games played
+            const gamesPlayed = parseInt(localStorage.getItem("memoryGamesPlayed") || "0") + 1;
+            localStorage.setItem("memoryGamesPlayed", gamesPlayed.toString());
+            setDailyGamesLeft(MAX_MEMORY_GAMES_PER_DAY - gamesPlayed);
+            
+            if (onGameComplete) onGameComplete();
           }
         }, 500);
       } else {
@@ -86,26 +120,44 @@ function MemoryGame({ onWin }: { onWin: (xp: number) => void }) {
   };
 
   const resetGame = () => {
-    const shuffled = [...MEMORY_EMOJIS, ...MEMORY_EMOJIS]
-      .sort(() => Math.random() - 0.5)
-      .map((emoji, index) => ({
-        id: index,
-        emoji,
-        isFlipped: false,
-        isMatched: false,
-      }));
-    setCards(shuffled);
+    const gamesPlayed = parseInt(localStorage.getItem("memoryGamesPlayed") || "0");
+    const remaining = MAX_MEMORY_GAMES_PER_DAY - gamesPlayed;
+    
+    if (remaining <= 0) {
+      setCanPlay(false);
+      return;
+    }
+    
+    initializeCards();
     setFlippedCards([]);
     setMoves(0);
     setIsLocked(false);
     setGameComplete(false);
   };
 
+  if (!canPlay) {
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Daily Limit Reached</h3>
+        <p className="text-4xl mb-4">⏰</p>
+        <p className="text-white/60 mb-4">
+          You&apos;ve played all {MAX_MEMORY_GAMES_PER_DAY} memory games for today.
+        </p>
+        <p className="text-purple-400 text-sm">Come back tomorrow for more!</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-heading text-xl">Memory Match</h3>
-        <span className="text-white/60 text-sm">Moves: {moves}</span>
+        <div className="text-right">
+          <span className="text-white/60 text-sm block">Moves: {moves}</span>
+          <span className="text-white/40 text-xs">
+            {dailyGamesLeft} game{dailyGamesLeft !== 1 ? 's' : ''} left today
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-2 mb-4">
@@ -129,9 +181,16 @@ function MemoryGame({ onWin }: { onWin: (xp: number) => void }) {
       {gameComplete && (
         <div className="text-center p-4 bg-green-500/20 rounded-lg">
           <p className="text-green-400 font-semibold">🎉 You won in {moves} moves!</p>
-          <Button variant="outline" size="sm" onClick={resetGame} className="mt-2">
-            Play Again
-          </Button>
+          <p className="text-white/40 text-sm mt-1">
+            {dailyGamesLeft > 0 ? `${dailyGamesLeft} game${dailyGamesLeft !== 1 ? 's' : ''} left today` : "No games left today"}
+          </p>
+          {dailyGamesLeft > 0 ? (
+            <Button variant="outline" size="sm" onClick={resetGame} className="mt-2">
+              Play Again
+            </Button>
+          ) : (
+            <p className="text-purple-400 text-sm mt-2">Come back tomorrow!</p>
+          )}
         </div>
       )}
     </div>
@@ -251,66 +310,176 @@ function SlotMachine({ onWin }: { onWin: (xp: number) => void }) {
   );
 }
 
-// Trivia Game
-const TRIVIA_QUESTIONS = [
-  {
-    question: "What does XP stand for?",
-    options: ["Extra Points", "Experience Points", "Extreme Power", "eXtra Perks"],
-    correct: 1,
-  },
-  {
-    question: "How many days in a login streak cycle?",
-    options: ["5", "7", "10", "14"],
-    correct: 1,
-  },
-  {
-    question: "What do you get for reaching Level 10?",
-    options: ["Free shipping", "Special badge", "Bonus XP", "All of the above"],
-    correct: 3,
-  },
-  {
-    question: "Which badge is the rarest?",
-    options: ["Fire Badge", "Crown Badge", "Gold Frame", "All equal"],
-    correct: 2,
-  },
-  {
-    question: "What code unlocks a secret easter egg?",
-    options: ["UP UP DOWN DOWN", "LEFT LEFT RIGHT RIGHT", "A B A B", "1 2 3 4"],
-    correct: 0,
-  },
+// Trivia Game - Large question pool for randomization
+const ALL_TRIVIA_QUESTIONS = [
+  // Darkpoint specific questions
+  { question: "What does XP stand for?", options: ["Extra Points", "Experience Points", "Extreme Power", "eXtra Perks"], correct: 1 },
+  { question: "How many days in a login streak cycle?", options: ["5", "7", "10", "14"], correct: 1 },
+  { question: "What do you get for reaching Level 10?", options: ["Free shipping", "Special badge", "Bonus XP", "All of the above"], correct: 3 },
+  { question: "Which VIP tier is the highest?", options: ["Bronze Tier", "Gold Tier", "Platinum Tier", "Diamond Tier"], correct: 2 },
+  { question: "What code unlocks a secret easter egg?", options: ["UP UP DOWN DOWN", "LEFT LEFT RIGHT RIGHT", "A B A B", "1 2 3 4"], correct: 0 },
+  { question: "How much XP do you get for writing a review?", options: ["10 XP", "15 XP", "25 XP", "50 XP"], correct: 2 },
+  { question: "What is the minimum order for free shipping?", options: ["R300", "R400", "R500", "R600"], correct: 2 },
+  { question: "How many referrals do you need for the 'Referral Champion' achievement?", options: ["5", "10", "15", "20"], correct: 1 },
+  { question: "What multiplier does a 1.5x XP boost give?", options: ["1.25x", "1.5x", "1.75x", "2x"], correct: 1 },
+  { question: "How many daily quests are available each day?", options: ["2", "3", "4", "5"], correct: 2 },
+  
+  // Gaming & Tech trivia
+  { question: "What year was the first PlayStation released?", options: ["1992", "1994", "1996", "1998"], correct: 1 },
+  { question: "What does RGB stand for in computing?", options: ["Really Good Brightness", "Red Green Blue", "Random Generated Bits", "Rapid Graphic Board"], correct: 1 },
+  { question: "Which company created the Mario character?", options: ["Sony", "Sega", "Nintendo", "Atari"], correct: 2 },
+  { question: "What was the first commercially successful video game?", options: ["Pong", "Pac-Man", "Space Invaders", "Tetris"], correct: 0 },
+  { question: "What does CPU stand for?", options: ["Central Processing Unit", "Computer Personal Unit", "Core Power Unit", "Central Power Utility"], correct: 0 },
+  { question: "In what year was Minecraft officially released?", options: ["2009", "2011", "2013", "2015"], correct: 1 },
+  { question: "What is the best-selling video game console of all time?", options: ["PlayStation 4", "Nintendo Wii", "PlayStation 2", "Nintendo Switch"], correct: 2 },
+  { question: "What does SSD stand for?", options: ["Super Speed Drive", "Solid State Drive", "System Storage Device", "Sequential Serial Drive"], correct: 1 },
+  { question: "Which game popularized the battle royale genre?", options: ["Fortnite", "PUBG", "Apex Legends", "H1Z1"], correct: 1 },
+  { question: "What is the name of Zelda's main character?", options: ["Zelda", "Link", "Ganon", "Epona"], correct: 1 },
+  
+  // Pop culture & general knowledge
+  { question: "What planet is known as the Red Planet?", options: ["Venus", "Jupiter", "Mars", "Saturn"], correct: 2 },
+  { question: "How many continents are there?", options: ["5", "6", "7", "8"], correct: 2 },
+  { question: "What is the largest ocean on Earth?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 },
+  { question: "In what year did the Titanic sink?", options: ["1905", "1912", "1918", "1923"], correct: 1 },
+  { question: "What is the chemical symbol for Gold?", options: ["Go", "Gd", "Au", "Ag"], correct: 2 },
+  { question: "Which country invented pizza?", options: ["France", "Spain", "Italy", "Greece"], correct: 2 },
+  { question: "What is the hardest natural substance?", options: ["Titanium", "Diamond", "Platinum", "Quartz"], correct: 1 },
+  { question: "How many bones are in the human body?", options: ["186", "206", "226", "246"], correct: 1 },
+  { question: "What is the largest mammal?", options: ["Elephant", "Blue Whale", "Giraffe", "Hippopotamus"], correct: 1 },
+  { question: "What is the capital of Australia?", options: ["Sydney", "Melbourne", "Canberra", "Perth"], correct: 2 },
+  
+  // Math & Logic
+  { question: "What is 15% of 200?", options: ["25", "30", "35", "40"], correct: 1 },
+  { question: "What is the next number: 2, 4, 8, 16, ?", options: ["24", "28", "32", "36"], correct: 2 },
+  { question: "How many sides does a hexagon have?", options: ["5", "6", "7", "8"], correct: 1 },
+  { question: "What is the square root of 144?", options: ["10", "11", "12", "14"], correct: 2 },
+  { question: "If you have 3 apples and take away 2, how many do you have?", options: ["1", "2", "3", "5"], correct: 1 },
+  
+  // South Africa specific
+  { question: "What is the currency of South Africa?", options: ["Dollar", "Rand", "Pound", "Euro"], correct: 1 },
+  { question: "How many provinces does South Africa have?", options: ["7", "8", "9", "10"], correct: 2 },
+  { question: "What is the largest city in South Africa?", options: ["Cape Town", "Durban", "Pretoria", "Johannesburg"], correct: 3 },
+  { question: "Which ocean borders South Africa's west coast?", options: ["Indian", "Pacific", "Atlantic", "Arctic"], correct: 2 },
+  { question: "What year did South Africa host the FIFA World Cup?", options: ["2006", "2010", "2014", "2018"], correct: 1 },
 ];
 
-function TriviaGame({ onWin }: { onWin: (xp: number) => void }) {
+const QUESTIONS_PER_GAME = 5;
+const MAX_TRIVIA_GAMES_PER_DAY = 3;
+
+// Shuffle array using Fisher-Yates algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function TriviaGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; onGameComplete?: () => void }) {
+  const [questions, setQuestions] = useState<typeof ALL_TRIVIA_QUESTIONS>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const [dailyGamesLeft, setDailyGamesLeft] = useState(MAX_TRIVIA_GAMES_PER_DAY);
+  const [canPlay, setCanPlay] = useState(true);
+
+  // Initialize game with random questions and check daily limit
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const savedDate = localStorage.getItem("triviaGamesDate");
+    const savedGames = localStorage.getItem("triviaGamesPlayed");
+    
+    let gamesPlayed = 0;
+    if (savedDate === today) {
+      gamesPlayed = parseInt(savedGames || "0");
+    } else {
+      localStorage.setItem("triviaGamesDate", today);
+      localStorage.setItem("triviaGamesPlayed", "0");
+    }
+    
+    const remaining = MAX_TRIVIA_GAMES_PER_DAY - gamesPlayed;
+    setDailyGamesLeft(remaining);
+    setCanPlay(remaining > 0);
+    
+    if (remaining > 0) {
+      // Pick random questions
+      const randomQuestions = shuffleArray(ALL_TRIVIA_QUESTIONS).slice(0, QUESTIONS_PER_GAME);
+      // Also shuffle answer options for each question
+      const questionsWithShuffledOptions = randomQuestions.map(q => {
+        const shuffledOptions = [...q.options];
+        const correctAnswer = q.options[q.correct];
+        // Shuffle options
+        for (let i = shuffledOptions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+        }
+        // Find new correct index
+        const newCorrect = shuffledOptions.indexOf(correctAnswer);
+        return { ...q, options: shuffledOptions, correct: newCorrect };
+      });
+      setQuestions(questionsWithShuffledOptions);
+    }
+  }, []);
 
   const handleAnswer = (index: number) => {
-    if (selectedAnswer !== null) return;
+    if (selectedAnswer !== null || questions.length === 0) return;
 
     setSelectedAnswer(index);
     setShowResult(true);
 
-    if (index === TRIVIA_QUESTIONS[currentQuestion].correct) {
-      setScore((s) => s + 1);
+    const isCorrect = index === questions[currentQuestion].correct;
+    const newScore = isCorrect ? score + 1 : score;
+    if (isCorrect) {
+      setScore(newScore);
     }
 
     setTimeout(() => {
-      if (currentQuestion < TRIVIA_QUESTIONS.length - 1) {
+      if (currentQuestion < questions.length - 1) {
         setCurrentQuestion((q) => q + 1);
         setSelectedAnswer(null);
         setShowResult(false);
       } else {
         setGameOver(true);
-        const xpReward = score * 10 + (index === TRIVIA_QUESTIONS[currentQuestion].correct ? 10 : 0);
+        // Award XP based on final score (already includes this answer)
+        const xpReward = newScore * 10; // 10 XP per correct answer
         if (xpReward > 0) onWin(xpReward);
+        
+        // Update games played
+        const gamesPlayed = parseInt(localStorage.getItem("triviaGamesPlayed") || "0") + 1;
+        localStorage.setItem("triviaGamesPlayed", gamesPlayed.toString());
+        setDailyGamesLeft(MAX_TRIVIA_GAMES_PER_DAY - gamesPlayed);
+        
+        if (onGameComplete) onGameComplete();
       }
     }, 1500);
   };
 
   const resetGame = () => {
+    const gamesPlayed = parseInt(localStorage.getItem("triviaGamesPlayed") || "0");
+    const remaining = MAX_TRIVIA_GAMES_PER_DAY - gamesPlayed;
+    
+    if (remaining <= 0) {
+      setCanPlay(false);
+      return;
+    }
+    
+    // Pick new random questions
+    const randomQuestions = shuffleArray(ALL_TRIVIA_QUESTIONS).slice(0, QUESTIONS_PER_GAME);
+    const questionsWithShuffledOptions = randomQuestions.map(q => {
+      const shuffledOptions = [...q.options];
+      const correctAnswer = q.options[q.correct];
+      for (let i = shuffledOptions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+      }
+      const newCorrect = shuffledOptions.indexOf(correctAnswer);
+      return { ...q, options: shuffledOptions, correct: newCorrect };
+    });
+    setQuestions(questionsWithShuffledOptions);
+    
     setCurrentQuestion(0);
     setScore(0);
     setSelectedAnswer(null);
@@ -318,36 +487,68 @@ function TriviaGame({ onWin }: { onWin: (xp: number) => void }) {
     setGameOver(false);
   };
 
-  if (gameOver) {
-    const finalScore = score + (selectedAnswer === TRIVIA_QUESTIONS[TRIVIA_QUESTIONS.length - 1].correct ? 1 : 0);
+  if (!canPlay) {
     return (
       <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
-        <h3 className="font-heading text-xl mb-4">Game Over!</h3>
-        <p className="text-4xl mb-4">
-          {finalScore === TRIVIA_QUESTIONS.length ? "🏆" : finalScore >= 3 ? "⭐" : "📝"}
-        </p>
+        <h3 className="font-heading text-xl mb-4">Daily Limit Reached</h3>
+        <p className="text-4xl mb-4">⏰</p>
         <p className="text-white/60 mb-4">
-          You got {finalScore}/{TRIVIA_QUESTIONS.length} correct!
+          You&apos;ve played all {MAX_TRIVIA_GAMES_PER_DAY} trivia games for today.
         </p>
-        <p className="text-[var(--color-main-1)] font-semibold mb-4">
-          +{finalScore * 10} XP earned!
-        </p>
-        <Button variant="outline" onClick={resetGame}>
-          Play Again
-        </Button>
+        <p className="text-purple-400 text-sm">Come back tomorrow for more!</p>
       </div>
     );
   }
 
-  const question = TRIVIA_QUESTIONS[currentQuestion];
+  if (gameOver) {
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Game Over!</h3>
+        <p className="text-4xl mb-4">
+          {score === QUESTIONS_PER_GAME ? "🏆" : score >= 3 ? "⭐" : "📝"}
+        </p>
+        <p className="text-white/60 mb-4">
+          You got {score}/{QUESTIONS_PER_GAME} correct!
+        </p>
+        <p className="text-[var(--color-main-1)] font-semibold mb-4">
+          +{score * 10} XP earned!
+        </p>
+        <p className="text-white/40 text-sm mb-4">
+          {dailyGamesLeft > 0 ? `${dailyGamesLeft} game${dailyGamesLeft !== 1 ? 's' : ''} left today` : "No games left today"}
+        </p>
+        {dailyGamesLeft > 0 ? (
+          <Button variant="outline" onClick={resetGame}>
+            Play Again
+          </Button>
+        ) : (
+          <p className="text-purple-400 text-sm">Come back tomorrow!</p>
+        )}
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <div className="animate-spin w-8 h-8 border-2 border-[var(--color-main-1)] border-t-transparent rounded-full mx-auto" />
+      </div>
+    );
+  }
+
+  const question = questions[currentQuestion];
 
   return (
     <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-heading text-xl">Darkpoint Trivia</h3>
-        <span className="text-white/60 text-sm">
-          {currentQuestion + 1}/{TRIVIA_QUESTIONS.length}
-        </span>
+        <div className="text-right">
+          <span className="text-white/60 text-sm block">
+            {currentQuestion + 1}/{QUESTIONS_PER_GAME}
+          </span>
+          <span className="text-white/40 text-xs">
+            {dailyGamesLeft} game{dailyGamesLeft !== 1 ? 's' : ''} left today
+          </span>
+        </div>
       </div>
 
       <p className="text-lg mb-4">{question.question}</p>
@@ -497,7 +698,8 @@ export function ArcadePageClient() {
               <div className="text-5xl mb-4">🧠</div>
               <h3 className="font-heading text-xl mb-2">Memory Match</h3>
               <p className="text-sm text-white/60">Match pairs to win XP</p>
-              <div className="mt-4 text-xs text-purple-400">Up to 50 XP</div>
+              <div className="mt-2 text-xs text-white/40">{MAX_MEMORY_GAMES_PER_DAY} games per day</div>
+              <div className="mt-2 text-xs text-purple-400">Up to 50 XP per game</div>
             </motion.button>
 
             <motion.button
@@ -508,8 +710,9 @@ export function ArcadePageClient() {
             >
               <div className="text-5xl mb-4">🎰</div>
               <h3 className="font-heading text-xl mb-2">Lucky Slots</h3>
-              <p className="text-sm text-white/60">3 daily spins for prizes</p>
-              <div className="mt-4 text-xs text-purple-400">Up to 100 XP</div>
+              <p className="text-sm text-white/60">Spin to win prizes</p>
+              <div className="mt-2 text-xs text-white/40">3 spins per day</div>
+              <div className="mt-2 text-xs text-purple-400">Up to 100 XP per spin</div>
             </motion.button>
 
             <motion.button
@@ -520,8 +723,9 @@ export function ArcadePageClient() {
             >
               <div className="text-5xl mb-4">📝</div>
               <h3 className="font-heading text-xl mb-2">Trivia Challenge</h3>
-              <p className="text-sm text-white/60">Test your knowledge</p>
-              <div className="mt-4 text-xs text-purple-400">Up to 50 XP</div>
+              <p className="text-sm text-white/60">40 random questions</p>
+              <div className="mt-2 text-xs text-white/40">{MAX_TRIVIA_GAMES_PER_DAY} games per day</div>
+              <div className="mt-2 text-xs text-purple-400">Up to 50 XP per game</div>
             </motion.button>
           </motion.div>
         ) : (
