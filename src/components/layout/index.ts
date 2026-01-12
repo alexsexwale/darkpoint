@@ -5,4 +5,5 @@ export { PageBorder } from "./PageBorder";
 export { SideNav } from "./SideNav";
 export { SocialShareButtons } from "./SocialShareButtons";
 export { SideButtons } from "./SideButtons";
+export { LazyComponents } from "./LazyComponents";
 

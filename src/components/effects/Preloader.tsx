@@ -40,7 +40,7 @@ export function Preloader() {
       
       // Set initial background position after image loads
       if (bgRef.current) {
-        prepareBgDivRef.current?.(img.width, img.height);
+        prepareBgDivRef.current?.();
         gsap.set(bgRef.current, {
           backgroundPosition: "100% 50%",
         });
@@ -50,36 +50,14 @@ export function Preloader() {
   }, []);
 
   // Store prepareBgDiv in a ref to avoid circular dependency
-  const prepareBgDivRef = useRef<((width: number, height: number) => void) | null>(null);
+  const prepareBgDivRef = useRef<(() => void) | null>(null);
 
-  // Set background size to cover viewport while maintaining aspect ratio
-  const prepareBgDiv = useCallback((imgWidth: number, imgHeight: number) => {
+  // Set background image only - dimensions handled by CSS to prevent CLS
+  const prepareBgDiv = useCallback(() => {
     if (!bgRef.current) return;
     
-    const wndW = window.innerWidth;
-    const wndH = window.innerHeight;
-    const frameW = imgWidth / SPRITE_CONFIG.frames;
-    const frameH = imgHeight;
-
-    let width: number, height: number, left: number, top: number;
-
-    if (frameW / frameH > wndW / wndH) {
-      height = wndH;
-      width = height * frameW / frameH;
-      left = (wndW - width) / 2;
-      top = 0;
-    } else {
-      width = wndW;
-      height = width * frameH / frameW;
-      top = (wndH - height) / 2;
-      left = 0;
-    }
-
+    // Only set the background image, let CSS handle sizing via inset-0 and background-size
     gsap.set(bgRef.current, {
-      width,
-      height,
-      left,
-      top,
       backgroundImage: `url("${SPRITE_CONFIG.sprite}")`,
       force3D: true,
     });
@@ -122,7 +100,7 @@ export function Preloader() {
     }
 
     // Prepare background
-    prepareBgDiv(spriteData.width, spriteData.height);
+    prepareBgDiv();
 
     // Start flame sprite from frame 100% (flame visible/covering)
     gsap.set(bg, {
@@ -233,10 +211,11 @@ export function Preloader() {
           <Image
             src="/images/logo.png"
             alt={SITE_NAME}
-            width={650}
-            height={390}
+            width={500}
+            height={300}
             priority
             fetchPriority="high"
+            sizes="(max-width: 768px) 90vw, 500px"
             className="drop-shadow-[0_0_40px_rgba(224,136,33,0.6)] max-w-[90vw] h-auto"
           />
           <div className="nk-preloader-animation relative block mx-auto mt-8 opacity-70">

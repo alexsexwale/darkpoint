@@ -1,20 +1,9 @@
 import type { Metadata } from "next";
 import { Marcellus_SC, Roboto_Condensed } from "next/font/google";
-import { Header, Footer, PageBorder, SideNav, SocialShareButtons, SideButtons } from "@/components/layout";
-import { Preloader, BackgroundAudio, BackgroundVideo, PageTransition, EasterEggProvider, ScrollToTop } from "@/components/effects";
-import { CartDrawer, SearchModal, SignInModal, ForgotPasswordModal } from "@/components/ui";
+import { Header, Footer, PageBorder, LazyComponents } from "@/components/layout";
+import { Preloader, BackgroundVideo, PageTransition, EasterEggProvider, ScrollToTop } from "@/components/effects";
 import { EmailVerificationBanner } from "@/components/auth";
-import {
-  LevelUpModal,
-  AchievementUnlockModal,
-  DailyRewardModal,
-  DailyRewardProvider,
-  StreakMilestoneModal,
-  XPGainPopup,
-  NotificationStack,
-  FloatingXPMultiplier,
-} from "@/components/gamification";
-import { ExitIntentPopup } from "@/components/marketing";
+import { DailyRewardProvider } from "@/components/gamification";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import "@/styles/globals.scss";
 
@@ -112,39 +101,8 @@ export default function RootLayout({
           {/* Email Verification Banner (shows for unverified logged-in users) */}
           <EmailVerificationBanner />
 
-          {/* Side Navigation */}
-          <SideNav />
-
-          {/* Cart Drawer */}
-          <CartDrawer />
-
-          {/* Search Modal */}
-          <SearchModal />
-
-          {/* Sign In Modal */}
-          <SignInModal />
-
-          {/* Forgot Password Modal */}
-          <ForgotPasswordModal />
-
-          {/* Gamification Modals */}
-          <LevelUpModal />
-          <AchievementUnlockModal />
-          <DailyRewardModal />
-          <StreakMilestoneModal />
-
-          {/* Gamification Notifications */}
-          <XPGainPopup />
-          <NotificationStack />
-
-          {/* Floating XP Multiplier for Mobile */}
-          <FloatingXPMultiplier />
-
-          {/* Marketing - Exit Intent Popup */}
-          <ExitIntentPopup discount={10} />
-
-          {/* Social Share Buttons - Left Side */}
-          <SocialShareButtons />
+          {/* Lazy loaded components (modals, gamification, side nav, etc.) */}
+          <LazyComponents />
 
           {/* Main Content with Daily Reward Auto-Popup and Easter Eggs */}
           <EasterEggProvider>
@@ -155,12 +113,6 @@ export default function RootLayout({
 
           {/* Footer */}
           <Footer />
-
-          {/* Background Audio - auto-plays if user hasn't muted, persists mute state */}
-          <BackgroundAudio loop={true} />
-
-          {/* Side Buttons - Bottom Right (Keep in Touch + Audio Toggle) */}
-          <SideButtons />
         </AuthProvider>
       </body>
     </html>
