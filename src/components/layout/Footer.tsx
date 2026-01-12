@@ -51,7 +51,7 @@ export function Footer() {
           
           {/* Payment Methods */}
           <div className="flex items-center gap-4">
-            <span className="text-white/40 text-xs uppercase tracking-wider">We Accept:</span>
+            <span className="text-white/60 text-xs uppercase tracking-wider">We Accept:</span>
             <div className="flex items-center gap-3">
               {/* Visa */}
               <svg className="w-10 h-6 text-white/60" viewBox="0 0 50 16" fill="currentColor">
@@ -201,7 +201,7 @@ export function Footer() {
           </p>
 
           {/* Description */}
-          <p className="text-white/40 text-sm mb-6">
+          <p className="text-white/60 text-sm mb-6">
             {SITE_NAME}® is your ultimate destination for gaming gear, tech gadgets, hardware, and merchandise. Whether you&apos;re a competitive gamer, streamer, or tech enthusiast, we&apos;ve got everything you need to level up your setup. Premium quality products delivered right to your doorstep in South Africa.
           </p>
 
@@ -209,28 +209,28 @@ export function Footer() {
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs">
             <Link
               href="/terms"
-              className="text-white/40 hover:text-white transition-colors cursor-pointer"
+              className="text-white/60 hover:text-white transition-colors cursor-pointer"
             >
               Terms of Service
             </Link>
             <span className="text-white/20">|</span>
             <Link
               href="/privacy"
-              className="text-white/40 hover:text-white transition-colors cursor-pointer"
+              className="text-white/60 hover:text-white transition-colors cursor-pointer"
             >
               Privacy Policy
             </Link>
             <span className="text-white/20">|</span>
             <Link
               href="/shipping"
-              className="text-white/40 hover:text-white transition-colors cursor-pointer"
+              className="text-white/60 hover:text-white transition-colors cursor-pointer"
             >
               Shipping
             </Link>
             <span className="text-white/20">|</span>
             <Link
               href="/return-request"
-              className="text-white/40 hover:text-white transition-colors cursor-pointer"
+              className="text-white/60 hover:text-white transition-colors cursor-pointer"
             >
               Returns
             </Link>

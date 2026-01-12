@@ -241,7 +241,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
         </Link>
 
         {/* Category */}
-        <p className="text-xs text-white/40 uppercase tracking-wider mb-2">
+        <p className="text-xs text-white/60 uppercase tracking-wider mb-2">
           {product.category}
         </p>
 

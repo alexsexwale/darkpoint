@@ -213,10 +213,10 @@ export function Preloader() {
       ref={preloaderRef}
       className="nk-preloader fixed inset-0 overflow-hidden z-[3000] flex items-center justify-center"
     >
-      {/* Background with flame animation */}
+      {/* Background with flame animation - fixed dimensions to prevent CLS */}
       <div
         ref={bgRef}
-        className="nk-preloader-bg absolute bg-no-repeat will-change-[background-position]"
+        className="nk-preloader-bg absolute inset-0 bg-no-repeat will-change-[background-position]"
         style={{
           backgroundPosition: "100% 50%",
           backgroundSize: "cover",
@@ -233,9 +233,10 @@ export function Preloader() {
           <Image
             src="/images/logo.png"
             alt={SITE_NAME}
-            width={500}
-            height={300}
+            width={650}
+            height={390}
             priority
+            fetchPriority="high"
             className="drop-shadow-[0_0_40px_rgba(224,136,33,0.6)] max-w-[90vw] h-auto"
           />
           <div className="nk-preloader-animation relative block mx-auto mt-8 opacity-70">

@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Target modern browsers to reduce polyfills and optimize CSS
+  experimental: {
+    optimizePackageImports: ['framer-motion', 'gsap', '@supabase/supabase-js'],
+    optimizeCss: true, // Inline critical CSS for faster FCP/LCP
+  },
   images: {
+    // Enable modern image formats for better compression
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',

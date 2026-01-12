@@ -169,7 +169,10 @@ export function BackgroundVideo({
           loop={loop}
           playsInline
           poster={posterImage}
+          preload="metadata"
         >
+          {/* Prefer WebM for smaller file size, fallback to MP4 */}
+          <source src={src.replace('.mp4', '.webm')} type="video/webm" />
           <source src={src} type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-black/30" />

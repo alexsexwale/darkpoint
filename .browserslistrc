@@ -1,0 +1,18 @@
+# Target modern browsers to reduce polyfills and bundle size
+# This eliminates unnecessary polyfills for Array.prototype.at, flat, flatMap,
+# Object.fromEntries, Object.hasOwn, String.prototype.trimEnd/trimStart
+
+# Modern evergreen browsers (last 2 versions)
+last 2 Chrome versions
+last 2 Firefox versions
+last 2 Safari versions
+last 2 Edge versions
+
+# Include iOS Safari for mobile users
+last 2 iOS versions
+
+# Exclude IE and other legacy browsers
+not IE 11
+not dead
+not op_mini all
+
