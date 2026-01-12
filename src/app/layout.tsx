@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Marcellus_SC, Roboto_Condensed } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Header, Footer, PageBorder, LazyComponents } from "@/components/layout";
 import { Preloader, BackgroundVideo, PageTransition, EasterEggProvider, ScrollToTop } from "@/components/effects";
 import { EmailVerificationBanner } from "@/components/auth";
@@ -113,6 +114,9 @@ export default function RootLayout({
 
           {/* Footer */}
           <Footer />
+
+          {/* Vercel Speed Insights */}
+          <SpeedInsights />
         </AuthProvider>
       </body>
     </html>
