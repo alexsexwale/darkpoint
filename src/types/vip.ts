@@ -151,6 +151,7 @@ export const BADGE_TIER_INFO: Record<string, {
   shortDescription: string;
   xpCost: number;
   requiredOrders: number; // Minimum orders required to purchase
+  prerequisiteBadge: string | null; // Badge that must be owned before purchasing this one
 }> = {
   badge_fire: {
     tier: "bronze",
@@ -158,6 +159,7 @@ export const BADGE_TIER_INFO: Record<string, {
     shortDescription: "Entry-level VIP with basic perks",
     xpCost: 500,
     requiredOrders: 1,
+    prerequisiteBadge: null, // No prerequisite - entry level
   },
   badge_crown: {
     tier: "gold",
@@ -165,6 +167,7 @@ export const BADGE_TIER_INFO: Record<string, {
     shortDescription: "Enhanced rewards & early access",
     xpCost: 1000,
     requiredOrders: 3,
+    prerequisiteBadge: "badge_fire", // Must own Bronze first
   },
   frame_gold: {
     tier: "platinum",
@@ -172,6 +175,7 @@ export const BADGE_TIER_INFO: Record<string, {
     shortDescription: "Ultimate VIP with all benefits",
     xpCost: 1500,
     requiredOrders: 5,
+    prerequisiteBadge: "badge_crown", // Must own Gold first
   },
 };
 
@@ -180,9 +184,66 @@ export function getBadgeOrderRequirement(badgeId: string): number {
   return BADGE_TIER_INFO[badgeId]?.requiredOrders || 0;
 }
 
-// Check if user can purchase badge based on order count
-export function canPurchaseBadge(badgeId: string, userOrderCount: number): boolean {
+// Get prerequisite badge for a badge
+export function getPrerequisiteBadge(badgeId: string): string | null {
+  return BADGE_TIER_INFO[badgeId]?.prerequisiteBadge || null;
+}
+
+// Get prerequisite badge display name
+export function getPrerequisiteBadgeName(badgeId: string): string | null {
+  const prereq = getPrerequisiteBadge(badgeId);
+  if (!prereq) return null;
+  return BADGE_TIER_INFO[prereq]?.tierName || null;
+}
+
+// Check if user can purchase badge based on order count AND prerequisite badges
+export function canPurchaseBadge(
+  badgeId: string, 
+  userOrderCount: number, 
+  userBadges: string[] = []
+): boolean {
   const requirement = getBadgeOrderRequirement(badgeId);
-  return userOrderCount >= requirement;
+  const hasEnoughOrders = userOrderCount >= requirement;
+  
+  // Check prerequisite badge
+  const prerequisite = getPrerequisiteBadge(badgeId);
+  const hasPrerequisite = !prerequisite || userBadges.includes(prerequisite);
+  
+  return hasEnoughOrders && hasPrerequisite;
+}
+
+// Get the reason why a badge can't be purchased
+export function getBadgeLockReason(
+  badgeId: string,
+  userOrderCount: number,
+  userBadges: string[] = []
+): { locked: boolean; reason: string | null; needsOrders: number; needsBadge: string | null } {
+  const requirement = getBadgeOrderRequirement(badgeId);
+  const hasEnoughOrders = userOrderCount >= requirement;
+  const ordersNeeded = Math.max(0, requirement - userOrderCount);
+  
+  const prerequisite = getPrerequisiteBadge(badgeId);
+  const hasPrerequisite = !prerequisite || userBadges.includes(prerequisite);
+  const prerequisiteName = prerequisite ? BADGE_TIER_INFO[prerequisite]?.tierName : null;
+  
+  if (!hasPrerequisite) {
+    return {
+      locked: true,
+      reason: `Requires ${prerequisiteName} first`,
+      needsOrders: ordersNeeded,
+      needsBadge: prerequisite,
+    };
+  }
+  
+  if (!hasEnoughOrders) {
+    return {
+      locked: true,
+      reason: `Need ${ordersNeeded} more order${ordersNeeded !== 1 ? 's' : ''}`,
+      needsOrders: ordersNeeded,
+      needsBadge: null,
+    };
+  }
+  
+  return { locked: false, reason: null, needsOrders: 0, needsBadge: null };
 }
 

@@ -59,6 +59,11 @@ interface ExtendedReward extends Reward {
   hasEnoughOrders?: boolean;
   isAlreadyOwned?: boolean;
   isBadgeLocked?: boolean;
+  // Prerequisite badge fields
+  prerequisiteBadge?: string | null;
+  hasPrerequisiteBadge?: boolean;
+  prerequisiteBadgeName?: string | null;
+  badgeLockReason?: string | null;
 }
 
 interface RewardShopCardProps {
@@ -87,6 +92,8 @@ export function RewardShopCard({
   const isBadgeLocked = reward.isBadgeLocked || false;
   const isAlreadyOwned = reward.isAlreadyOwned || false;
   const requiredOrders = reward.requiredOrders || 0;
+  const hasPrerequisiteBadge = reward.hasPrerequisiteBadge !== false; // Default to true if not set
+  const needsPrerequisite = isBadge && !hasPrerequisiteBadge && !isAlreadyOwned;
 
   // Category styling
   const categoryConfig: Record<
@@ -229,7 +236,7 @@ export function RewardShopCard({
                 : "bg-green-500/20 text-green-400"
             )}>
               {isBadgeLocked 
-                ? `🛒 ${requiredOrders}+ orders`
+                ? (reward.badgeLockReason || `🛒 ${requiredOrders}+ orders`)
                 : `✓ ${requiredOrders}+ orders`
               }
             </span>
@@ -300,7 +307,7 @@ export function RewardShopCard({
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               </span>
-            ) : isAlreadyOwned ? "Owned" : isBadgeLocked ? "Need Orders" : isLocked ? "Locked" : isOutOfStock ? "Unavailable" : canAfford ? "Redeem" : "Need More XP"}
+            ) : isAlreadyOwned ? "Owned" : needsPrerequisite ? "Need Badge" : isBadgeLocked ? "Need Orders" : isLocked ? "Locked" : isOutOfStock ? "Unavailable" : canAfford ? "Redeem" : "Need More XP"}
           </Button>
         </div>
 

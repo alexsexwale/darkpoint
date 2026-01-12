@@ -139,7 +139,7 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
     created_at: new Date().toISOString(),
   },
 
-  // === VIP BADGES (Purchase to unlock tiers - requires orders) ===
+  // === VIP BADGES (Purchase to unlock tiers - requires orders AND previous tier) ===
   {
     id: "badge_fire",
     name: "Fire Badge",
@@ -155,7 +155,7 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
   {
     id: "badge_crown",
     name: "Crown Badge",
-    description: "👑 Gold VIP - Unlocks premium rewards & early access! Requires 3+ orders.",
+    description: "👑 Gold VIP - Unlocks premium rewards & early access! Requires Bronze VIP + 3 orders.",
     category: "cosmetic",
     xp_cost: 1000,
     value: "badge_crown",
@@ -167,7 +167,7 @@ const SAMPLE_REWARDS: ExtendedReward[] = [
   {
     id: "frame_gold",
     name: "Gold Frame",
-    description: "✨ Platinum VIP - Ultimate tier with all benefits! Requires 5+ orders.",
+    description: "✨ Platinum VIP - Ultimate tier with all benefits! Requires Gold VIP + 5 orders.",
     category: "cosmetic",
     xp_cost: 1500,
     value: "frame_gold",
@@ -414,16 +414,37 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
   
   // Filter rewards based on VIP tier access and badge order requirements
   // Show all rewards but mark locked ones appropriately
+  const ownedBadgeIds = userBadges.map(b => b.badge_id);
+  
   const rewards = allRewards.map((reward) => {
     const requiredTier = reward.required_tier;
     const isAccessible = !requiredTier || hasVIPAccess(userVIPTier, requiredTier);
     
-    // Check if this is a badge that requires orders
+    // Check if this is a badge that requires orders and/or prerequisite badges
     const badgeInfo = BADGE_TIER_INFO[reward.id];
     const isBadge = !!badgeInfo;
     const requiredOrders = badgeInfo?.requiredOrders || 0;
     const hasEnoughOrders = userOrderCount >= requiredOrders;
-    const isAlreadyOwned = isBadge && userBadges.some(b => b.badge_id === reward.id);
+    const isAlreadyOwned = isBadge && ownedBadgeIds.includes(reward.id);
+    
+    // Check prerequisite badge requirement
+    const prerequisiteBadge = badgeInfo?.prerequisiteBadge || null;
+    const hasPrerequisiteBadge = !prerequisiteBadge || ownedBadgeIds.includes(prerequisiteBadge);
+    const prerequisiteBadgeName = prerequisiteBadge ? BADGE_TIER_INFO[prerequisiteBadge]?.tierName : null;
+    
+    // Badge is locked if either: not enough orders OR missing prerequisite badge
+    const isBadgeLocked = isBadge && !isAlreadyOwned && (!hasEnoughOrders || !hasPrerequisiteBadge);
+    
+    // Determine the lock reason for display
+    let badgeLockReason: string | null = null;
+    if (isBadge && !isAlreadyOwned) {
+      if (!hasPrerequisiteBadge) {
+        badgeLockReason = `Requires ${prerequisiteBadgeName}`;
+      } else if (!hasEnoughOrders) {
+        const ordersNeeded = requiredOrders - userOrderCount;
+        badgeLockReason = `Need ${ordersNeeded} more order${ordersNeeded !== 1 ? 's' : ''}`;
+      }
+    }
     
     return {
       ...reward,
@@ -434,7 +455,12 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
       requiredOrders,
       hasEnoughOrders,
       isAlreadyOwned,
-      isBadgeLocked: isBadge && !hasEnoughOrders && !isAlreadyOwned,
+      isBadgeLocked,
+      // Prerequisite badge fields
+      prerequisiteBadge,
+      hasPrerequisiteBadge,
+      prerequisiteBadgeName,
+      badgeLockReason,
     };
   });
   const userXP = userProfile?.total_xp || 0;
@@ -451,9 +477,36 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
     hasEnoughOrders?: boolean;
     isAlreadyOwned?: boolean;
     isBadgeLocked?: boolean;
+    hasPrerequisiteBadge?: boolean;
+    prerequisiteBadgeName?: string | null;
+    badgeLockReason?: string | null;
   }, forceRedeem = false) => {
     if (redeeming) return;
     setErrorMessage(null);
+
+    // Check if badge is already owned
+    if (reward.isAlreadyOwned) {
+      setErrorMessage("You already own this badge!");
+      addNotification({
+        type: "info",
+        title: "Badge Owned",
+        message: "You've already purchased this badge",
+        icon: "✅",
+      });
+      return;
+    }
+
+    // Check prerequisite badge requirement first (must unlock tiers in order)
+    if (reward.isBadge && !reward.hasPrerequisiteBadge) {
+      setErrorMessage(`You must purchase ${reward.prerequisiteBadgeName} first!`);
+      addNotification({
+        type: "info",
+        title: "Previous Tier Required",
+        message: `Purchase ${reward.prerequisiteBadgeName} to unlock this badge!`,
+        icon: "🔒",
+      });
+      return;
+    }
 
     // Check badge order requirements
     if (reward.isBadge && reward.isBadgeLocked) {
@@ -464,18 +517,6 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
         title: "Orders Required",
         message: `Complete ${ordersNeeded} more order${ordersNeeded === 1 ? '' : 's'} to unlock this badge!`,
         icon: "🛒",
-      });
-      return;
-    }
-
-    // Check if badge is already owned
-    if (reward.isAlreadyOwned) {
-      setErrorMessage("You already own this badge!");
-      addNotification({
-        type: "info",
-        title: "Badge Owned",
-        message: "You've already purchased this badge",
-        icon: "✅",
       });
       return;
     }
@@ -874,8 +915,6 @@ export function RewardShopGrid({ className }: RewardShopGridProps) {
         
         {/* Timeline-style unlock path */}
         <div className="relative">
-          {/* Connecting line */}
-          <div className="absolute top-8 left-0 right-0 h-1 bg-gradient-to-r from-orange-500/30 via-yellow-500/30 to-amber-500/30 hidden md:block" />
           
           <div className="grid md:grid-cols-3 gap-6 relative">
             {/* Bronze Tier */}
