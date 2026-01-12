@@ -5,8 +5,6 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function POST(request: NextRequest) {
-  console.log("=== Add XP API Called ===");
-  
   try {
     const authHeader = request.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -27,20 +25,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("User:", user.id);
-
     const body = await request.json();
     const { amount, action, description } = body;
     
-    console.log("Request:", { amount, action, description });
-
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid XP amount" }, { status: 400 });
     }
 
-    // Call the SECURITY DEFINER function
-    console.log("Calling add_xp_direct RPC...");
-    
     const { data: result, error: rpcError } = await supabase.rpc("add_xp_direct", {
       p_user_id: user.id,
       p_amount: amount,
