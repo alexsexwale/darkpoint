@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Confetti from "react-confetti";
 import { useGamificationStore } from "@/stores";
-import { useGamification } from "@/hooks";
 import { SpinWheel } from "./SpinWheel";
 import { Button } from "@/components/ui";
 import type { SpinPrize } from "@/types/gamification";
@@ -17,7 +16,6 @@ interface SpinWheelModalProps {
 export function SpinWheelModal({ isOpen, onClose }: SpinWheelModalProps) {
   const { userProfile, isSpinning, lastSpinResult } = useGamificationStore();
   const availableSpins = userProfile?.available_spins || 0;
-  const { addXP } = useGamification();
   const [showResult, setShowResult] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
 
@@ -44,11 +42,8 @@ export function SpinWheelModal({ isOpen, onClose }: SpinWheelModalProps) {
 
   const handleSpinComplete = async (prize: SpinPrize) => {
     setShowResult(true);
-
-    // Apply XP rewards
-    if (prize.prize_type === "xp") {
-      await addXP("spin_reward", parseInt(prize.prize_value), `Spin wheel: ${prize.name}`);
-    }
+    // Note: XP is now awarded directly by the database spin_wheel function
+    // which also applies any active XP multiplier. No need to call addXP here.
   };
 
   const handleClose = () => {

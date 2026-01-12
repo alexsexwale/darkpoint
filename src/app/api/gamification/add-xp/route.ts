@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid XP amount" }, { status: 400 });
     }
 
-    const { data: result, error: rpcError } = await supabase.rpc("add_xp_direct", {
+    const { data: result, error: rpcError } = await supabase.rpc("add_xp", {
       p_user_id: user.id,
       p_amount: amount,
       p_action: action,
@@ -45,18 +45,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (!result?.success) {
-      return NextResponse.json({ error: "Failed to add XP" }, { status: 500 });
+      return NextResponse.json({ error: result?.error || "Failed to add XP" }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      xp_awarded: result.xp_awarded,
-      base_xp: result.base_xp,
-      bonus_xp: result.bonus_xp,
-      multiplier: result.multiplier,
-      new_total_xp: result.new_total_xp,
+      xp_awarded: result.total_xp_earned || amount,
+      base_xp: result.base_xp || amount,
+      bonus_xp: result.bonus_xp || 0,
+      multiplier: result.multiplier_applied || 1,
+      new_total_xp: result.new_total,
       new_level: result.new_level,
-      leveled_up: result.leveled_up,
+      leveled_up: result.leveled_up || false,
       old_level: result.old_level,
     });
   } catch (error) {
