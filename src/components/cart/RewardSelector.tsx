@@ -707,7 +707,7 @@ export function MyRewardsList() {
       <div className="text-center py-8">
         <span className="text-5xl mb-4 block opacity-50">🎁</span>
         <p className="text-white/60 mb-2">No rewards yet</p>
-        <p className="text-sm text-white/40">
+        <p className="text-sm text-white/60">
           Earn XP and redeem rewards from the shop!
         </p>
       </div>

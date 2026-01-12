@@ -377,7 +377,7 @@ export function SpinPageClient() {
                   </span>
                   <p className="text-xs md:text-sm text-white/60 mt-1">Available Spins</p>
                 </div>
-                <div className="border-t border-[var(--color-dark-3)] pt-3 md:pt-4 mt-3 md:mt-4 text-xs md:text-sm text-white/40 space-y-1.5 md:space-y-2">
+                <div className="border-t border-[var(--color-dark-3)] pt-3 md:pt-4 mt-3 md:mt-4 text-xs md:text-sm text-white/60 space-y-1.5 md:space-y-2">
                   <p>• Login daily for bonus spins</p>
                   <p>• Day 5 streak = Free spin</p>
                   <p>• Spend R1000+ (after discounts) = Bonus spin</p>

@@ -255,7 +255,7 @@ export function DailyQuestList({ className, compact = false, showLoginPrompt = f
       {/* Bonus for completing all quests */}
       {!allCompleted && (
         <div className="mt-6 pt-4 border-t border-[var(--color-dark-3)]">
-          <div className="flex items-center justify-center gap-2 text-sm text-white/40">
+          <div className="flex items-center justify-center gap-2 text-sm text-white/60">
             <span>🌟</span>
             <span>Complete all quests for a bonus tomorrow!</span>
           </div>

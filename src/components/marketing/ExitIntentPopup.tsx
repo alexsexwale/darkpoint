@@ -188,7 +188,7 @@ export function ExitIntentPopup({
                     {/* No thanks */}
                     <button
                       onClick={handleClose}
-                      className="mt-4 text-sm text-white/40 hover:text-white/60 transition-colors cursor-pointer"
+                      className="mt-4 text-sm text-white/60 hover:text-white/80 transition-colors cursor-pointer"
                     >
                       No thanks, I&apos;ll pay full price
                     </button>

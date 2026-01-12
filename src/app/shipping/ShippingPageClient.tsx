@@ -119,7 +119,7 @@ export function ShippingPageClient() {
                   </p>
                 </div>
               ) : (
-                <p className="text-center text-sm text-white/40 mt-6">
+                <p className="text-center text-sm text-white/60 mt-6">
                   Become a VIP to unlock lower free shipping thresholds!
                 </p>
               )}

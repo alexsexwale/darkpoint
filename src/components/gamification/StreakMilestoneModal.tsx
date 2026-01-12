@@ -193,7 +193,7 @@ export function StreakMilestoneModal() {
                   <p className="text-4xl font-heading" style={{ color: milestoneData.color }}>
                     {milestoneData.days}
                   </p>
-                  <p className="text-sm text-white/40">Days Logged In</p>
+                  <p className="text-sm text-white/60">Days Logged In</p>
                 </motion.div>
 
                 {/* Close button */}

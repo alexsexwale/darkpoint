@@ -23,12 +23,15 @@ export function Footer() {
 
   return (
     <footer className="nk-footer relative mt-auto pt-12 pb-6 bg-[#0a0a0a] border-t border-white/10">
-      {/* Corner decoration */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      {/* Corner decoration - optimized with Next/Image */}
+      <Image
         className="nk-footer-top-corner absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-60"
         src="/images/footer-corner.png"
         alt=""
+        width={720}
+        height={111}
+        loading="lazy"
+        quality={75}
       />
 
       <div className="container">

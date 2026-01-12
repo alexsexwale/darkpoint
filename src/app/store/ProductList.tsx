@@ -83,7 +83,7 @@ export function ProductList({ products }: ProductListProps) {
                       {formatPrice(product.price)}
                     </span>
                     {product.compareAtPrice && (
-                      <span className="text-sm text-white/40 line-through">
+                      <span className="text-sm text-white/60 line-through">
                         {formatPrice(product.compareAtPrice)}
                       </span>
                     )}

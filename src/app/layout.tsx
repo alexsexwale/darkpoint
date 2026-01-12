@@ -76,18 +76,12 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Preconnect to critical origins for faster resource loading */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Preload critical LCP image */}
-        <link
-          rel="preload"
-          as="image"
-          href="/images/logo.png"
-          fetchPriority="high"
-        />
+        {/* Preconnect to CJ Dropshipping for product images */}
+        <link rel="preconnect" href="https://cf.cjdropshipping.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://img.cjdropshipping.com" crossOrigin="anonymous" />
         {/* DNS prefetch for external resources */}
         <link rel="dns-prefetch" href="https://cf.cjdropshipping.com" />
+        <link rel="dns-prefetch" href="https://img.cjdropshipping.com" />
       </head>
       <body className="min-h-screen flex flex-col antialiased" suppressHydrationWarning>
         <AuthProvider>

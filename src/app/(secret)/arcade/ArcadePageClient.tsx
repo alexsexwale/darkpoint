@@ -811,7 +811,7 @@ function TriviaGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; on
         ))}
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-sm text-white/40">
+      <div className="mt-4 flex items-center justify-between text-sm text-white/60">
         <span>Score: {score}</span>
         <span>+10 XP per correct answer</span>
       </div>

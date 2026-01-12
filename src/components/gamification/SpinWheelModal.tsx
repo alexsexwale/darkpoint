@@ -156,7 +156,7 @@ export function SpinWheelModal({ isOpen, onClose }: SpinWheelModalProps) {
 
               {/* Spins remaining */}
               <div className="text-center">
-                <p className="text-sm text-white/40">
+                <p className="text-sm text-white/60">
                   {availableSpins > 0 ? (
                     <>
                       You have <span className="text-[var(--color-main-1)]">{availableSpins}</span>{" "}

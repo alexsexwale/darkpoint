@@ -268,7 +268,7 @@ export function AchievementsPageClient() {
             {showSkeleton ? (
               <Skeleton className="h-4 w-24" />
             ) : userProfile ? (
-              <span className="text-sm text-white/40">
+              <span className="text-sm text-white/60">
                 {userProfile.total_xp.toLocaleString()} Total XP
               </span>
             ) : null}

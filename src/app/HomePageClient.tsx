@@ -67,7 +67,7 @@ export function HomePageClient() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-[var(--muted-foreground)] mb-2">Configure API to load products</p>
-              <p className="text-sm text-white/40">Add CJ Dropshipping credentials to .env.local</p>
+              <p className="text-sm text-white/60">Add CJ Dropshipping credentials to .env.local</p>
             </div>
           )}
         </div>
@@ -237,7 +237,7 @@ export function HomePageClient() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-[var(--muted-foreground)] mb-2">Configure API to load products</p>
-              <p className="text-sm text-white/40">Add CJ Dropshipping credentials to .env.local</p>
+              <p className="text-sm text-white/60">Add CJ Dropshipping credentials to .env.local</p>
             </div>
           )}
           <div className="text-center mt-12">

@@ -315,7 +315,7 @@ export function ReturnRequestModal({
                                         >
                                           +
                                         </button>
-                                        <span className="text-sm text-white/40">of {item.quantity}</span>
+                                        <span className="text-sm text-white/60">of {item.quantity}</span>
                                       </div>
                                     </div>
 

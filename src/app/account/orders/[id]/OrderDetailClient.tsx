@@ -762,7 +762,7 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                 </svg>
                 <div>
                   <p className="font-semibold text-white/60">Return Period Expired</p>
-                  <p className="text-sm text-white/40">
+                  <p className="text-sm text-white/60">
                     The 30-day return window for this order has passed. Contact support if you need assistance.
                   </p>
                 </div>

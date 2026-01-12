@@ -692,7 +692,7 @@ export function VIPPageClient() {
                     {perk.icon}
                   </div>
                   <h3 className="font-heading text-lg mb-1 text-white/60">{perk.name}</h3>
-                  <p className="text-sm text-white/40">{perk.description}</p>
+                  <p className="text-sm text-white/60">{perk.description}</p>
                   
                   <div className="mt-4 pt-4 border-t border-white/10">
                     <span className={cn(

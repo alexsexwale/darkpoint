@@ -134,7 +134,7 @@ export function AchievementGrid({ className, showFilters = true }: AchievementGr
         <div className="text-center py-12 bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]">
           <span className="text-4xl mb-4 block">🎮</span>
           <p className="text-white/60">No achievements found</p>
-          <p className="text-sm text-white/40 mt-1">
+          <p className="text-sm text-white/60 mt-1">
             {showUnlockedOnly
               ? "You haven't unlocked any achievements in this category yet"
               : "Start exploring to unlock achievements!"}

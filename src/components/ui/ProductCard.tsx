@@ -252,7 +252,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
               {formatPrice(product.price)}
             </span>
             {product.compareAtPrice && (
-              <del className="ml-2 text-sm text-white/40">
+              <del className="ml-2 text-sm text-white/60">
                 {formatPrice(product.compareAtPrice)}
               </del>
             )}
