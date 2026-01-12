@@ -47,8 +47,6 @@ export async function POST(request: NextRequest) {
       p_action: action,
       p_description: description || `Earned from ${action}`,
     });
-
-    console.log("RPC result:", result);
     
     if (rpcError) {
       console.error("RPC error:", rpcError);
@@ -58,8 +56,6 @@ export async function POST(request: NextRequest) {
     if (!result?.success) {
       return NextResponse.json({ error: "Failed to add XP" }, { status: 500 });
     }
-
-    console.log("SUCCESS! XP updated to", result.new_total_xp);
 
     return NextResponse.json({
       success: true,

@@ -6,8 +6,6 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function POST(request: NextRequest) {
-  console.log("=== Review Submit API Called ===");
-  
   try {
     // Get auth token to verify user
     const authHeader = request.headers.get("authorization");
@@ -30,7 +28,6 @@ export async function POST(request: NextRequest) {
     }
     
     const userId = user.id;
-    console.log("User authenticated:", userId);
 
     const body = await request.json();
     const { productId, rating, title, content, authorName, images } = body;
@@ -69,11 +66,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("Verified purchase:", isVerifiedPurchase, "Order ID:", orderId);
-
     // Call the new SECURITY DEFINER function that bypasses RLS
-    console.log("Calling insert_review_bypass_rls RPC...");
-    
     const { data: result, error: rpcError } = await userClient.rpc("insert_review_bypass_rls", {
       p_user_id: userId,
       p_product_id: productId,
@@ -85,9 +78,6 @@ export async function POST(request: NextRequest) {
       p_is_verified_purchase: isVerifiedPurchase,
       p_images: images || [],
     });
-
-    console.log("RPC result:", result);
-    console.log("RPC error:", rpcError);
 
     if (rpcError) {
       console.error("RPC error:", rpcError);
@@ -136,7 +126,6 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
 
         if (!achievementExists) {
-          console.log(`Achievement ${achievement.id} not found in DB, skipping`);
           continue;
         }
 
@@ -182,7 +171,6 @@ export async function POST(request: NextRequest) {
                 .eq("id", userId);
             }
 
-            // Log XP transaction
             await serviceClient
               .from("xp_transactions")
               .insert({
@@ -194,7 +182,6 @@ export async function POST(request: NextRequest) {
 
             achievementsUnlocked.push(achievement.name);
             totalXPAwarded += achievement.xp;
-            console.log(`Awarded achievement: ${achievement.name} (+${achievement.xp} XP)`);
           } else {
             console.error(`Failed to award achievement ${achievement.id}:`, insertError);
           }
