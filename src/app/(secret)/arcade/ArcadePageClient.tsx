@@ -1,13 +1,50 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
-import { ParticleEmitter } from "@/components/effects";
 import { useGamificationStore, useAuthStore } from "@/stores";
 import { useBadgeSound } from "@/hooks";
+import { getHighestVIPTier, hasVIPAccess, VIP_TIERS, type VIPTier } from "@/types/vip";
+
+// Game type definitions
+type GameType = 
+  | "memory" | "slots" | "trivia"  // Bronze tier (all VIPs)
+  | "reaction" | "whack" | "word"    // Gold tier
+  | "pattern" | "simon" | "coinflip"; // Platinum tier
+
+// All games configuration
+interface GameConfig {
+  id: GameType;
+  name: string;
+  icon: string;
+  description: string;
+  maxXP: number;
+  dailyPlays: number;
+  requiredTier: Exclude<VIPTier, null>;
+}
+
+const ALL_GAMES: GameConfig[] = [
+  // Bronze tier
+  { id: "memory", name: "Memory Match", icon: "🧠", description: "Match pairs to win XP", maxXP: 50, dailyPlays: 3, requiredTier: "bronze" },
+  { id: "slots", name: "Lucky Slots", icon: "🎰", description: "Spin to win prizes", maxXP: 100, dailyPlays: 3, requiredTier: "bronze" },
+  { id: "trivia", name: "Trivia Challenge", icon: "📝", description: "200 random questions", maxXP: 50, dailyPlays: 3, requiredTier: "bronze" },
+  // Gold tier
+  { id: "reaction", name: "Reaction Test", icon: "⚡", description: "Test your reflexes", maxXP: 50, dailyPlays: 3, requiredTier: "gold" },
+  { id: "whack", name: "Whack-a-Mole", icon: "🔨", description: "Whack moles for points", maxXP: 50, dailyPlays: 3, requiredTier: "gold" },
+  { id: "word", name: "Word Scramble", icon: "🔤", description: "Unscramble 5 words", maxXP: 50, dailyPlays: 3, requiredTier: "gold" },
+  // Platinum tier
+  { id: "pattern", name: "Pattern Match", icon: "🔢", description: "Complete sequences", maxXP: 50, dailyPlays: 3, requiredTier: "platinum" },
+  { id: "simon", name: "Simon Says", icon: "🎵", description: "Repeat color sequences", maxXP: 50, dailyPlays: 3, requiredTier: "platinum" },
+  { id: "coinflip", name: "Coin Flip Streak", icon: "🪙", description: "Predict heads or tails", maxXP: 50, dailyPlays: 3, requiredTier: "platinum" },
+];
+
+function getAvailableGames(tier: VIPTier): GameType[] {
+  if (!tier) return [];
+  return ALL_GAMES.filter(g => hasVIPAccess(tier, g.requiredTier)).map(g => g.id);
+}
 
 // Memory Match Game
 interface Card {
@@ -782,19 +819,1087 @@ function TriviaGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; on
   );
 }
 
+// ============ GOLD TIER GAMES ============
+
+// Reaction Test Game
+const MAX_REACTION_GAMES_PER_DAY = 3;
+
+function ReactionGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; onGameComplete?: () => void }) {
+  const [gameState, setGameState] = useState<"waiting" | "ready" | "go" | "result" | "too_early">("waiting");
+  const [reactionTime, setReactionTime] = useState<number | null>(null);
+  const [dailyGamesLeft, setDailyGamesLeft] = useState(MAX_REACTION_GAMES_PER_DAY);
+  const [canPlay, setCanPlay] = useState(true);
+  const startTimeRef = useRef<number>(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const savedDate = localStorage.getItem("reactionGamesDate");
+    const savedGames = localStorage.getItem("reactionGamesPlayed");
+    
+    let gamesPlayed = 0;
+    if (savedDate === today) {
+      gamesPlayed = parseInt(savedGames || "0");
+    } else {
+      localStorage.setItem("reactionGamesDate", today);
+      localStorage.setItem("reactionGamesPlayed", "0");
+    }
+    
+    const remaining = MAX_REACTION_GAMES_PER_DAY - gamesPlayed;
+    setDailyGamesLeft(remaining);
+    setCanPlay(remaining > 0);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const startGame = () => {
+    if (!canPlay) return;
+    setGameState("ready");
+    setReactionTime(null);
+    
+    // Random delay between 1-4 seconds
+    const delay = 1000 + Math.random() * 3000;
+    timeoutRef.current = setTimeout(() => {
+      setGameState("go");
+      startTimeRef.current = Date.now();
+    }, delay);
+  };
+
+  const handleClick = () => {
+    if (gameState === "ready") {
+      // Clicked too early
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setGameState("too_early");
+    } else if (gameState === "go") {
+      const time = Date.now() - startTimeRef.current;
+      setReactionTime(time);
+      setGameState("result");
+      
+      // Calculate XP: faster = more XP (50 XP for <200ms, 10 XP for >600ms)
+      let xp = 10;
+      if (time < 200) xp = 50;
+      else if (time < 300) xp = 40;
+      else if (time < 400) xp = 30;
+      else if (time < 500) xp = 20;
+      
+      onWin(xp);
+      
+      // Update games played
+      const gamesPlayed = parseInt(localStorage.getItem("reactionGamesPlayed") || "0") + 1;
+      localStorage.setItem("reactionGamesPlayed", gamesPlayed.toString());
+      setDailyGamesLeft(MAX_REACTION_GAMES_PER_DAY - gamesPlayed);
+      
+      if (onGameComplete) onGameComplete();
+    }
+  };
+
+  const resetGame = () => {
+    const gamesPlayed = parseInt(localStorage.getItem("reactionGamesPlayed") || "0");
+    const remaining = MAX_REACTION_GAMES_PER_DAY - gamesPlayed;
+    if (remaining <= 0) {
+      setCanPlay(false);
+      return;
+    }
+    setGameState("waiting");
+    setReactionTime(null);
+  };
+
+  if (!canPlay) {
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Daily Limit Reached</h3>
+        <p className="text-4xl mb-4">⏰</p>
+        <p className="text-white/60 mb-4">You&apos;ve played all {MAX_REACTION_GAMES_PER_DAY} reaction games for today.</p>
+        <p className="text-purple-400 text-sm">Come back tomorrow for more!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-heading text-xl">Reaction Test</h3>
+        <span className="text-white/40 text-xs">{dailyGamesLeft} game{dailyGamesLeft !== 1 ? "s" : ""} left today</span>
+      </div>
+
+      <motion.button
+        onClick={gameState === "waiting" ? startGame : handleClick}
+        className={`w-full aspect-video rounded-xl flex items-center justify-center text-xl font-semibold transition-colors cursor-pointer ${
+          gameState === "waiting" ? "bg-[var(--color-dark-3)] hover:bg-[var(--color-dark-4)]" :
+          gameState === "ready" ? "bg-red-500" :
+          gameState === "go" ? "bg-green-500" :
+          gameState === "too_early" ? "bg-orange-500" :
+          "bg-[var(--color-main-1)]/20"
+        }`}
+        whileTap={{ scale: 0.98 }}
+      >
+        {gameState === "waiting" && "Click to Start"}
+        {gameState === "ready" && "Wait for green..."}
+        {gameState === "go" && "CLICK NOW!"}
+        {gameState === "too_early" && "Too early! 😅"}
+        {gameState === "result" && reactionTime && (
+          <div className="text-center">
+            <div className="text-3xl mb-2">{reactionTime}ms</div>
+            <div className="text-sm opacity-80">
+              {reactionTime < 200 ? "Lightning fast! ⚡" :
+               reactionTime < 300 ? "Great reflexes! 🎯" :
+               reactionTime < 400 ? "Nice! 👍" :
+               reactionTime < 500 ? "Good try! 💪" : "Keep practicing! 🎮"}
+            </div>
+          </div>
+        )}
+      </motion.button>
+
+      {(gameState === "result" || gameState === "too_early") && dailyGamesLeft > 0 && (
+        <Button variant="outline" size="sm" onClick={resetGame} className="w-full mt-4">
+          Play Again
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// Whack-a-Mole Game
+const MAX_WHACK_GAMES_PER_DAY = 3;
+const WHACK_DURATION = 30000; // 30 seconds
+const MOLE_GRID = 9; // 3x3 grid
+
+function WhackMoleGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; onGameComplete?: () => void }) {
+  const [score, setScore] = useState(0);
+  const [activeMole, setActiveMole] = useState<number | null>(null);
+  const [gameActive, setGameActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [dailyGamesLeft, setDailyGamesLeft] = useState(MAX_WHACK_GAMES_PER_DAY);
+  const [canPlay, setCanPlay] = useState(true);
+  const [gameComplete, setGameComplete] = useState(false);
+  const moleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gameIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const savedDate = localStorage.getItem("whackGamesDate");
+    const savedGames = localStorage.getItem("whackGamesPlayed");
+    
+    let gamesPlayed = 0;
+    if (savedDate === today) {
+      gamesPlayed = parseInt(savedGames || "0");
+    } else {
+      localStorage.setItem("whackGamesDate", today);
+      localStorage.setItem("whackGamesPlayed", "0");
+    }
+    
+    const remaining = MAX_WHACK_GAMES_PER_DAY - gamesPlayed;
+    setDailyGamesLeft(remaining);
+    setCanPlay(remaining > 0);
+
+    return () => {
+      if (moleTimeoutRef.current) clearTimeout(moleTimeoutRef.current);
+      if (gameIntervalRef.current) clearInterval(gameIntervalRef.current);
+    };
+  }, []);
+
+  const showRandomMole = useCallback(() => {
+    const randomHole = Math.floor(Math.random() * MOLE_GRID);
+    setActiveMole(randomHole);
+    
+    // Hide mole after 600-1000ms
+    moleTimeoutRef.current = setTimeout(() => {
+      setActiveMole(null);
+    }, 600 + Math.random() * 400);
+  }, []);
+
+  const startGame = () => {
+    if (!canPlay) return;
+    setScore(0);
+    setTimeLeft(30);
+    setGameActive(true);
+    setGameComplete(false);
+    
+    // Start showing moles
+    const moleInterval = setInterval(showRandomMole, 800);
+    moleTimeoutRef.current = moleInterval as unknown as ReturnType<typeof setTimeout>;
+    
+    // Countdown timer
+    gameIntervalRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) {
+          clearInterval(gameIntervalRef.current!);
+          clearInterval(moleTimeoutRef.current as unknown as ReturnType<typeof setInterval>);
+          setGameActive(false);
+          setActiveMole(null);
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+    
+    // End game after duration
+    setTimeout(() => {
+      setGameActive(false);
+      setGameComplete(true);
+    }, WHACK_DURATION);
+  };
+
+  useEffect(() => {
+    if (gameComplete && !gameActive) {
+      // Calculate XP: 5 XP per hit, max 50
+      const xp = Math.min(score * 5, 50);
+      if (xp > 0) onWin(xp);
+      
+      // Update games played
+      const gamesPlayed = parseInt(localStorage.getItem("whackGamesPlayed") || "0") + 1;
+      localStorage.setItem("whackGamesPlayed", gamesPlayed.toString());
+      setDailyGamesLeft(MAX_WHACK_GAMES_PER_DAY - gamesPlayed);
+      
+      if (onGameComplete) onGameComplete();
+    }
+  }, [gameComplete, gameActive, score, onWin, onGameComplete]);
+
+  const whackMole = (index: number) => {
+    if (index === activeMole && gameActive) {
+      setScore(s => s + 1);
+      setActiveMole(null);
+    }
+  };
+
+  if (!canPlay) {
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Daily Limit Reached</h3>
+        <p className="text-4xl mb-4">⏰</p>
+        <p className="text-white/60 mb-4">You&apos;ve played all {MAX_WHACK_GAMES_PER_DAY} whack games for today.</p>
+        <p className="text-purple-400 text-sm">Come back tomorrow for more!</p>
+      </div>
+    );
+  }
+
+  if (gameComplete && !gameActive) {
+    const xpEarned = Math.min(score * 5, 50);
+    const gamesPlayed = parseInt(localStorage.getItem("whackGamesPlayed") || "0");
+    const remaining = MAX_WHACK_GAMES_PER_DAY - gamesPlayed;
+    
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Game Over!</h3>
+        <p className="text-4xl mb-4">{score >= 8 ? "🏆" : score >= 5 ? "⭐" : "🔨"}</p>
+        <p className="text-white/60 mb-2">You whacked {score} moles!</p>
+        <p className="text-[var(--color-main-1)] font-semibold mb-4">+{xpEarned} XP earned!</p>
+        {remaining > 0 ? (
+          <Button variant="outline" onClick={() => { setGameComplete(false); startGame(); }}>
+            Play Again ({remaining} left)
+          </Button>
+        ) : (
+          <p className="text-purple-400 text-sm">Come back tomorrow!</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-heading text-xl">Whack-a-Mole</h3>
+        <div className="text-right">
+          <span className="text-white/60 text-sm block">Score: {score}</span>
+          {gameActive && <span className="text-white/40 text-xs">{timeLeft}s left</span>}
+        </div>
+      </div>
+
+      {!gameActive ? (
+        <Button variant="primary" onClick={startGame} className="w-full mb-4">
+          Start Game
+        </Button>
+      ) : null}
+
+      <div className="grid grid-cols-3 gap-2">
+        {Array.from({ length: MOLE_GRID }).map((_, i) => (
+          <motion.button
+            key={i}
+            onClick={() => whackMole(i)}
+            className={`aspect-square rounded-lg flex items-center justify-center text-3xl transition-colors cursor-pointer ${
+              activeMole === i
+                ? "bg-amber-500"
+                : "bg-[var(--color-dark-3)] hover:bg-[var(--color-dark-4)]"
+            }`}
+            whileTap={{ scale: 0.9 }}
+            animate={activeMole === i ? { y: [10, 0] } : {}}
+          >
+            {activeMole === i ? "🐹" : "🕳️"}
+          </motion.button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Word Scramble Game
+const WORD_LIST = [
+  "ARCADE", "GAMING", "PLAYER", "REWARD", "POINTS", "STREAK", "LEVEL", "BADGE",
+  "QUEST", "BONUS", "PRIZE", "SCORE", "WINNER", "CHAMP", "POWER", "BOOST",
+  "COINS", "STARS", "GEMS", "GOLD", "SPIN", "LUCKY", "MEGA", "ULTRA",
+  "SUPER", "EPIC", "RARE", "FIRE", "CROWN", "ROYAL", "ELITE", "MASTER"
+];
+const MAX_WORD_GAMES_PER_DAY = 3;
+const WORDS_PER_GAME = 5;
+const WORD_TIME_LIMIT = 60;
+
+function WordScrambleGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; onGameComplete?: () => void }) {
+  const [currentWord, setCurrentWord] = useState("");
+  const [scrambledWord, setScrambledWord] = useState("");
+  const [userInput, setUserInput] = useState("");
+  const [wordsCompleted, setWordsCompleted] = useState(0);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(WORD_TIME_LIMIT);
+  const [gameActive, setGameActive] = useState(false);
+  const [dailyGamesLeft, setDailyGamesLeft] = useState(MAX_WORD_GAMES_PER_DAY);
+  const [canPlay, setCanPlay] = useState(true);
+  const [gameComplete, setGameComplete] = useState(false);
+  const [usedWords, setUsedWords] = useState<string[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const savedDate = localStorage.getItem("wordGamesDate");
+    const savedGames = localStorage.getItem("wordGamesPlayed");
+    
+    let gamesPlayed = 0;
+    if (savedDate === today) {
+      gamesPlayed = parseInt(savedGames || "0");
+    } else {
+      localStorage.setItem("wordGamesDate", today);
+      localStorage.setItem("wordGamesPlayed", "0");
+    }
+    
+    const remaining = MAX_WORD_GAMES_PER_DAY - gamesPlayed;
+    setDailyGamesLeft(remaining);
+    setCanPlay(remaining > 0);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const scrambleWord = (word: string): string => {
+    const arr = word.split("");
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    // Make sure it's actually scrambled
+    return arr.join("") === word ? scrambleWord(word) : arr.join("");
+  };
+
+  const getNextWord = useCallback(() => {
+    const available = WORD_LIST.filter(w => !usedWords.includes(w));
+    if (available.length === 0) return null;
+    const word = available[Math.floor(Math.random() * available.length)];
+    return word;
+  }, [usedWords]);
+
+  const startGame = () => {
+    if (!canPlay) return;
+    setScore(0);
+    setWordsCompleted(0);
+    setTimeLeft(WORD_TIME_LIMIT);
+    setGameActive(true);
+    setGameComplete(false);
+    setUsedWords([]);
+    setUserInput("");
+    
+    const word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
+    setCurrentWord(word);
+    setScrambledWord(scrambleWord(word));
+    setUsedWords([word]);
+    
+    timerRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) {
+          clearInterval(timerRef.current!);
+          setGameActive(false);
+          setGameComplete(true);
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userInput.toUpperCase() === currentWord) {
+      const newScore = score + 1;
+      setScore(newScore);
+      setWordsCompleted(w => w + 1);
+      setUserInput("");
+      
+      if (newScore >= WORDS_PER_GAME) {
+        // Won the game!
+        if (timerRef.current) clearInterval(timerRef.current);
+        setGameActive(false);
+        setGameComplete(true);
+      } else {
+        // Next word
+        const nextWord = getNextWord();
+        if (nextWord) {
+          setCurrentWord(nextWord);
+          setScrambledWord(scrambleWord(nextWord));
+          setUsedWords(prev => [...prev, nextWord]);
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (gameComplete) {
+      // 10 XP per word, max 50
+      const xp = Math.min(score * 10, 50);
+      if (xp > 0) onWin(xp);
+      
+      const gamesPlayed = parseInt(localStorage.getItem("wordGamesPlayed") || "0") + 1;
+      localStorage.setItem("wordGamesPlayed", gamesPlayed.toString());
+      setDailyGamesLeft(MAX_WORD_GAMES_PER_DAY - gamesPlayed);
+      
+      if (onGameComplete) onGameComplete();
+    }
+  }, [gameComplete, score, onWin, onGameComplete]);
+
+  if (!canPlay) {
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Daily Limit Reached</h3>
+        <p className="text-4xl mb-4">⏰</p>
+        <p className="text-white/60 mb-4">You&apos;ve played all {MAX_WORD_GAMES_PER_DAY} word games for today.</p>
+        <p className="text-purple-400 text-sm">Come back tomorrow for more!</p>
+      </div>
+    );
+  }
+
+  if (gameComplete) {
+    const xpEarned = Math.min(score * 10, 50);
+    const gamesPlayed = parseInt(localStorage.getItem("wordGamesPlayed") || "0");
+    const remaining = MAX_WORD_GAMES_PER_DAY - gamesPlayed;
+    
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Game Over!</h3>
+        <p className="text-4xl mb-4">{score >= 5 ? "🏆" : score >= 3 ? "⭐" : "🔤"}</p>
+        <p className="text-white/60 mb-2">You unscrambled {score}/{WORDS_PER_GAME} words!</p>
+        <p className="text-[var(--color-main-1)] font-semibold mb-4">+{xpEarned} XP earned!</p>
+        {remaining > 0 ? (
+          <Button variant="outline" onClick={startGame}>Play Again ({remaining} left)</Button>
+        ) : (
+          <p className="text-purple-400 text-sm">Come back tomorrow!</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-heading text-xl">Word Scramble</h3>
+        <div className="text-right">
+          <span className="text-white/60 text-sm block">{wordsCompleted}/{WORDS_PER_GAME}</span>
+          {gameActive && <span className="text-white/40 text-xs">{timeLeft}s left</span>}
+        </div>
+      </div>
+
+      {!gameActive ? (
+        <Button variant="primary" onClick={startGame} className="w-full">Start Game</Button>
+      ) : (
+        <>
+          <div className="text-center mb-4">
+            <p className="text-3xl font-mono tracking-widest text-[var(--color-main-1)]">
+              {scrambledWord}
+            </p>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <input
+              type="text"
+              value={userInput}
+              onChange={e => setUserInput(e.target.value.toUpperCase())}
+              className="w-full p-3 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg text-center font-mono text-xl tracking-widest focus:outline-none focus:border-[var(--color-main-1)]"
+              placeholder="Type the word..."
+              autoFocus
+            />
+            <Button variant="primary" type="submit" className="w-full mt-3">Submit</Button>
+          </form>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============ PLATINUM TIER GAMES ============
+
+// Pattern Match Game
+const MAX_PATTERN_GAMES_PER_DAY = 3;
+const PATTERNS_PER_GAME = 5;
+
+type PatternType = "number" | "shape";
+
+interface Pattern {
+  type: PatternType;
+  sequence: (number | string)[];
+  answer: number | string;
+  options: (number | string)[];
+}
+
+const SHAPES = ["●", "■", "▲", "◆", "★", "♥", "♦", "♣"];
+
+function generatePattern(): Pattern {
+  const type: PatternType = Math.random() > 0.5 ? "number" : "shape";
+  
+  if (type === "number") {
+    // Number patterns: +2, +3, *2, etc.
+    const patterns = [
+      { start: 2, step: (n: number) => n + 2 },  // 2, 4, 6, 8, ?
+      { start: 1, step: (n: number) => n + 3 },  // 1, 4, 7, 10, ?
+      { start: 1, step: (n: number) => n * 2 },  // 1, 2, 4, 8, ?
+      { start: 3, step: (n: number) => n + 5 },  // 3, 8, 13, 18, ?
+      { start: 100, step: (n: number) => n - 10 }, // 100, 90, 80, 70, ?
+    ];
+    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+    const sequence: number[] = [pattern.start];
+    for (let i = 0; i < 3; i++) {
+      sequence.push(pattern.step(sequence[sequence.length - 1]));
+    }
+    const answer = pattern.step(sequence[sequence.length - 1]);
+    
+    // Generate wrong options
+    const options = [answer];
+    while (options.length < 4) {
+      const wrong = answer + (Math.floor(Math.random() * 10) - 5);
+      if (wrong !== answer && !options.includes(wrong) && wrong > 0) {
+        options.push(wrong);
+      }
+    }
+    options.sort(() => Math.random() - 0.5);
+    
+    return { type: "number", sequence, answer, options };
+  } else {
+    // Shape patterns: AABB, ABAB, ABC, etc.
+    const shape1 = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    const shape2 = SHAPES.filter(s => s !== shape1)[Math.floor(Math.random() * (SHAPES.length - 1))];
+    const patternTypes = [
+      [shape1, shape1, shape2, shape2, shape1], // AABBA -> A
+      [shape1, shape2, shape1, shape2, shape1], // ABABA -> B
+      [shape1, shape1, shape1, shape2, shape1], // AAABA -> A
+    ];
+    const selected = patternTypes[Math.floor(Math.random() * patternTypes.length)];
+    const sequence = selected.slice(0, 4);
+    const answer = selected[4];
+    
+    const options = [answer];
+    const wrongShapes = SHAPES.filter(s => s !== answer);
+    while (options.length < 4) {
+      const wrong = wrongShapes[Math.floor(Math.random() * wrongShapes.length)];
+      if (!options.includes(wrong)) options.push(wrong);
+    }
+    options.sort(() => Math.random() - 0.5);
+    
+    return { type: "shape", sequence, answer, options };
+  }
+}
+
+function PatternMatchGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; onGameComplete?: () => void }) {
+  const [currentPattern, setCurrentPattern] = useState<Pattern | null>(null);
+  const [patternsCompleted, setPatternsCompleted] = useState(0);
+  const [score, setScore] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [gameActive, setGameActive] = useState(false);
+  const [dailyGamesLeft, setDailyGamesLeft] = useState(MAX_PATTERN_GAMES_PER_DAY);
+  const [canPlay, setCanPlay] = useState(true);
+  const [gameComplete, setGameComplete] = useState(false);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const savedDate = localStorage.getItem("patternGamesDate");
+    const savedGames = localStorage.getItem("patternGamesPlayed");
+    
+    let gamesPlayed = 0;
+    if (savedDate === today) {
+      gamesPlayed = parseInt(savedGames || "0");
+    } else {
+      localStorage.setItem("patternGamesDate", today);
+      localStorage.setItem("patternGamesPlayed", "0");
+    }
+    
+    const remaining = MAX_PATTERN_GAMES_PER_DAY - gamesPlayed;
+    setDailyGamesLeft(remaining);
+    setCanPlay(remaining > 0);
+  }, []);
+
+  const startGame = () => {
+    if (!canPlay) return;
+    setScore(0);
+    setPatternsCompleted(0);
+    setGameActive(true);
+    setGameComplete(false);
+    setCurrentPattern(generatePattern());
+    setSelectedAnswer(null);
+    setShowResult(false);
+  };
+
+  const handleAnswer = (answer: number | string) => {
+    if (showResult || !currentPattern) return;
+    
+    setSelectedAnswer(answer);
+    setShowResult(true);
+    
+    const isCorrect = answer === currentPattern.answer;
+    const newScore = isCorrect ? score + 1 : score;
+    if (isCorrect) setScore(newScore);
+    
+    setTimeout(() => {
+      const newCompleted = patternsCompleted + 1;
+      setPatternsCompleted(newCompleted);
+      
+      if (newCompleted >= PATTERNS_PER_GAME) {
+        setGameActive(false);
+        setGameComplete(true);
+        
+        const xp = Math.min(newScore * 10, 50);
+        if (xp > 0) onWin(xp);
+        
+        const gamesPlayed = parseInt(localStorage.getItem("patternGamesPlayed") || "0") + 1;
+        localStorage.setItem("patternGamesPlayed", gamesPlayed.toString());
+        setDailyGamesLeft(MAX_PATTERN_GAMES_PER_DAY - gamesPlayed);
+        
+        if (onGameComplete) onGameComplete();
+      } else {
+        setCurrentPattern(generatePattern());
+        setSelectedAnswer(null);
+        setShowResult(false);
+      }
+    }, 1000);
+  };
+
+  if (!canPlay) {
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Daily Limit Reached</h3>
+        <p className="text-4xl mb-4">⏰</p>
+        <p className="text-white/60 mb-4">You&apos;ve played all {MAX_PATTERN_GAMES_PER_DAY} pattern games for today.</p>
+        <p className="text-purple-400 text-sm">Come back tomorrow for more!</p>
+      </div>
+    );
+  }
+
+  if (gameComplete) {
+    const xpEarned = Math.min(score * 10, 50);
+    const gamesPlayed = parseInt(localStorage.getItem("patternGamesPlayed") || "0");
+    const remaining = MAX_PATTERN_GAMES_PER_DAY - gamesPlayed;
+    
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Game Over!</h3>
+        <p className="text-4xl mb-4">{score >= 5 ? "🏆" : score >= 3 ? "⭐" : "🔢"}</p>
+        <p className="text-white/60 mb-2">You got {score}/{PATTERNS_PER_GAME} patterns correct!</p>
+        <p className="text-[var(--color-main-1)] font-semibold mb-4">+{xpEarned} XP earned!</p>
+        {remaining > 0 ? (
+          <Button variant="outline" onClick={startGame}>Play Again ({remaining} left)</Button>
+        ) : (
+          <p className="text-purple-400 text-sm">Come back tomorrow!</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-heading text-xl">Pattern Match</h3>
+        <span className="text-white/60 text-sm">{patternsCompleted}/{PATTERNS_PER_GAME}</span>
+      </div>
+
+      {!gameActive ? (
+        <Button variant="primary" onClick={startGame} className="w-full">Start Game</Button>
+      ) : currentPattern && (
+        <>
+          <div className="text-center mb-4">
+            <p className="text-2xl font-mono tracking-widest">
+              {currentPattern.sequence.join(" → ")} → <span className="text-[var(--color-main-1)]">?</span>
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {currentPattern.options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => handleAnswer(opt)}
+                disabled={showResult}
+                className={`p-4 rounded-lg text-xl font-semibold transition-colors cursor-pointer ${
+                  showResult
+                    ? opt === currentPattern.answer
+                      ? "bg-green-500/20 border-2 border-green-500"
+                      : selectedAnswer === opt
+                      ? "bg-red-500/20 border-2 border-red-500"
+                      : "bg-[var(--color-dark-3)]"
+                    : "bg-[var(--color-dark-3)] hover:bg-[var(--color-dark-4)]"
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Simon Says Game
+const MAX_SIMON_GAMES_PER_DAY = 3;
+const SIMON_COLORS = ["red", "blue", "green", "yellow"];
+
+function SimonSaysGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; onGameComplete?: () => void }) {
+  const [sequence, setSequence] = useState<string[]>([]);
+  const [playerSequence, setPlayerSequence] = useState<string[]>([]);
+  const [isShowingSequence, setIsShowingSequence] = useState(false);
+  const [activeColor, setActiveColor] = useState<string | null>(null);
+  const [round, setRound] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
+  const [dailyGamesLeft, setDailyGamesLeft] = useState(MAX_SIMON_GAMES_PER_DAY);
+  const [canPlay, setCanPlay] = useState(true);
+  const [gameComplete, setGameComplete] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const savedDate = localStorage.getItem("simonGamesDate");
+    const savedGames = localStorage.getItem("simonGamesPlayed");
+    
+    let gamesPlayed = 0;
+    if (savedDate === today) {
+      gamesPlayed = parseInt(savedGames || "0");
+    } else {
+      localStorage.setItem("simonGamesDate", today);
+      localStorage.setItem("simonGamesPlayed", "0");
+    }
+    
+    const remaining = MAX_SIMON_GAMES_PER_DAY - gamesPlayed;
+    setDailyGamesLeft(remaining);
+    setCanPlay(remaining > 0);
+  }, []);
+
+  const showSequence = useCallback(async (seq: string[]) => {
+    setIsShowingSequence(true);
+    for (const color of seq) {
+      setActiveColor(color);
+      await new Promise(r => setTimeout(r, 500));
+      setActiveColor(null);
+      await new Promise(r => setTimeout(r, 200));
+    }
+    setIsShowingSequence(false);
+  }, []);
+
+  const startGame = useCallback(() => {
+    if (!canPlay) return;
+    setRound(1);
+    setGameActive(true);
+    setGameComplete(false);
+    setIsGameOver(false);
+    setPlayerSequence([]);
+    
+    const firstColor = SIMON_COLORS[Math.floor(Math.random() * SIMON_COLORS.length)];
+    setSequence([firstColor]);
+    setTimeout(() => showSequence([firstColor]), 500);
+  }, [canPlay, showSequence]);
+
+  const handleColorClick = (color: string) => {
+    if (isShowingSequence || !gameActive) return;
+    
+    const newPlayerSequence = [...playerSequence, color];
+    setPlayerSequence(newPlayerSequence);
+    setActiveColor(color);
+    setTimeout(() => setActiveColor(null), 200);
+    
+    // Check if correct
+    const currentIndex = newPlayerSequence.length - 1;
+    if (newPlayerSequence[currentIndex] !== sequence[currentIndex]) {
+      // Wrong! Game over
+      setGameActive(false);
+      setIsGameOver(true);
+      setGameComplete(true);
+      
+      const xp = Math.min(round * 5, 50);
+      if (xp > 0) onWin(xp);
+      
+      const gamesPlayed = parseInt(localStorage.getItem("simonGamesPlayed") || "0") + 1;
+      localStorage.setItem("simonGamesPlayed", gamesPlayed.toString());
+      setDailyGamesLeft(MAX_SIMON_GAMES_PER_DAY - gamesPlayed);
+      
+      if (onGameComplete) onGameComplete();
+      return;
+    }
+    
+    // Check if completed sequence
+    if (newPlayerSequence.length === sequence.length) {
+      const newRound = round + 1;
+      setRound(newRound);
+      setPlayerSequence([]);
+      
+      // Add new color to sequence
+      const nextColor = SIMON_COLORS[Math.floor(Math.random() * SIMON_COLORS.length)];
+      const newSequence = [...sequence, nextColor];
+      setSequence(newSequence);
+      
+      setTimeout(() => showSequence(newSequence), 1000);
+    }
+  };
+
+  const getColorClasses = (color: string, isActive: boolean) => {
+    const base = "aspect-square rounded-xl transition-all cursor-pointer ";
+    const activeClass = isActive ? "scale-95 brightness-150" : "";
+    switch (color) {
+      case "red": return base + `bg-red-500 hover:bg-red-400 ${activeClass}`;
+      case "blue": return base + `bg-blue-500 hover:bg-blue-400 ${activeClass}`;
+      case "green": return base + `bg-green-500 hover:bg-green-400 ${activeClass}`;
+      case "yellow": return base + `bg-yellow-500 hover:bg-yellow-400 ${activeClass}`;
+      default: return base;
+    }
+  };
+
+  if (!canPlay) {
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Daily Limit Reached</h3>
+        <p className="text-4xl mb-4">⏰</p>
+        <p className="text-white/60 mb-4">You&apos;ve played all {MAX_SIMON_GAMES_PER_DAY} Simon games for today.</p>
+        <p className="text-purple-400 text-sm">Come back tomorrow for more!</p>
+      </div>
+    );
+  }
+
+  if (gameComplete && isGameOver) {
+    const xpEarned = Math.min(round * 5, 50);
+    const gamesPlayed = parseInt(localStorage.getItem("simonGamesPlayed") || "0");
+    const remaining = MAX_SIMON_GAMES_PER_DAY - gamesPlayed;
+    
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Game Over!</h3>
+        <p className="text-4xl mb-4">{round >= 8 ? "🏆" : round >= 5 ? "⭐" : "🎵"}</p>
+        <p className="text-white/60 mb-2">You reached round {round}!</p>
+        <p className="text-[var(--color-main-1)] font-semibold mb-4">+{xpEarned} XP earned!</p>
+        {remaining > 0 ? (
+          <Button variant="outline" onClick={startGame}>Play Again ({remaining} left)</Button>
+        ) : (
+          <p className="text-purple-400 text-sm">Come back tomorrow!</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-heading text-xl">Simon Says</h3>
+        {gameActive && <span className="text-white/60 text-sm">Round {round}</span>}
+      </div>
+
+      {!gameActive ? (
+        <Button variant="primary" onClick={startGame} className="w-full">Start Game</Button>
+      ) : (
+        <>
+          <p className="text-center text-white/60 mb-4">
+            {isShowingSequence ? "Watch the sequence..." : "Your turn!"}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {SIMON_COLORS.map(color => (
+              <button
+                key={color}
+                onClick={() => handleColorClick(color)}
+                disabled={isShowingSequence}
+                className={getColorClasses(color, activeColor === color)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Coin Flip Streak Game
+const MAX_COINFLIP_GAMES_PER_DAY = 3;
+const COINFLIP_ROUNDS = 10;
+
+function CoinFlipGame({ onWin, onGameComplete }: { onWin: (xp: number) => void; onGameComplete?: () => void }) {
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [result, setResult] = useState<"heads" | "tails" | null>(null);
+  const [prediction, setPrediction] = useState<"heads" | "tails" | null>(null);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [round, setRound] = useState(0);
+  const [dailyGamesLeft, setDailyGamesLeft] = useState(MAX_COINFLIP_GAMES_PER_DAY);
+  const [canPlay, setCanPlay] = useState(true);
+  const [gameComplete, setGameComplete] = useState(false);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const savedDate = localStorage.getItem("coinflipGamesDate");
+    const savedGames = localStorage.getItem("coinflipGamesPlayed");
+    
+    let gamesPlayed = 0;
+    if (savedDate === today) {
+      gamesPlayed = parseInt(savedGames || "0");
+    } else {
+      localStorage.setItem("coinflipGamesDate", today);
+      localStorage.setItem("coinflipGamesPlayed", "0");
+    }
+    
+    const remaining = MAX_COINFLIP_GAMES_PER_DAY - gamesPlayed;
+    setDailyGamesLeft(remaining);
+    setCanPlay(remaining > 0);
+  }, []);
+
+  const flipCoin = (guess: "heads" | "tails") => {
+    if (isFlipping) return;
+    
+    setPrediction(guess);
+    setIsFlipping(true);
+    setResult(null);
+    
+    setTimeout(() => {
+      const coinResult: "heads" | "tails" = Math.random() > 0.5 ? "heads" : "tails";
+      setResult(coinResult);
+      setIsFlipping(false);
+      
+      const newRound = round + 1;
+      setRound(newRound);
+      
+      if (coinResult === guess) {
+        const newStreak = streak + 1;
+        setStreak(newStreak);
+        if (newStreak > bestStreak) setBestStreak(newStreak);
+      } else {
+        setStreak(0);
+      }
+      
+      if (newRound >= COINFLIP_ROUNDS) {
+        setGameComplete(true);
+        
+        const finalBest = Math.max(bestStreak, coinResult === guess ? streak + 1 : bestStreak);
+        const xp = Math.min(finalBest * 10, 50);
+        if (xp > 0) onWin(xp);
+        
+        const gamesPlayed = parseInt(localStorage.getItem("coinflipGamesPlayed") || "0") + 1;
+        localStorage.setItem("coinflipGamesPlayed", gamesPlayed.toString());
+        setDailyGamesLeft(MAX_COINFLIP_GAMES_PER_DAY - gamesPlayed);
+        
+        if (onGameComplete) onGameComplete();
+      }
+    }, 1000);
+  };
+
+  const resetGame = () => {
+    setStreak(0);
+    setBestStreak(0);
+    setRound(0);
+    setResult(null);
+    setPrediction(null);
+    setGameComplete(false);
+  };
+
+  if (!canPlay) {
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Daily Limit Reached</h3>
+        <p className="text-4xl mb-4">⏰</p>
+        <p className="text-white/60 mb-4">You&apos;ve played all {MAX_COINFLIP_GAMES_PER_DAY} coin games for today.</p>
+        <p className="text-purple-400 text-sm">Come back tomorrow for more!</p>
+      </div>
+    );
+  }
+
+  if (gameComplete) {
+    const xpEarned = Math.min(bestStreak * 10, 50);
+    const gamesPlayed = parseInt(localStorage.getItem("coinflipGamesPlayed") || "0");
+    const remaining = MAX_COINFLIP_GAMES_PER_DAY - gamesPlayed;
+    
+    return (
+      <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl text-center">
+        <h3 className="font-heading text-xl mb-4">Game Over!</h3>
+        <p className="text-4xl mb-4">{bestStreak >= 5 ? "🏆" : bestStreak >= 3 ? "⭐" : "🪙"}</p>
+        <p className="text-white/60 mb-2">Best streak: {bestStreak} in a row!</p>
+        <p className="text-[var(--color-main-1)] font-semibold mb-4">+{xpEarned} XP earned!</p>
+        {remaining > 0 ? (
+          <Button variant="outline" onClick={resetGame}>Play Again ({remaining} left)</Button>
+        ) : (
+          <p className="text-purple-400 text-sm">Come back tomorrow!</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-6 rounded-xl">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-heading text-xl">Coin Flip Streak</h3>
+        <div className="text-right">
+          <span className="text-white/60 text-sm block">Round {round}/{COINFLIP_ROUNDS}</span>
+          <span className="text-white/40 text-xs">Streak: {streak} | Best: {bestStreak}</span>
+        </div>
+      </div>
+
+      <div className="text-center mb-6">
+        <motion.div
+          className="text-7xl mx-auto w-24 h-24 flex items-center justify-center"
+          animate={isFlipping ? { rotateY: [0, 1800] } : {}}
+          transition={{ duration: 1, ease: "easeOut" }}
+        >
+          {result ? (result === "heads" ? "😀" : "🔴") : "🪙"}
+        </motion.div>
+        {result && (
+          <p className={`mt-2 font-semibold ${result === prediction ? "text-green-400" : "text-red-400"}`}>
+            {result.toUpperCase()}! {result === prediction ? "Correct! ✓" : "Wrong!"}
+          </p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          variant="outline"
+          onClick={() => flipCoin("heads")}
+          disabled={isFlipping}
+          className="py-4"
+        >
+          😀 Heads
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => flipCoin("tails")}
+          disabled={isFlipping}
+          className="py-4"
+        >
+          🔴 Tails
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // Main Arcade Page
 export function ArcadePageClient() {
   const router = useRouter();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
-  const { hasAnyBadge, addXP, addNotification, isInitialized: gamificationInitialized } = useGamificationStore();
+  const { hasAnyBadge, addXP, addNotification, isInitialized: gamificationInitialized, userBadges } = useGamificationStore();
   const { playEasterEgg } = useBadgeSound();
 
-  const [selectedGame, setSelectedGame] = useState<"memory" | "slots" | "trivia" | null>(null);
+  const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
   const [totalXPEarned, setTotalXPEarned] = useState(0);
   const [accessChecked, setAccessChecked] = useState(false);
 
   // Both auth and gamification must be initialized before checking access
   const fullyInitialized = authInitialized && gamificationInitialized;
+  
+  // Get user's VIP tier from badges
+  const userVIPTier = getHighestVIPTier(userBadges.map(b => b.badge_id));
+  const availableGames = getAvailableGames(userVIPTier);
 
   // Check VIP access - only after both stores are initialized
   useEffect(() => {
@@ -882,57 +1987,90 @@ export function ArcadePageClient() {
           )}
         </motion.div>
 
+        {/* Tier Legend */}
+        {userVIPTier && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex justify-center gap-4 mb-8 flex-wrap"
+          >
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/30 rounded-full">
+              <span>🔥</span>
+              <span className="text-sm text-orange-400">Bronze</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded-full">
+              <span>👑</span>
+              <span className="text-sm text-yellow-400">Gold</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-400/10 border border-amber-400/30 rounded-full">
+              <span>✨</span>
+              <span className="text-sm text-amber-300">Platinum</span>
+            </div>
+          </motion.div>
+        )}
+
         {/* Game Selection */}
         {!selectedGame ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto"
+            className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto"
           >
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setSelectedGame("memory")}
-              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 rounded-xl text-center hover:border-purple-500/50 transition-colors cursor-pointer"
-            >
-              <div className="text-5xl mb-4">🧠</div>
-              <h3 className="font-heading text-xl mb-2">Memory Match</h3>
-              <p className="text-sm text-white/60">Match pairs to win XP</p>
-              <div className="mt-2 text-xs text-white/40">{MAX_MEMORY_GAMES_PER_DAY} games per day</div>
-              <div className="mt-2 text-xs text-purple-400">Up to 50 XP per game</div>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setSelectedGame("slots")}
-              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 rounded-xl text-center hover:border-purple-500/50 transition-colors cursor-pointer"
-            >
-              <div className="text-5xl mb-4">🎰</div>
-              <h3 className="font-heading text-xl mb-2">Lucky Slots</h3>
-              <p className="text-sm text-white/60">Spin to win prizes</p>
-              <div className="mt-2 text-xs text-white/40">3 spins per day</div>
-              <div className="mt-2 text-xs text-purple-400">Up to 100 XP per spin</div>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setSelectedGame("trivia")}
-              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] p-8 rounded-xl text-center hover:border-purple-500/50 transition-colors cursor-pointer"
-            >
-              <div className="text-5xl mb-4">📝</div>
-              <h3 className="font-heading text-xl mb-2">Trivia Challenge</h3>
-              <p className="text-sm text-white/60">200 random questions</p>
-              <div className="mt-2 text-xs text-white/40">{MAX_TRIVIA_GAMES_PER_DAY} games per day</div>
-              <div className="mt-2 text-xs text-purple-400">Up to 50 XP per game</div>
-            </motion.button>
+            {ALL_GAMES.map((game) => {
+              const isLocked = !availableGames.includes(game.id);
+              const requiredTier = game.requiredTier;
+              const tierConfig = VIP_TIERS[requiredTier];
+              
+              return (
+                <motion.button
+                  key={game.id}
+                  whileHover={!isLocked ? { scale: 1.03 } : {}}
+                  whileTap={!isLocked ? { scale: 0.98 } : {}}
+                  onClick={() => !isLocked && setSelectedGame(game.id)}
+                  className={`relative bg-[var(--color-dark-2)] border p-6 rounded-xl text-center transition-colors ${
+                    isLocked 
+                      ? "border-[var(--color-dark-3)] opacity-60 cursor-not-allowed" 
+                      : "border-[var(--color-dark-3)] hover:border-purple-500/50 cursor-pointer"
+                  }`}
+                >
+                  {/* Tier badge */}
+                  <div 
+                    className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                      requiredTier === "platinum" ? "bg-amber-400/20 text-amber-300" :
+                      requiredTier === "gold" ? "bg-yellow-500/20 text-yellow-400" :
+                      "bg-orange-500/20 text-orange-400"
+                    }`}
+                  >
+                    {tierConfig.icon}
+                  </div>
+                  
+                  {/* Lock overlay */}
+                  {isLocked && (
+                    <div className="absolute inset-0 bg-[var(--color-dark-1)]/80 rounded-xl flex flex-col items-center justify-center z-10">
+                      <span className="text-3xl mb-2">🔒</span>
+                      <span className="text-sm text-white/60">
+                        Requires {tierConfig.name}
+                      </span>
+                      <span className="text-xs text-white/40 mt-1">
+                        Upgrade in Rewards Shop
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="text-5xl mb-4">{game.icon}</div>
+                  <h3 className="font-heading text-xl mb-2">{game.name}</h3>
+                  <p className="text-sm text-white/60">{game.description}</p>
+                  <div className="mt-2 text-xs text-white/40">{game.dailyPlays} plays per day</div>
+                  <div className="mt-2 text-xs text-purple-400">Up to {game.maxXP} XP</div>
+                </motion.button>
+              );
+            })}
           </motion.div>
         ) : (
           <div className="max-w-md mx-auto">
             <button
               onClick={() => setSelectedGame(null)}
-              className="mb-4 text-white/60 hover:text-white transition-colors flex items-center gap-2"
+              className="mb-4 text-white/60 hover:text-white transition-colors flex items-center gap-2 cursor-pointer"
             >
               ← Back to Games
             </button>
@@ -944,9 +2082,18 @@ export function ArcadePageClient() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
+                {/* Bronze Tier Games */}
                 {selectedGame === "memory" && <MemoryGame onWin={handleWin} />}
                 {selectedGame === "slots" && <SlotMachine onWin={handleWin} />}
                 {selectedGame === "trivia" && <TriviaGame onWin={handleWin} />}
+                {/* Gold Tier Games */}
+                {selectedGame === "reaction" && <ReactionGame onWin={handleWin} />}
+                {selectedGame === "whack" && <WhackMoleGame onWin={handleWin} />}
+                {selectedGame === "word" && <WordScrambleGame onWin={handleWin} />}
+                {/* Platinum Tier Games */}
+                {selectedGame === "pattern" && <PatternMatchGame onWin={handleWin} />}
+                {selectedGame === "simon" && <SimonSaysGame onWin={handleWin} />}
+                {selectedGame === "coinflip" && <CoinFlipGame onWin={handleWin} />}
               </motion.div>
             </AnimatePresence>
           </div>
