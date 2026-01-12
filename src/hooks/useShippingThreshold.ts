@@ -20,7 +20,10 @@ export interface ShippingTier {
   color: string;
 }
 
-export const SHIPPING_TIERS: Record<Exclude<VIPTier, null> | "none", ShippingTier> = {
+// NonNullVIPTier excludes null since Record keys must be string/number/symbol
+type NonNullVIPTier = Exclude<VIPTier, null>;
+
+export const SHIPPING_TIERS: Record<NonNullVIPTier | "none", ShippingTier> = {
   none: {
     name: "Standard",
     freeThreshold: FREE_SHIPPING_THRESHOLD,
