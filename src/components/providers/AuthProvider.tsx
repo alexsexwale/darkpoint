@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useAuthStore, useWishlistStore, useGamificationStore, useRewardsStore } from "@/stores";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -9,10 +9,38 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { initialize, isInitialized, isAuthenticated } = useAuthStore();
+  const { initialize, isInitialized, isAuthenticated, user, signOut } = useAuthStore();
   const { fetchWishlist, clearLocalState, processPendingProduct, pendingProduct } = useWishlistStore();
   const { initialize: initGamification, reset: resetGamification } = useGamificationStore();
   const { fetchRewards, clearLocalState: clearRewardsState } = useRewardsStore();
+
+  // Check if user is suspended
+  const checkSuspension = useCallback(async () => {
+    if (!isSupabaseConfigured() || !user?.id) return;
+    
+    try {
+      type SuspensionCheck = { is_suspended: boolean | null; suspension_reason: string | null };
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("is_suspended, suspension_reason")
+        .eq("id", user.id)
+        .single<SuspensionCheck>();
+      
+      if (profile?.is_suspended) {
+        // Force logout suspended user
+        await signOut();
+        
+        // Show alert with reason
+        const reason = profile.suspension_reason || "Please contact support for assistance.";
+        alert(`Your account has been suspended.\n\nReason: ${reason}`);
+        
+        // Redirect to home
+        window.location.href = "/";
+      }
+    } catch (err) {
+      console.error("Error checking suspension:", err);
+    }
+  }, [user?.id, signOut]);
 
   // Initialize auth
   useEffect(() => {
@@ -20,6 +48,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       initialize();
     }
   }, [initialize, isInitialized]);
+
+  // Check suspension status periodically (every 60 seconds) and on mount
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    
+    // Check immediately
+    checkSuspension();
+    
+    // Then check every 60 seconds
+    const interval = setInterval(checkSuspension, 60000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user?.id, checkSuspension]);
 
   // Fetch user data when auth state changes
   useEffect(() => {

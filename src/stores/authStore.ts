@@ -321,6 +321,26 @@ export const useAuthStore = create<AuthState & AuthActions>()(
             return { success: false, error: errorMessage };
           }
 
+          // Check if user is suspended
+          if (data.user) {
+            type SuspensionCheck = { is_suspended: boolean | null; suspension_reason: string | null };
+            const { data: profile } = await supabase
+              .from("user_profiles")
+              .select("is_suspended, suspension_reason")
+              .eq("id", data.user.id)
+              .single<SuspensionCheck>();
+            
+            if (profile?.is_suspended) {
+              // Sign out the suspended user
+              await supabase.auth.signOut();
+              const suspensionMessage = profile.suspension_reason 
+                ? `Your account has been suspended. Reason: ${profile.suspension_reason}`
+                : "Your account has been suspended. Please contact support for assistance.";
+              set({ error: suspensionMessage, isLoading: false });
+              return { success: false, error: suspensionMessage };
+            }
+          }
+
           set({
             user: data.user,
             session: data.session,
