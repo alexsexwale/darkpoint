@@ -1,6 +1,9 @@
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { ArticlePageClient } from "./ArticlePageClient";
+
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://darkpoint.co.za";
 
 // Create a server-side Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,7 +18,7 @@ interface ArticlePageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: ArticlePageProps) {
+export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
   const supabase = getSupabase();
   
@@ -25,7 +28,7 @@ export async function generateMetadata({ params }: ArticlePageProps) {
 
   const { data: article } = await supabase
     .from("news_articles")
-    .select("title, excerpt")
+    .select("title, excerpt, image_url, author, category, published_at, updated_at")
     .eq("slug", slug)
     .eq("is_published", true)
     .single();
@@ -34,9 +37,39 @@ export async function generateMetadata({ params }: ArticlePageProps) {
     return { title: "Article Not Found | Darkpoint" };
   }
 
+  const articleUrl = `${BASE_URL}/news/${slug}`;
+
   return {
-    title: `${article.title} | Darkpoint`,
+    title: article.title,
     description: article.excerpt,
+    authors: article.author ? [{ name: article.author }] : undefined,
+    openGraph: {
+      title: article.title,
+      description: article.excerpt,
+      url: articleUrl,
+      type: "article",
+      publishedTime: article.published_at,
+      modifiedTime: article.updated_at || article.published_at,
+      authors: article.author ? [article.author] : undefined,
+      section: article.category,
+      images: article.image_url ? [
+        {
+          url: article.image_url,
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        },
+      ] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description: article.excerpt,
+      images: article.image_url ? [article.image_url] : undefined,
+    },
+    alternates: {
+      canonical: articleUrl,
+    },
   };
 }
 

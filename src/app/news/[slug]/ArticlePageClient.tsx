@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ParallaxMouse } from "@/components/effects";
 import { useGamificationStore, useAuthStore } from "@/stores";
+import { ArticleJsonLd, BreadcrumbJsonLd } from "@/components/seo";
 
 interface Article {
   id: string;
@@ -154,6 +155,25 @@ export function ArticlePageClient({
 
   return (
     <ParallaxMouse>
+      {/* SEO: Article structured data */}
+      <ArticleJsonLd
+        title={article.title}
+        description={article.excerpt}
+        url={`/news/${article.slug}`}
+        imageUrl={article.image || undefined}
+        datePublished={article.date}
+        author={article.author}
+        category={article.category}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: "Home", url: "/" },
+          { name: "News", url: "/news" },
+          { name: article.category, url: `/news?category=${article.category.toLowerCase()}` },
+          { name: article.title, url: `/news/${article.slug}` },
+        ]}
+      />
+
       {/* Hero Header with parallax background */}
       <div className="nk-header-title relative min-h-[60vh] flex items-end overflow-hidden">
         {/* Background Image */}

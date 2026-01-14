@@ -9,6 +9,7 @@ import { AddToCartButton } from "./AddToCartButton";
 import { AddToWishlistButton } from "./AddToWishlistButton";
 import { ShareProductButton } from "./ShareProductButton";
 import { useGamificationStore, useAuthStore, useReviewsStore } from "@/stores";
+import { ProductJsonLd, BreadcrumbJsonLd } from "@/components/seo";
 import type { ProductVariant } from "@/types";
 
 interface ProductPageClientProps {
@@ -122,6 +123,21 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
 
   return (
     <div className="container py-8">
+      {/* SEO: Product structured data */}
+      <ProductJsonLd 
+        product={product} 
+        reviewCount={totalReviews} 
+        averageRating={stats?.average || 0} 
+      />
+      <BreadcrumbJsonLd 
+        items={[
+          { name: "Home", url: "/" },
+          { name: "Store", url: "/store" },
+          { name: product.category.charAt(0).toUpperCase() + product.category.slice(1), url: `/store?category=${product.category}` },
+          { name: product.name, url: `/product/${product.slug}` },
+        ]} 
+      />
+      
       <div className="nk-gap-2" />
 
       {/* Breadcrumb */}

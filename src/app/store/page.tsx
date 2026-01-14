@@ -1,9 +1,19 @@
 import { Metadata } from "next";
 import { StorePageClient } from "./StorePageClient";
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://darkpoint.co.za";
+
 export const metadata: Metadata = {
   title: "Store",
   description: "Browse our collection of gaming gear, tech gadgets, hardware, and merchandise. Find everything you need to level up your setup.",
+  openGraph: {
+    title: "Store | Darkpoint",
+    description: "Browse our collection of gaming gear, tech gadgets, hardware, and merchandise.",
+    url: `${BASE_URL}/store`,
+  },
+  alternates: {
+    canonical: `${BASE_URL}/store`,
+  },
 };
 
 interface StorePageProps {

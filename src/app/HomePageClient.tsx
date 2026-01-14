@@ -5,19 +5,35 @@ import { ProductGrid } from "@/components/store";
 import { Button, ProductGridSkeleton, CategoryBannerSkeleton } from "@/components/ui";
 import { SITE_NAME } from "@/lib/constants";
 import { useProducts } from "@/hooks";
+import type { Product } from "@/types";
 
-export function HomePageClient() {
-  // Fetch featured products
-  const { products: featuredProducts, loading: featuredLoading } = useProducts({
+interface HomePageClientProps {
+  initialFeaturedProducts?: Product[];
+  initialLatestProducts?: Product[];
+}
+
+export function HomePageClient({ 
+  initialFeaturedProducts = [], 
+  initialLatestProducts = [] 
+}: HomePageClientProps) {
+  // Use client-side fetching only if no initial products were provided (SSR fallback)
+  const { products: clientFeatured, loading: featuredLoading } = useProducts({
     featured: true,
     limit: 3,
   });
 
-  // Fetch latest products
-  const { products: latestProducts, loading: latestLoading } = useProducts({
+  const { products: clientLatest, loading: latestLoading } = useProducts({
     sortBy: "newest",
     limit: 6,
   });
+
+  // Use SSR products if available, otherwise fall back to client-fetched
+  const featuredProducts = initialFeaturedProducts.length > 0 ? initialFeaturedProducts : clientFeatured;
+  const latestProducts = initialLatestProducts.length > 0 ? initialLatestProducts : clientLatest;
+  
+  // Only show loading state if we don't have SSR products and client is still loading
+  const showFeaturedLoading = initialFeaturedProducts.length === 0 && featuredLoading;
+  const showLatestLoading = initialLatestProducts.length === 0 && latestLoading;
 
   return (
     <div>
@@ -57,7 +73,7 @@ export function HomePageClient() {
               Our handpicked selection of the best gaming and tech gear
             </p>
           </div>
-          {featuredLoading ? (
+          {showFeaturedLoading ? (
             <ProductGridSkeleton count={3} columns={3} />
           ) : featuredProducts.length > 0 ? (
             <ProductGrid products={featuredProducts} columns={3} />
@@ -83,7 +99,7 @@ export function HomePageClient() {
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {latestLoading ? (
+            {showLatestLoading ? (
               <>
                 <CategoryBannerSkeleton />
                 <CategoryBannerSkeleton />
@@ -227,7 +243,7 @@ export function HomePageClient() {
               Check out our newest arrivals
             </p>
           </div>
-          {latestLoading ? (
+          {showLatestLoading ? (
             <ProductGridSkeleton count={6} columns={3} />
           ) : latestProducts.length > 0 ? (
             <ProductGrid products={latestProducts} columns={3} />

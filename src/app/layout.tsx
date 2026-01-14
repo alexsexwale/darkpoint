@@ -7,7 +7,10 @@ import { Preloader, BackgroundVideo, PageTransition, EasterEggProvider, ScrollTo
 import { EmailVerificationBanner } from "@/components/auth";
 import { DailyRewardProvider } from "@/components/gamification";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo";
 import "@/styles/globals.scss";
+
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://darkpoint.co.za";
 
 const marcellusSC = Marcellus_SC({
   weight: "400",
@@ -23,15 +26,17 @@ const robotoCondensed = Roboto_Condensed({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
   title: {
     default: "Darkpoint | Elite Gaming Gear, Tech & Merchandise",
     template: "%s | Darkpoint",
   },
   description:
     "Your ultimate destination for elite gaming equipment, cutting-edge tech, and exclusive merchandise. Level up your setup with premium gear from Darkpoint.",
-  keywords: ["gaming", "gaming gear", "hardware", "tech", "gadgets", "merchandise", "gaming accessories", "peripherals", "audio", "electronics", "esports"],
+  keywords: ["gaming", "gaming gear", "hardware", "tech", "gadgets", "merchandise", "gaming accessories", "peripherals", "audio", "electronics", "esports", "South Africa", "gaming store"],
   authors: [{ name: "Darkpoint" }],
   creator: "Darkpoint",
+  publisher: "Darkpoint",
   icons: {
     icon: "/images/favicon.png",
     shortcut: "/images/favicon.png",
@@ -39,20 +44,47 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "en_ZA",
+    url: BASE_URL,
     siteName: "Darkpoint",
     title: "Darkpoint | Elite Gaming Gear, Tech & Merchandise",
     description: "Your ultimate destination for gaming equipment, tech gadgets, hardware, and merchandise.",
+    images: [
+      {
+        url: "/images/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Darkpoint - Elite Gaming Gear, Tech & Merchandise",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Darkpoint | Elite Gaming Gear, Tech & Merchandise",
     description: "Your ultimate destination for elite gaming equipment, cutting-edge tech, and exclusive merchandise.",
+    images: ["/images/og-image.jpg"],
+    creator: "@darkpoint",
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
+  verification: {
+    // Add your verification codes here when you have them
+    // google: "your-google-verification-code",
+    // yandex: "your-yandex-verification-code",
+  },
+  alternates: {
+    canonical: BASE_URL,
+  },
+  category: "E-commerce",
 };
 
 export default function RootLayout({
@@ -73,6 +105,9 @@ export default function RootLayout({
         {/* DNS prefetch for external resources */}
         <link rel="dns-prefetch" href="https://cf.cjdropshipping.com" />
         <link rel="dns-prefetch" href="https://img.cjdropshipping.com" />
+        {/* Structured Data for SEO */}
+        <OrganizationJsonLd />
+        <WebSiteJsonLd />
       </head>
       <body className="min-h-screen flex flex-col antialiased" suppressHydrationWarning>
         <AuthProvider>
