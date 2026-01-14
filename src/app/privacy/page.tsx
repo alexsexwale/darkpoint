@@ -1,8 +1,18 @@
 import { Metadata } from "next";
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://darkpoint.co.za";
+
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Privacy Policy for Darkpoint - how we collect, use, and protect your data.",
+  description: "Read Darkpoint's Privacy Policy to understand how we collect, use, and protect your personal data. Learn about your rights regarding cookies, data security, and information sharing.",
+  openGraph: {
+    title: "Privacy Policy | Darkpoint",
+    description: "How we collect, use, and protect your personal data at Darkpoint.",
+    url: `${BASE_URL}/privacy`,
+  },
+  alternates: {
+    canonical: `${BASE_URL}/privacy`,
+  },
 };
 
 export default function PrivacyPage() {

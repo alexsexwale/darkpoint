@@ -3,7 +3,7 @@ import { CheckoutContent } from "./CheckoutContent";
 
 export const metadata: Metadata = {
   title: "Checkout",
-  description: "Complete your purchase securely.",
+  description: "Complete your Darkpoint order securely. Safe payment options including credit card, EFT, SnapScan, and Zapper. Fast checkout for your gaming gear purchase.",
 };
 
 export default function CheckoutPage() {

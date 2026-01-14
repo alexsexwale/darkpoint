@@ -3,7 +3,7 @@ import { CartContent } from "./CartContent";
 
 export const metadata: Metadata = {
   title: "Shopping Cart",
-  description: "View and manage items in your shopping cart.",
+  description: "Review and manage items in your Darkpoint shopping cart. Adjust quantities, apply coupon codes, and proceed to secure checkout for your gaming gear.",
 };
 
 export default function CartPage() {

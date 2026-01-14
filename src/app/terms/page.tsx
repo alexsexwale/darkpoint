@@ -1,8 +1,18 @@
 import { Metadata } from "next";
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://darkpoint.co.za";
+
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "Terms of Service for Darkpoint - rules and guidelines for using our platform.",
+  description: "Review Darkpoint's Terms of Service covering user agreements, ordering policies, payment terms, intellectual property rights, and liability limitations for our gaming gear store.",
+  openGraph: {
+    title: "Terms of Service | Darkpoint",
+    description: "Terms and conditions for using Darkpoint's gaming gear and tech store.",
+    url: `${BASE_URL}/terms`,
+  },
+  alternates: {
+    canonical: `${BASE_URL}/terms`,
+  },
 };
 
 export default function TermsPage() {
