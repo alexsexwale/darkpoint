@@ -91,11 +91,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
     }
   };
 
-  const nextImage = () => {
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     setCurrentImageIndex((prev) => (prev + 1) % validImages.length);
   };
 
-  const prevImage = () => {
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     setCurrentImageIndex((prev) => (prev - 1 + validImages.length) % validImages.length);
   };
 
@@ -178,6 +182,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
             <>
               <button
                 onClick={prevImage}
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 className={cn(
                   "absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-[var(--color-main-1)] transition-all cursor-pointer z-10",
                   isHovered ? "opacity-100" : "opacity-50"
@@ -190,6 +198,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
               </button>
               <button
                 onClick={nextImage}
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 className={cn(
                   "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-[var(--color-main-1)] transition-all cursor-pointer z-10",
                   isHovered ? "opacity-100" : "opacity-50"
@@ -223,7 +235,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
                     ? "bg-[var(--color-main-1)] scale-125"
                     : "bg-[var(--color-dark-4)] hover:bg-[var(--color-main-1)]/50"
                 )}
-                onClick={() => setCurrentImageIndex(index)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setCurrentImageIndex(index);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
                 aria-label={`View image ${index + 1}`}
               />
             ))}
