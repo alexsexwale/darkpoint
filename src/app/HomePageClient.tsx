@@ -82,8 +82,8 @@ export function HomePageClient({
               <svg className="w-12 h-12 mx-auto text-[var(--color-main-1)]/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-[var(--muted-foreground)] mb-2">Configure API to load products</p>
-              <p className="text-sm text-white/60">Add CJ Dropshipping credentials to .env.local</p>
+              <p className="text-[var(--muted-foreground)] mb-2">No featured products found</p>
+              <p className="text-sm text-white/60">Mark products as featured in the admin panel</p>
             </div>
           )}
         </div>
@@ -252,8 +252,8 @@ export function HomePageClient({
               <svg className="w-12 h-12 mx-auto text-[var(--color-main-1)]/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-[var(--muted-foreground)] mb-2">Configure API to load products</p>
-              <p className="text-sm text-white/60">Add CJ Dropshipping credentials to .env.local</p>
+              <p className="text-[var(--muted-foreground)] mb-2">No products found</p>
+              <p className="text-sm text-white/60">Add products in the admin panel</p>
             </div>
           )}
           <div className="text-center mt-12">
