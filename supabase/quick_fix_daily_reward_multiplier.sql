@@ -187,3 +187,4 @@ $$;
 GRANT EXECUTE ON FUNCTION public.claim_daily_reward_v2(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_daily_reward(UUID) TO authenticated;
 
+

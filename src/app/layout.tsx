@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Marcellus_SC, Roboto_Condensed } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -108,6 +109,19 @@ export default function RootLayout({
         {/* Structured Data for SEO */}
         <OrganizationJsonLd />
         <WebSiteJsonLd />
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-XMBBYJVQMN"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-XMBBYJVQMN');
+          `}
+        </Script>
       </head>
       <body className="min-h-screen flex flex-col antialiased" suppressHydrationWarning>
         <AuthProvider>

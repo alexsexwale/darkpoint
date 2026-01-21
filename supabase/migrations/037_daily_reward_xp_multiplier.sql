@@ -204,3 +204,4 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.claim_daily_reward(UUID) TO authenticated;
 
+
