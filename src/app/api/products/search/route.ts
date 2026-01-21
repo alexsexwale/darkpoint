@@ -1,16 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cjDropshipping, transformCJProduct } from '@/lib/cjdropshipping';
-import { env } from '@/config/env';
+import { createClient } from '@supabase/supabase-js';
+import type { Product } from '@/types';
+
+// Create a server-side Supabase client
+function getSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
+
+// Transform Supabase product data to our Product type
+function transformProduct(dbProduct: {
+  id: string;
+  cj_product_id: string;
+  name: string;
+  description: string | null;
+  short_description: string | null;
+  sell_price: number;
+  compare_at_price: number | null;
+  category: string | null;
+  tags: string[] | null;
+  images: unknown;
+  is_featured: boolean;
+  slug: string | null;
+  created_at: string;
+  updated_at: string;
+}): Product {
+  const images = (dbProduct.images as Array<{ src: string; alt?: string }>) || [];
+  
+  return {
+    id: dbProduct.cj_product_id,
+    slug: dbProduct.slug || `${dbProduct.name.toLowerCase().replace(/\s+/g, '-')}-${dbProduct.cj_product_id}`,
+    name: dbProduct.name,
+    description: dbProduct.description || "",
+    shortDescription: dbProduct.short_description || "",
+    price: dbProduct.sell_price,
+    compareAtPrice: dbProduct.compare_at_price || undefined,
+    category: dbProduct.category || "uncategorized",
+    tags: dbProduct.tags || [],
+    images: images.length > 0 
+      ? images.map((img, idx) => ({ id: `${dbProduct.id}-${idx}`, src: img.src, alt: img.alt || dbProduct.name }))
+      : [{ id: `${dbProduct.id}-0`, src: "/images/placeholder.png", alt: dbProduct.name }],
+    rating: 4.5,
+    reviewCount: 0,
+    inStock: true,
+    featured: dbProduct.is_featured,
+    createdAt: dbProduct.created_at,
+    updatedAt: dbProduct.updated_at,
+  };
+}
 
 export async function GET(request: NextRequest) {
-  // Check if CJ credentials are configured
-  if (!env.cjDropshipping.email || !env.cjDropshipping.password) {
+  const supabase = getSupabase();
+  
+  if (!supabase) {
     return NextResponse.json({
       products: [],
       total: 0,
-      error: 'CJ Dropshipping credentials not configured.',
+      error: 'Database not configured.',
     }, { status: 503 });
   }
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
   const limit = parseInt(searchParams.get('limit') || '20');
@@ -25,26 +76,32 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const cj = await cjDropshipping.getProducts({
-      pageNum: page,
-      pageSize: Math.min(limit, 50),
-      keywords: query.trim(),
-    });
+    const searchQuery = query.trim();
+    const offset = (page - 1) * limit;
 
-    if (!cj.success) {
+    // Search in name, description, and category
+    const { data, error } = await supabase
+      .from('admin_products')
+      .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, slug, created_at, updated_at')
+      .eq('is_active', true)
+      .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`)
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error('Search query error:', error);
       return NextResponse.json({
         products: [],
         total: 0,
-        error: cj.error || 'Failed to fetch products',
+        error: 'Search failed',
       }, { status: 500 });
     }
 
-    const transformed = (cj.data || []).map(transformCJProduct);
+    const transformed = (data || []).map(transformProduct);
     
     // Calculate relevance score for better sorting
     const scoredProducts = transformed.map((product) => {
       let score = 0;
-      const queryLower = query.toLowerCase();
+      const queryLower = searchQuery.toLowerCase();
       const nameLower = product.name.toLowerCase();
       
       // Exact match gets highest score
@@ -62,6 +119,9 @@ export async function GET(request: NextRequest) {
       
       // Stock availability bonus
       if (product.inStock) score += 5;
+
+      // Featured bonus
+      if (product.featured) score += 3;
       
       return { ...product, _score: score };
     });
@@ -77,7 +137,7 @@ export async function GET(request: NextRequest) {
       total: finalProducts.length,
       page,
       limit,
-      query: query.trim(),
+      query: searchQuery,
     });
 
   } catch (error) {
