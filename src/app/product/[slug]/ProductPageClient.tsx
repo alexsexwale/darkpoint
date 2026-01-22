@@ -18,10 +18,27 @@ interface ProductPageClientProps {
 
 // Extract product ID from slug (format: product-name-productId)
 function extractProductId(slug: string): string {
-  // The product ID is the last segment after the last hyphen
   const parts = slug.split("-");
-  // Product IDs from CJ are typically alphanumeric strings
-  // Take the last part which should be the ID
+  
+  // Check if the last segments form a UUID pattern (e.g., C1D0DB37-65E7-4B2A-96E5-ABC123)
+  // UUIDs have 5 segments separated by hyphens with specific lengths: 8-4-4-4-12
+  if (parts.length >= 5) {
+    const lastFive = parts.slice(-5);
+    const isUUID = (
+      lastFive[0].length === 8 &&
+      lastFive[1].length === 4 &&
+      lastFive[2].length === 4 &&
+      lastFive[3].length === 4 &&
+      lastFive[4].length >= 12 &&
+      lastFive.every(p => /^[a-fA-F0-9]+$/.test(p))
+    );
+    
+    if (isUUID) {
+      return lastFive.join("-");
+    }
+  }
+  
+  // For non-UUID IDs, take the last part
   return parts[parts.length - 1];
 }
 
