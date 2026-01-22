@@ -155,118 +155,210 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
         ]} 
       />
 
-      {/* Breadcrumb */}
-      <div className="px-4 py-3 sm:container sm:mx-auto sm:py-4">
-        <nav className="text-xs text-[var(--muted-foreground)] overflow-hidden">
-          <div className="flex items-center gap-1 flex-wrap">
+      {/* Desktop Layout */}
+      <div className="hidden lg:block">
+        <div className="container py-8">
+          <div className="nk-gap-2" />
+          
+          {/* Breadcrumb */}
+          <nav className="text-sm text-[var(--muted-foreground)] mb-8">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>
-            <span>/</span>
+            <span className="mx-2">/</span>
             <Link href="/store" className="hover:text-white transition-colors">Store</Link>
-            <span>/</span>
-            <span className="text-white truncate">{product.name}</span>
+            <span className="mx-2">/</span>
+            <span className="text-white">{product.name}</span>
+          </nav>
+
+          {/* Product Details - Two Column */}
+          <div className="nk-store-product grid lg:grid-cols-2 gap-12">
+            <ProductGallery images={product.images} productName={product.name} />
+
+            <div className="space-y-6">
+              <Link
+                href={`/store?category=${product.category}`}
+                className="nk-product-category inline-block text-sm text-[var(--muted-foreground)] italic hover:text-[var(--color-main-1)] transition-colors"
+              >
+                {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
+              </Link>
+
+              <h1 className="nk-product-title text-4xl !mt-2 !mb-8">{product.name}</h1>
+
+              <div className="nk-product-rating-wrapper flex items-center gap-4">
+                <Rating value={stats?.average || 0} size="lg" showValue />
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
+                </span>
+              </div>
+
+              <ProductDescription description={product.description} maxLength={250} />
+
+              {hasVariants && (
+                <VariantSelectors
+                  variants={product.variants!}
+                  selectedVariant={selectedVariant}
+                  onVariantChange={setSelectedVariant}
+                />
+              )}
+
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`} />
+                <span className="text-sm">{product.inStock ? "In Stock" : "Out of Stock"}</span>
+              </div>
+
+              <div className="pt-4">
+                <AddToCartButton 
+                  product={product} 
+                  selectedVariant={selectedVariant}
+                  effectivePrice={effectivePrice}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <AddToWishlistButton product={product} className="flex-1" />
+                <ShareProductButton product={product} className="flex-1" />
+              </div>
+
+              {product.tags.length > 0 && (
+                <div className="pt-6 border-t border-[var(--color-dark-3)]">
+                  <span className="text-sm text-[var(--muted-foreground)]">Tags: </span>
+                  {product.tags.map((tag, index) => (
+                    <span key={tag}>
+                      <Link
+                        href={`/store?search=${tag}`}
+                        className="text-sm text-[var(--muted-foreground)] hover:text-[var(--color-main-1)] transition-colors"
+                      >
+                        {tag}
+                      </Link>
+                      {index < product.tags.length - 1 && ", "}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </nav>
+
+          <div className="nk-gap-5" />
+          <ProductTabs product={product} />
+
+          <div className="nk-gap-5" />
+          <div className="text-center mb-8">
+            <h2 className="text-3xl mb-4">You Might Also Like</h2>
+            <p className="text-[var(--muted-foreground)]">Explore more products in this category</p>
+          </div>
+          <div className="text-center">
+            <Link
+              href={`/store?category=${product.category}`}
+              className="inline-block px-6 py-3 border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
+            >
+              View {product.category.charAt(0).toUpperCase() + product.category.slice(1)} Products
+            </Link>
+          </div>
+          <div className="nk-gap-4" />
+        </div>
       </div>
 
-      {/* Product Gallery - Full width on mobile */}
-      <div className="w-full bg-[var(--color-dark-2)]">
-        <ProductGallery images={product.images} productName={product.name} />
-      </div>
-
-      {/* Product Info */}
-      <div className="px-4 py-6 sm:container sm:mx-auto">
-        {/* Category */}
-        <Link
-          href={`/store?category=${product.category}`}
-          className="inline-block text-xs text-[var(--color-main-1)] font-medium uppercase tracking-wider mb-2"
-        >
-          {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
-        </Link>
-
-        {/* Title */}
-        <h1 className="text-xl font-heading leading-tight mb-3 sm:text-3xl">{product.name}</h1>
-
-        {/* Rating */}
-        <div className="flex items-center gap-2 mb-4">
-          <Rating value={stats?.average || 0} size="lg" showValue />
-          <span className="text-xs text-[var(--muted-foreground)]">
-            ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
-          </span>
+      {/* Mobile Layout */}
+      <div className="lg:hidden">
+        {/* Breadcrumb */}
+        <div className="px-4 py-3">
+          <nav className="text-xs text-[var(--muted-foreground)]">
+            <Link href="/" className="hover:text-white">Home</Link>
+            <span className="mx-1">/</span>
+            <Link href="/store" className="hover:text-white">Store</Link>
+            <span className="mx-1">/</span>
+            <span className="text-white truncate">{product.name}</span>
+          </nav>
         </div>
 
-        {/* Description */}
-        <div className="mb-4">
-          <ProductDescription description={product.description} maxLength={200} />
+        {/* Gallery - Full width */}
+        <div className="w-full bg-[var(--color-dark-2)]">
+          <ProductGallery images={product.images} productName={product.name} />
         </div>
 
-        {/* Variant Selectors */}
-        {hasVariants && (
-          <div className="mb-4 pb-4 border-b border-[var(--color-dark-3)]">
-            <VariantSelectors
-              variants={product.variants!}
+        {/* Product Info */}
+        <div className="px-4 py-6">
+          <Link
+            href={`/store?category=${product.category}`}
+            className="inline-block text-xs text-[var(--color-main-1)] font-medium uppercase tracking-wider mb-2"
+          >
+            {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
+          </Link>
+
+          <h1 className="text-xl font-heading leading-tight mb-3">{product.name}</h1>
+
+          <div className="flex items-center gap-2 mb-4">
+            <Rating value={stats?.average || 0} size="lg" showValue />
+            <span className="text-xs text-[var(--muted-foreground)]">
+              ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
+            </span>
+          </div>
+
+          <div className="mb-4">
+            <ProductDescription description={product.description} maxLength={200} />
+          </div>
+
+          {hasVariants && (
+            <div className="mb-4 pb-4 border-b border-[var(--color-dark-3)]">
+              <VariantSelectors
+                variants={product.variants!}
+                selectedVariant={selectedVariant}
+                onVariantChange={setSelectedVariant}
+              />
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 mb-4">
+            <span className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`} />
+            <span className="text-xs">{product.inStock ? "In Stock" : "Out of Stock"}</span>
+          </div>
+
+          <div className="mb-4">
+            <AddToCartButton 
+              product={product} 
               selectedVariant={selectedVariant}
-              onVariantChange={setSelectedVariant}
+              effectivePrice={effectivePrice}
             />
           </div>
-        )}
 
-        {/* Stock Status */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`} />
-          <span className="text-xs">{product.inStock ? "In Stock" : "Out of Stock"}</span>
-        </div>
-
-        {/* Add to Cart */}
-        <div className="mb-4">
-          <AddToCartButton 
-            product={product} 
-            selectedVariant={selectedVariant}
-            effectivePrice={effectivePrice}
-          />
-        </div>
-
-        {/* Wishlist & Share */}
-        <div className="flex gap-2 mb-6">
-          <AddToWishlistButton product={product} className="flex-1" />
-          <ShareProductButton product={product} className="flex-1" />
-        </div>
-
-        {/* Tags */}
-        {product.tags.length > 0 && (
-          <div className="pt-4 border-t border-[var(--color-dark-3)]">
-            <span className="text-xs text-[var(--muted-foreground)]">Tags: </span>
-            {product.tags.map((tag, index) => (
-              <span key={tag}>
-                <Link
-                  href={`/store?search=${tag}`}
-                  className="text-xs text-[var(--muted-foreground)] hover:text-[var(--color-main-1)]"
-                >
-                  {tag}
-                </Link>
-                {index < product.tags.length - 1 && ", "}
-              </span>
-            ))}
+          <div className="flex gap-2 mb-6">
+            <AddToWishlistButton product={product} className="flex-1" />
+            <ShareProductButton product={product} className="flex-1" />
           </div>
-        )}
-      </div>
 
-      {/* Product Tabs */}
-      <div className="px-4 sm:container sm:mx-auto">
-        <ProductTabs product={product} />
-      </div>
+          {product.tags.length > 0 && (
+            <div className="pt-4 border-t border-[var(--color-dark-3)]">
+              <span className="text-xs text-[var(--muted-foreground)]">Tags: </span>
+              {product.tags.map((tag, index) => (
+                <span key={tag}>
+                  <Link
+                    href={`/store?search=${tag}`}
+                    className="text-xs text-[var(--muted-foreground)] hover:text-[var(--color-main-1)]"
+                  >
+                    {tag}
+                  </Link>
+                  {index < product.tags.length - 1 && ", "}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
-      {/* Related Products */}
-      <div className="px-4 py-8 text-center sm:container sm:mx-auto">
-        <h2 className="text-xl mb-2">You Might Also Like</h2>
-        <p className="text-sm text-[var(--muted-foreground)] mb-4">
-          Explore more products in this category
-        </p>
-        <Link
-          href={`/store?category=${product.category}`}
-          className="inline-block px-4 py-2 text-sm border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
-        >
-          View More
-        </Link>
+        {/* Tabs */}
+        <div className="px-4">
+          <ProductTabs product={product} />
+        </div>
+
+        {/* Related */}
+        <div className="px-4 py-8 text-center">
+          <h2 className="text-xl mb-2">You Might Also Like</h2>
+          <p className="text-sm text-[var(--muted-foreground)] mb-4">Explore more products</p>
+          <Link
+            href={`/store?category=${product.category}`}
+            className="inline-block px-4 py-2 text-sm border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
+          >
+            View More
+          </Link>
+        </div>
       </div>
     </div>
   );

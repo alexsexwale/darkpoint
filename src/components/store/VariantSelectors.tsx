@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import { cn, formatPrice } from "@/lib/utils";
 import type { ProductVariant } from "@/types";
 
@@ -121,44 +122,56 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
 
   if (variants.length <= 1) return null;
 
+  const hasColors = colors.length > 0;
+  const hasSizes = sizes.length > 0;
+  const hasOthers = others.length > 0;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Colors */}
-      {colors.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-white/60 uppercase tracking-wide">Color:</span>
+      {hasColors && (
+        <div className="nk-product-color">
+          <h4 className="text-sm font-heading uppercase tracking-wider mb-3">
+            Color
             {selectedVariant && colors.find(c => c.variant.id === selectedVariant.id) && (
-              <span className="text-xs text-white">
-                {colors.find(c => c.variant.id === selectedVariant.id)?.parsed.display}
+              <span className="ml-2 font-normal text-[var(--muted-foreground)] normal-case">
+                - {colors.find(c => c.variant.id === selectedVariant.id)?.parsed.display}
               </span>
             )}
-          </div>
-          <div className="flex flex-wrap gap-2">
+          </h4>
+          <div className="nk-color-selector">
             {colors.map(({ variant, parsed }) => {
               const isSelected = selectedVariant?.id === variant.id;
               const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
               
               return (
-                <button
-                  key={variant.id}
-                  onClick={() => !isOutOfStock && onVariantChange(variant)}
-                  disabled={isOutOfStock}
-                  className={cn(
-                    "w-8 h-8 rounded-full border-2 transition-all",
-                    isSelected ? "border-white scale-110" : "border-transparent",
-                    isOutOfStock && "opacity-30 cursor-not-allowed",
-                    parsed.colorHex === "#FFFFFF" && "border-white/30"
-                  )}
-                  style={{ backgroundColor: parsed.colorHex }}
-                  title={parsed.display}
-                >
-                  {isSelected && (
-                    <svg className={cn("w-4 h-4 mx-auto", parsed.colorHex === "#FFFFFF" ? "text-black" : "text-white")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
+                <div key={variant.id} className="inline-block">
+                  <input
+                    type="radio"
+                    id={`color-${variant.id}`}
+                    name="product-color"
+                    value={parsed.display}
+                    checked={isSelected}
+                    onChange={() => onVariantChange(variant)}
+                    disabled={isOutOfStock}
+                    className="sr-only"
+                  />
+                  <label
+                    htmlFor={`color-${variant.id}`}
+                    className={cn(
+                      "nk-color-label",
+                      isSelected && "selected",
+                      isOutOfStock && "out-of-stock"
+                    )}
+                    style={{ 
+                      backgroundColor: parsed.colorHex,
+                      color: parsed.colorHex,
+                    }}
+                    title={`${parsed.display}${isOutOfStock ? " (Out of stock)" : ""}`}
+                  >
+                    {parsed.display}
+                  </label>
+                </div>
               );
             })}
           </div>
@@ -166,31 +179,40 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
       )}
 
       {/* Sizes */}
-      {sizes.length > 0 && (
-        <div>
-          <span className="text-xs text-white/60 uppercase tracking-wide block mb-2">
-            {sizes.some(s => /GB|TB/i.test(s.parsed.display)) ? "Storage:" : "Size:"}
-          </span>
-          <div className="flex flex-wrap gap-1.5">
+      {hasSizes && (
+        <div className="nk-product-size">
+          <h4 className="text-sm font-heading uppercase tracking-wider mb-3">
+            {sizes.some(s => /GB|TB/i.test(s.parsed.display)) ? "Storage" : "Size"}
+          </h4>
+          <div className="nk-size-selector">
             {sizes.map(({ variant, parsed }) => {
               const isSelected = selectedVariant?.id === variant.id;
               const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
               
               return (
-                <button
-                  key={variant.id}
-                  onClick={() => !isOutOfStock && onVariantChange(variant)}
-                  disabled={isOutOfStock}
-                  className={cn(
-                    "px-3 py-1.5 text-xs border transition-all",
-                    isSelected 
-                      ? "bg-white text-black border-white" 
-                      : "border-white/20 text-white hover:border-white/50",
-                    isOutOfStock && "opacity-30 cursor-not-allowed line-through"
-                  )}
-                >
-                  {parsed.display}
-                </button>
+                <div key={variant.id} className="inline-block">
+                  <input
+                    type="radio"
+                    id={`size-${variant.id}`}
+                    name="product-size"
+                    value={parsed.display}
+                    checked={isSelected}
+                    onChange={() => onVariantChange(variant)}
+                    disabled={isOutOfStock}
+                    className="sr-only"
+                  />
+                  <label
+                    htmlFor={`size-${variant.id}`}
+                    className={cn(
+                      "nk-size-label",
+                      isSelected && "selected",
+                      isOutOfStock && "out-of-stock"
+                    )}
+                    title={isOutOfStock ? "Out of stock" : undefined}
+                  >
+                    {parsed.display}
+                  </label>
+                </div>
               );
             })}
           </div>
@@ -198,32 +220,52 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
       )}
 
       {/* Others */}
-      {others.length > 0 && (
-        <div>
-          <span className="text-xs text-white/60 uppercase tracking-wide block mb-2">Option:</span>
-          <div className="flex flex-wrap gap-1.5">
+      {hasOthers && (
+        <div className="nk-product-variant">
+          <h4 className="text-sm font-heading uppercase tracking-wider mb-3">Options</h4>
+          <div className="nk-size-selector">
             {others.map(({ variant, parsed }) => {
               const isSelected = selectedVariant?.id === variant.id;
               const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
+              const hasImage = typeof variant.image === 'string' && variant.image;
               
               return (
-                <button
-                  key={variant.id}
-                  onClick={() => !isOutOfStock && onVariantChange(variant)}
-                  disabled={isOutOfStock}
-                  className={cn(
-                    "px-3 py-1.5 text-xs border transition-all",
-                    isSelected 
-                      ? "bg-white text-black border-white" 
-                      : "border-white/20 text-white hover:border-white/50",
-                    isOutOfStock && "opacity-30 cursor-not-allowed"
-                  )}
-                >
-                  {parsed.display}
-                  {variant.price && (
-                    <span className="ml-1 opacity-60">({formatPrice(variant.price)})</span>
-                  )}
-                </button>
+                <div key={variant.id} className="inline-block">
+                  <input
+                    type="radio"
+                    id={`variant-${variant.id}`}
+                    name="product-variant"
+                    value={parsed.display}
+                    checked={isSelected}
+                    onChange={() => onVariantChange(variant)}
+                    disabled={isOutOfStock}
+                    className="sr-only"
+                  />
+                  <label
+                    htmlFor={`variant-${variant.id}`}
+                    className={cn(
+                      "nk-size-label",
+                      isSelected && "selected",
+                      isOutOfStock && "out-of-stock"
+                    )}
+                    title={isOutOfStock ? "Out of stock" : undefined}
+                  >
+                    {hasImage && (
+                      <span className="relative w-6 h-6 mr-2 inline-block align-middle">
+                        <Image
+                          src={variant.image as string}
+                          alt={parsed.display}
+                          fill
+                          className="object-contain"
+                        />
+                      </span>
+                    )}
+                    {parsed.display}
+                    {variant.price && (
+                      <span className="ml-1 opacity-60">({formatPrice(variant.price)})</span>
+                    )}
+                  </label>
+                </div>
               );
             })}
           </div>
