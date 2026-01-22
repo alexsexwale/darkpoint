@@ -242,7 +242,9 @@ export function CheckoutContent() {
           productId: item.product.id,
           productName: item.product.name,
           productSlug: item.product.slug,
-          productImage: item.product.images[0]?.src || null,
+          productImage: item.variant?.image 
+            ? (typeof item.variant.image === 'string' ? item.variant.image : item.variant.image.src)
+            : (item.product.images[0]?.src || null),
           variantId: item.variant?.id || null,
           variantName: item.variant ? getVariantDisplayName(item.variant) : null,
           variantSku: item.variant?.sku || null,

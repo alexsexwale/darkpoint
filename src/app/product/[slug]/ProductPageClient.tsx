@@ -98,6 +98,17 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
     return product?.price || 0;
   }, [selectedVariant, product]);
   
+  // Get the variant image URL
+  const variantImageUrl = useMemo(() => {
+    if (!selectedVariant?.image) return null;
+    
+    // Handle both string and ProductImage types
+    if (typeof selectedVariant.image === 'string') {
+      return selectedVariant.image;
+    }
+    return selectedVariant.image.src || null;
+  }, [selectedVariant]);
+  
   // Check if product has variants
   const hasVariants = product?.variants && product.variants.length > 0;
 
@@ -171,7 +182,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
 
           {/* Product Details - Two Column */}
           <div className="nk-store-product grid lg:grid-cols-2 gap-12">
-            <ProductGallery images={product.images} productName={product.name} />
+            <ProductGallery images={product.images} productName={product.name} variantImage={variantImageUrl} />
 
             <div className="space-y-6">
               <Link
@@ -270,7 +281,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
 
         {/* Gallery - Full width */}
         <div className="w-full bg-[var(--color-dark-2)]">
-          <ProductGallery images={product.images} productName={product.name} />
+          <ProductGallery images={product.images} productName={product.name} variantImage={variantImageUrl} />
         </div>
 
         {/* Product Info */}

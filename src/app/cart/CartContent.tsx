@@ -95,7 +95,11 @@ export function CartContent() {
                         className="flex-shrink-0 w-20 h-20 bg-[var(--color-dark-3)] rounded-lg overflow-hidden"
                       >
                         <Image
-                          src={item.product.images[0]?.src || "/images/placeholder.png"}
+                          src={
+                            item.variant?.image 
+                              ? (typeof item.variant.image === 'string' ? item.variant.image : item.variant.image.src)
+                              : (item.product.images[0]?.src || "/images/placeholder.png")
+                          }
                           alt={item.product.name}
                           width={80}
                           height={80}
@@ -192,13 +196,17 @@ export function CartContent() {
                   {/* Mobile/Tablet Layout */}
                   <div className="lg:hidden">
                     <div className="flex gap-4">
-                      {/* Product Image */}
+                      {/* Product Image - Show variant image if available */}
                       <Link
                         href={`/product/${item.product.slug}`}
                         className="flex-shrink-0 w-24 h-24 bg-[var(--color-dark-3)] rounded-lg overflow-hidden"
                       >
                         <Image
-                          src={item.product.images[0]?.src || "/images/placeholder.png"}
+                          src={
+                            item.variant?.image 
+                              ? (typeof item.variant.image === 'string' ? item.variant.image : item.variant.image.src)
+                              : (item.product.images[0]?.src || "/images/placeholder.png")
+                          }
                           alt={item.product.name}
                           width={96}
                           height={96}

@@ -10,6 +10,7 @@ import type { ProductImage } from "@/types";
 interface ProductGalleryProps {
   images: ProductImage[];
   productName: string;
+  variantImage?: string | null;
 }
 
 const PLACEHOLDER_IMAGE = "/images/placeholder.png";
@@ -26,7 +27,7 @@ function isValidImageUrl(url: string | undefined | null): boolean {
   }
 }
 
-export function ProductGallery({ images, productName }: ProductGalleryProps) {
+export function ProductGallery({ images, productName, variantImage }: ProductGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -46,6 +47,21 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
     }
     return sanitized;
   }, [images, failedImages, productName]);
+
+  // When variant image changes, scroll to it or show it first
+  useEffect(() => {
+    if (!variantImage || !emblaMainApi) return;
+    
+    // Find if this image exists in the gallery
+    const variantImageIndex = validImages.findIndex(img => 
+      img.src === variantImage || img.src.includes(variantImage)
+    );
+    
+    if (variantImageIndex !== -1 && variantImageIndex !== selectedIndex) {
+      emblaMainApi.scrollTo(variantImageIndex);
+      setSelectedIndex(variantImageIndex);
+    }
+  }, [variantImage, validImages, emblaMainApi, selectedIndex]);
   
   const handleImageError = (src: string) => {
     if (src !== PLACEHOLDER_IMAGE) {

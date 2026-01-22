@@ -119,14 +119,18 @@ export function CartDrawer() {
                       key={item.id}
                       className="flex gap-4 pb-6 border-b border-[var(--color-dark-3)]"
                     >
-                      {/* Image */}
+                      {/* Image - Show variant image if available */}
                       <Link
                         href={`/product/${item.product.slug}`}
                         onClick={closeCart}
                         className="flex-shrink-0 w-20 h-20 bg-[var(--color-dark-2)]"
                       >
                         <Image
-                          src={item.product.images[0]?.src || "/images/placeholder.png"}
+                          src={
+                            item.variant?.image 
+                              ? (typeof item.variant.image === 'string' ? item.variant.image : item.variant.image.src)
+                              : (item.product.images[0]?.src || "/images/placeholder.png")
+                          }
                           alt={item.product.name}
                           width={80}
                           height={80}
