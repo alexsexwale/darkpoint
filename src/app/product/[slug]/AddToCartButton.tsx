@@ -47,25 +47,25 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
   };
 
   return (
-    <div className="nk-product-addtocart space-y-4 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-3 md:gap-6">
-      {/* Price Display - First on mobile */}
-      <div className="nk-product-price text-2xl sm:text-xl md:text-2xl font-bold order-first sm:order-last">
+    <div className="space-y-3">
+      {/* Price Display */}
+      <div className="text-2xl font-bold text-[var(--color-main-1)]">
         {formatPrice(displayPrice)}
         {product.compareAtPrice && displayPrice < product.compareAtPrice && (
-          <del className="ml-2 md:ml-4 text-sm md:text-base text-white/50 font-normal">
+          <del className="ml-2 text-sm text-white/50 font-normal">
             {formatPrice(product.compareAtPrice)}
           </del>
         )}
       </div>
       
       {/* Quantity and Add to Cart Row */}
-      <div className="flex items-center gap-3 w-full sm:w-auto">
-        {/* Quantity Picker - Compact on mobile */}
-        <div className="nk-form-control-number nk-form-control-number-sm flex-shrink-0">
+      <div className="flex items-center gap-2">
+        {/* Quantity Picker */}
+        <div className="flex items-center border border-white/20 rounded">
           <button
             type="button"
-            className="nk-form-control-number-down"
             onClick={decrementQuantity}
+            className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
             aria-label="Decrease quantity"
           >
             −
@@ -75,12 +75,13 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
             min="1"
             value={quantity}
             onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+            className="w-12 h-10 text-center bg-transparent border-x border-white/20 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             aria-label="Quantity"
           />
           <button
             type="button"
-            className="nk-form-control-number-up"
             onClick={incrementQuantity}
+            className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
             aria-label="Increase quantity"
           >
             +
@@ -90,14 +91,11 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
         {/* Add to Cart Button */}
         <button
           type="button"
-          className="nk-btn nk-btn-primary nk-btn-sm sm:nk-btn-md md:nk-btn-lg link-effect-4 flex-1 sm:flex-initial"
           onClick={handleAddToCart}
           disabled={!isInStock}
+          className="flex-1 h-10 px-4 bg-[var(--color-main-1)] text-white font-medium text-sm hover:bg-[var(--color-main-1)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <span className="nk-btn-inner" />
-          <span className="nk-btn-content text-sm sm:text-base">
-            {isInStock ? "Add to Cart" : "Out of Stock"}
-          </span>
+          {isInStock ? "Add to Cart" : "Out of Stock"}
         </button>
       </div>
     </div>

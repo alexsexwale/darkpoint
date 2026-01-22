@@ -139,7 +139,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
   }
 
   return (
-    <div className="container py-4 sm:py-8">
+    <div className="w-full">
       {/* SEO: Product structured data */}
       <ProductJsonLd 
         product={product} 
@@ -154,137 +154,120 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
           { name: product.name, url: `/product/${product.slug}` },
         ]} 
       />
-      
-      <div className="nk-gap-1 sm:nk-gap-2" />
 
-      {/* Breadcrumb - Simplified on mobile */}
-      <nav className="text-xs sm:text-sm text-[var(--muted-foreground)] mb-4 sm:mb-8 overflow-hidden">
-        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-          <Link href="/" className="hover:text-white transition-colors shrink-0">
-            Home
-          </Link>
-          <span>/</span>
-          <Link href="/store" className="hover:text-white transition-colors shrink-0">
-            Store
-          </Link>
-          <span>/</span>
-          <span className="text-white truncate max-w-[200px] sm:max-w-none">{product.name}</span>
-        </div>
-      </nav>
+      {/* Breadcrumb */}
+      <div className="px-4 py-3 sm:container sm:mx-auto sm:py-4">
+        <nav className="text-xs text-[var(--muted-foreground)] overflow-hidden">
+          <div className="flex items-center gap-1 flex-wrap">
+            <Link href="/" className="hover:text-white transition-colors">Home</Link>
+            <span>/</span>
+            <Link href="/store" className="hover:text-white transition-colors">Store</Link>
+            <span>/</span>
+            <span className="text-white truncate">{product.name}</span>
+          </div>
+        </nav>
+      </div>
 
-      {/* Product Details */}
-      <div className="nk-store-product grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12">
-        {/* Gallery */}
+      {/* Product Gallery - Full width on mobile */}
+      <div className="w-full bg-[var(--color-dark-2)]">
         <ProductGallery images={product.images} productName={product.name} />
-
-        {/* Info */}
-        <div className="space-y-4 sm:space-y-6">
-          {/* Category */}
-          <Link
-            href={`/store?category=${product.category}`}
-            className="nk-product-category inline-block text-xs sm:text-sm text-[var(--color-main-1)] font-medium uppercase tracking-wider hover:text-[var(--color-main-1)]/80 transition-colors"
-          >
-            {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
-          </Link>
-
-          {/* Title */}
-          <h1 className="nk-product-title text-2xl sm:text-3xl lg:text-4xl !mt-1 sm:!mt-2 !mb-4 sm:!mb-8 leading-tight">{product.name}</h1>
-
-          {/* Rating */}
-          <div className="nk-product-rating-wrapper flex items-center gap-2 sm:gap-4 flex-wrap">
-            <Rating value={stats?.average || 0} size="lg" showValue />
-            <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
-              ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
-            </span>
-          </div>
-
-          {/* Description */}
-          <ProductDescription 
-            description={product.description} 
-            maxLength={250}
-          />
-
-          {/* Variant Selectors */}
-          {hasVariants && (
-            <div className="pt-2">
-              <VariantSelectors
-                variants={product.variants!}
-                selectedVariant={selectedVariant}
-                onVariantChange={setSelectedVariant}
-              />
-            </div>
-          )}
-
-          {/* Stock Status */}
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                product.inStock ? "bg-green-500" : "bg-red-500"
-              }`}
-            />
-            <span className="text-xs sm:text-sm">
-              {product.inStock ? "In Stock" : "Out of Stock"}
-            </span>
-          </div>
-
-          {/* Add to Cart Section */}
-          <div className="pt-2 sm:pt-4">
-            <AddToCartButton 
-              product={product} 
-              selectedVariant={selectedVariant}
-              effectivePrice={effectivePrice}
-            />
-          </div>
-
-          {/* Wishlist & Share Buttons */}
-          <div className="flex gap-2 sm:gap-3">
-            <AddToWishlistButton product={product} className="flex-1" />
-            <ShareProductButton product={product} className="flex-1" />
-          </div>
-
-          {/* Tags */}
-          {product.tags.length > 0 && (
-            <div className="pt-4 sm:pt-6 border-t border-[var(--color-dark-3)]">
-              <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">Tags: </span>
-              {product.tags.map((tag, index) => (
-                <span key={tag}>
-                  <Link
-                    href={`/store?search=${tag}`}
-                    className="text-xs sm:text-sm text-[var(--muted-foreground)] hover:text-[var(--color-main-1)] transition-colors"
-                  >
-                    {tag}
-                  </Link>
-                  {index < product.tags.length - 1 && ", "}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
-      <div className="nk-gap-3 sm:nk-gap-5" />
-
-      {/* Product Tabs */}
-      <ProductTabs product={product} />
-
-      {/* Related Products */}
-      <div className="nk-gap-3 sm:nk-gap-5" />
-      <div className="text-center mb-6 sm:mb-8">
-        <h2 className="text-xl sm:text-2xl lg:text-3xl mb-2 sm:mb-4">You Might Also Like</h2>
-        <p className="text-sm sm:text-base text-[var(--muted-foreground)]">
-          Explore more products in this category
-        </p>
-      </div>
-      <div className="text-center">
+      {/* Product Info */}
+      <div className="px-4 py-6 sm:container sm:mx-auto">
+        {/* Category */}
         <Link
           href={`/store?category=${product.category}`}
-          className="inline-block px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors rounded-lg sm:rounded-none"
+          className="inline-block text-xs text-[var(--color-main-1)] font-medium uppercase tracking-wider mb-2"
         >
-          View {product.category.charAt(0).toUpperCase() + product.category.slice(1)} Products
+          {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
         </Link>
+
+        {/* Title */}
+        <h1 className="text-xl font-heading leading-tight mb-3 sm:text-3xl">{product.name}</h1>
+
+        {/* Rating */}
+        <div className="flex items-center gap-2 mb-4">
+          <Rating value={stats?.average || 0} size="lg" showValue />
+          <span className="text-xs text-[var(--muted-foreground)]">
+            ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
+          </span>
+        </div>
+
+        {/* Description */}
+        <div className="mb-4">
+          <ProductDescription description={product.description} maxLength={200} />
+        </div>
+
+        {/* Variant Selectors */}
+        {hasVariants && (
+          <div className="mb-4 pb-4 border-b border-[var(--color-dark-3)]">
+            <VariantSelectors
+              variants={product.variants!}
+              selectedVariant={selectedVariant}
+              onVariantChange={setSelectedVariant}
+            />
+          </div>
+        )}
+
+        {/* Stock Status */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`} />
+          <span className="text-xs">{product.inStock ? "In Stock" : "Out of Stock"}</span>
+        </div>
+
+        {/* Add to Cart */}
+        <div className="mb-4">
+          <AddToCartButton 
+            product={product} 
+            selectedVariant={selectedVariant}
+            effectivePrice={effectivePrice}
+          />
+        </div>
+
+        {/* Wishlist & Share */}
+        <div className="flex gap-2 mb-6">
+          <AddToWishlistButton product={product} className="flex-1" />
+          <ShareProductButton product={product} className="flex-1" />
+        </div>
+
+        {/* Tags */}
+        {product.tags.length > 0 && (
+          <div className="pt-4 border-t border-[var(--color-dark-3)]">
+            <span className="text-xs text-[var(--muted-foreground)]">Tags: </span>
+            {product.tags.map((tag, index) => (
+              <span key={tag}>
+                <Link
+                  href={`/store?search=${tag}`}
+                  className="text-xs text-[var(--muted-foreground)] hover:text-[var(--color-main-1)]"
+                >
+                  {tag}
+                </Link>
+                {index < product.tags.length - 1 && ", "}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="nk-gap-3 sm:nk-gap-4" />
+      {/* Product Tabs */}
+      <div className="px-4 sm:container sm:mx-auto">
+        <ProductTabs product={product} />
+      </div>
+
+      {/* Related Products */}
+      <div className="px-4 py-8 text-center sm:container sm:mx-auto">
+        <h2 className="text-xl mb-2">You Might Also Like</h2>
+        <p className="text-sm text-[var(--muted-foreground)] mb-4">
+          Explore more products in this category
+        </p>
+        <Link
+          href={`/store?category=${product.category}`}
+          className="inline-block px-4 py-2 text-sm border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
+        >
+          View More
+        </Link>
+      </div>
     </div>
   );
 }
