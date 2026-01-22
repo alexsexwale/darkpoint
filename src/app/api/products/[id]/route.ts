@@ -33,9 +33,14 @@ function transformProduct(dbProduct: {
   const variants = (dbProduct.variants as Array<{
     id: string;
     name: string;
+    value?: string;
     price: number;
     sku?: string;
+    image?: string;
+    stock?: number;
     inStock?: boolean;
+    priceUSD?: number;
+    costZAR?: number;
     attributes?: Record<string, string>;
   }>) || [];
   
@@ -61,9 +66,12 @@ function transformProduct(dbProduct: {
     variants: variants.length > 0 ? variants.map((v, idx) => ({
       id: v.id || `${dbProduct.id}-variant-${idx}`,
       name: v.name,
+      value: v.value,
       price: v.price,
       sku: v.sku,
-      inStock: v.inStock ?? true,
+      image: v.image,
+      stock: v.stock,
+      inStock: v.inStock ?? (v.stock === undefined || v.stock > 0),
       attributes: v.attributes || {},
     })) : undefined,
   };

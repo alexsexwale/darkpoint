@@ -34,19 +34,31 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
   const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   
+  // Build the images array, including variant image at the start if it exists and is different
   const validImages = useMemo(() => {
-    const sanitized = images
+    const baseImages = images
       .map((img) => ({
         ...img,
         src: isValidImageUrl(img.src) ? img.src : PLACEHOLDER_IMAGE,
       }))
       .filter((img) => !failedImages.has(img.src) || img.src === PLACEHOLDER_IMAGE);
     
-    if (sanitized.length === 0) {
+    // If we have a variant image that's not already in the array, add it at the start
+    if (variantImage && isValidImageUrl(variantImage)) {
+      const variantExists = baseImages.some(img => img.src === variantImage);
+      if (!variantExists && !failedImages.has(variantImage)) {
+        return [
+          { id: 'variant-image', src: variantImage, alt: `${productName} - Selected Variant` },
+          ...baseImages
+        ];
+      }
+    }
+    
+    if (baseImages.length === 0) {
       return [{ id: 'placeholder', src: PLACEHOLDER_IMAGE, alt: productName }];
     }
-    return sanitized;
-  }, [images, failedImages, productName]);
+    return baseImages;
+  }, [images, failedImages, productName, variantImage]);
   
   const handleImageError = (src: string) => {
     if (src !== PLACEHOLDER_IMAGE) {
@@ -60,14 +72,12 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
     dragFree: true,
   });
 
-  // When variant image changes, scroll to it or show it first
+  // When variant image changes, scroll to show it (it's at index 0 if it's a new image)
   useEffect(() => {
     if (!variantImage || !emblaMainApi) return;
     
-    // Find if this image exists in the gallery
-    const variantImageIndex = validImages.findIndex(img => 
-      img.src === variantImage || img.src.includes(variantImage)
-    );
+    // Find the variant image in the gallery
+    const variantImageIndex = validImages.findIndex(img => img.src === variantImage);
     
     if (variantImageIndex !== -1 && variantImageIndex !== selectedIndex) {
       emblaMainApi.scrollTo(variantImageIndex);
