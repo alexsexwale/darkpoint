@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { cn } from "@/lib/utils";
+import Image from "next/image";
+import { cn, formatPrice } from "@/lib/utils";
 import type { ProductVariant } from "@/types";
 
 interface VariantSelectorsProps {
@@ -10,298 +11,407 @@ interface VariantSelectorsProps {
   onVariantChange: (variant: ProductVariant) => void;
 }
 
-// Common color mappings
-const COLOR_MAP: Record<string, string> = {
-  black: "#3A3A3A",
-  white: "#FFFFFF",
-  red: "#DC2626",
-  blue: "#558dc8",
-  green: "#48ac55",
-  orange: "#c89355",
-  yellow: "#EAB308",
-  pink: "#EC4899",
-  purple: "#9333EA",
-  gray: "#6B7280",
-  grey: "#6B7280",
-  brown: "#92400E",
-  navy: "#1E3A5F",
-  gold: "#D4AF37",
-  silver: "#C0C0C0",
-  beige: "#F5F5DC",
-  cyan: "#06B6D4",
-  teal: "#14B8A6",
-  coral: "#FF7F50",
-  khaki: "#C3B091",
+// Extended color mappings with gradients for special colors
+const COLOR_MAP: Record<string, { hex: string; gradient?: string }> = {
+  black: { hex: "#1a1a1a" },
+  white: { hex: "#FFFFFF" },
+  red: { hex: "#DC2626" },
+  blue: { hex: "#3B82F6" },
+  green: { hex: "#22C55E" },
+  orange: { hex: "#F97316" },
+  yellow: { hex: "#EAB308" },
+  pink: { hex: "#EC4899" },
+  purple: { hex: "#A855F7" },
+  gray: { hex: "#6B7280" },
+  grey: { hex: "#6B7280" },
+  brown: { hex: "#92400E" },
+  navy: { hex: "#1E3A8A" },
+  gold: { hex: "#D4AF37", gradient: "linear-gradient(135deg, #D4AF37 0%, #F5E6A3 50%, #D4AF37 100%)" },
+  silver: { hex: "#C0C0C0", gradient: "linear-gradient(135deg, #C0C0C0 0%, #E8E8E8 50%, #C0C0C0 100%)" },
+  beige: { hex: "#D4C4A8" },
+  cyan: { hex: "#06B6D4" },
+  teal: { hex: "#14B8A6" },
+  coral: { hex: "#FF6B6B" },
+  khaki: { hex: "#C3B091" },
+  rose: { hex: "#FB7185" },
+  lime: { hex: "#84CC16" },
+  indigo: { hex: "#6366F1" },
+  violet: { hex: "#8B5CF6" },
+  amber: { hex: "#F59E0B" },
+  emerald: { hex: "#10B981" },
+  sky: { hex: "#0EA5E9" },
+  slate: { hex: "#64748B" },
+  zinc: { hex: "#71717A" },
+  stone: { hex: "#78716C" },
+  neutral: { hex: "#737373" },
+  rainbow: { hex: "#FF0000", gradient: "linear-gradient(135deg, #FF0000, #FF7F00, #FFFF00, #00FF00, #0000FF, #8B00FF)" },
+  multicolor: { hex: "#FF0000", gradient: "linear-gradient(135deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4)" },
 };
 
 // Size order for sorting
 const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "2XL", "3XL", "4XL"];
 
-// Parse variant name/value to extract attribute type
-function parseVariantAttribute(variant: ProductVariant): { type: "size" | "color" | "other"; value: string; display: string } {
-  const name = (variant.name || "").toLowerCase();
-  const value = (variant.value || variant.name || "").toLowerCase();
+// Storage/Memory sizes order
+const MEMORY_ORDER = ["4GB", "8GB", "16GB", "32GB", "64GB", "128GB", "256GB", "512GB", "1TB", "2TB"];
+
+// Extract the actual attribute from variant name (handles "PRODUCT NAME COLOR" format)
+function extractAttributeFromName(fullName: string): string {
+  if (!fullName) return "";
   
-  // Check if it's a size
-  const sizePatterns = ["size", "tamaño", "größe", "taille"];
-  const sizeValues = ["xs", "s", "m", "l", "xl", "xxl", "xxxl", "2xl", "3xl", "4xl", "small", "medium", "large"];
+  const name = fullName.trim();
+  const lowerName = name.toLowerCase();
   
-  if (sizePatterns.some(p => name.includes(p)) || sizeValues.some(s => value === s || value.includes(s))) {
-    // Extract the size value
-    let sizeValue = variant.value || variant.name || "";
-    // Clean up common prefixes
-    sizeValue = sizeValue.replace(/^(size|Size|SIZE)[:\s]*/i, "").trim();
-    
-    return {
-      type: "size",
-      value: sizeValue,
-      display: sizeValue.toUpperCase(),
-    };
+  // Check if the last word is a known color
+  const words = name.split(/[\s_-]+/);
+  const lastWord = words[words.length - 1];
+  const lastWordLower = lastWord.toLowerCase();
+  
+  if (COLOR_MAP[lastWordLower]) {
+    return lastWord;
   }
+  
+  // Check last two words for compound colors like "Light Blue", "Dark Green"
+  if (words.length >= 2) {
+    const lastTwoWords = words.slice(-2).join(" ");
+    const lastTwoLower = lastTwoWords.toLowerCase();
+    for (const color of Object.keys(COLOR_MAP)) {
+      if (lastTwoLower.includes(color)) {
+        return lastTwoWords;
+      }
+    }
+  }
+  
+  // Check for size patterns at the end
+  const sizeMatch = name.match(/\b(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|4XL|\d+GB|\d+TB)\s*$/i);
+  if (sizeMatch) {
+    return sizeMatch[1].toUpperCase();
+  }
+  
+  // Check for any color word anywhere in the last part
+  for (const color of Object.keys(COLOR_MAP)) {
+    if (lastWordLower === color || lastWordLower.includes(color)) {
+      // Capitalize first letter
+      return color.charAt(0).toUpperCase() + color.slice(1);
+    }
+  }
+  
+  // Return the last word as fallback (but limit length)
+  if (lastWord.length <= 20) {
+    return lastWord;
+  }
+  
+  // If all else fails, return shortened version
+  return name.length > 20 ? name.slice(-20) + "..." : name;
+}
+
+// Parse variant to determine its type and display value
+function parseVariantAttribute(variant: ProductVariant): { 
+  type: "size" | "color" | "other"; 
+  value: string; 
+  display: string;
+  colorInfo?: { hex: string; gradient?: string };
+} {
+  // First try to use the value field if it exists and is short
+  let rawValue = variant.value || variant.name || "";
+  
+  // If value is too long (contains product name), extract the attribute
+  if (rawValue.length > 30) {
+    rawValue = extractAttributeFromName(rawValue);
+  }
+  
+  const lowerValue = rawValue.toLowerCase().trim();
   
   // Check if it's a color
-  const colorPatterns = ["color", "colour", "farbe", "couleur"];
-  const knownColors = Object.keys(COLOR_MAP);
+  for (const [colorName, colorData] of Object.entries(COLOR_MAP)) {
+    if (lowerValue === colorName || lowerValue.includes(colorName)) {
+      return {
+        type: "color",
+        value: colorName,
+        display: colorName.charAt(0).toUpperCase() + colorName.slice(1),
+        colorInfo: colorData,
+      };
+    }
+  }
   
-  if (colorPatterns.some(p => name.includes(p)) || knownColors.some(c => value.includes(c))) {
-    let colorValue = variant.value || variant.name || "";
-    colorValue = colorValue.replace(/^(color|Color|COLOR|colour)[:\s]*/i, "").trim();
-    
+  // Check if it's a size/memory
+  const upperValue = rawValue.toUpperCase();
+  if (SIZE_ORDER.includes(upperValue) || MEMORY_ORDER.some(m => upperValue.includes(m))) {
     return {
-      type: "color",
-      value: colorValue.toLowerCase(),
-      display: colorValue.charAt(0).toUpperCase() + colorValue.slice(1).toLowerCase(),
+      type: "size",
+      value: upperValue,
+      display: upperValue,
     };
   }
   
-  // Other variant type
+  // Default to "other"
   return {
     type: "other",
-    value: variant.value || variant.name || "",
-    display: variant.value || variant.name || "",
+    value: rawValue,
+    display: rawValue.length > 25 ? rawValue.slice(0, 22) + "..." : rawValue,
   };
 }
 
-// Get color hex from variant
-function getColorHex(colorValue: string): string {
-  const lowerColor = colorValue.toLowerCase();
-  
-  // Check direct match
-  if (COLOR_MAP[lowerColor]) {
-    return COLOR_MAP[lowerColor];
-  }
-  
-  // Check partial match
-  for (const [colorName, hex] of Object.entries(COLOR_MAP)) {
-    if (lowerColor.includes(colorName)) {
-      return hex;
-    }
-  }
-  
-  // Check if it's already a hex color
-  if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-    return colorValue;
-  }
-  
-  // Default color
-  return "#888888";
-}
-
 export function VariantSelectors({ variants, selectedVariant, onVariantChange }: VariantSelectorsProps) {
-  // Group variants by type - must be called unconditionally (hooks rule)
-  const groupedVariants = useMemo(() => {
-    // Early check for empty variants
+  // Group and parse variants
+  const { colors, sizes, others } = useMemo(() => {
     if (!variants || variants.length === 0) {
-      return { sizes: [], colors: [], others: [], isEmpty: true };
-    }
-    
-    // Filter out variants with no meaningful name/value
-    const validVariants = variants.filter(v => 
-      (v.name && v.name.trim() !== '') || (v.value && v.value.trim() !== '')
-    );
-    
-    if (validVariants.length === 0) {
-      return { sizes: [], colors: [], others: [], isEmpty: true };
+      return { colors: [], sizes: [], others: [] };
     }
 
-    const sizes: { variant: ProductVariant; parsed: ReturnType<typeof parseVariantAttribute> }[] = [];
-    const colors: { variant: ProductVariant; parsed: ReturnType<typeof parseVariantAttribute> }[] = [];
-    const others: { variant: ProductVariant; parsed: ReturnType<typeof parseVariantAttribute> }[] = [];
-    
-    validVariants.forEach(variant => {
+    const colorItems: { variant: ProductVariant; parsed: ReturnType<typeof parseVariantAttribute> }[] = [];
+    const sizeItems: { variant: ProductVariant; parsed: ReturnType<typeof parseVariantAttribute> }[] = [];
+    const otherItems: { variant: ProductVariant; parsed: ReturnType<typeof parseVariantAttribute> }[] = [];
+
+    variants.forEach(variant => {
       const parsed = parseVariantAttribute(variant);
-      // Skip variants with empty display values
-      if (!parsed.display || parsed.display.trim() === '') {
-        return;
-      }
       const item = { variant, parsed };
-      
+
       switch (parsed.type) {
-        case "size":
-          sizes.push(item);
-          break;
         case "color":
-          colors.push(item);
+          colorItems.push(item);
+          break;
+        case "size":
+          sizeItems.push(item);
           break;
         default:
-          others.push(item);
+          otherItems.push(item);
       }
     });
-    
-    // Sort sizes by standard order
-    sizes.sort((a, b) => {
-      const aIndex = SIZE_ORDER.indexOf(a.parsed.display);
-      const bIndex = SIZE_ORDER.indexOf(b.parsed.display);
-      if (aIndex === -1 && bIndex === -1) return a.parsed.display.localeCompare(b.parsed.display);
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
+
+    // Sort sizes
+    sizeItems.sort((a, b) => {
+      const aIdx = SIZE_ORDER.indexOf(a.parsed.display) !== -1 
+        ? SIZE_ORDER.indexOf(a.parsed.display) 
+        : MEMORY_ORDER.findIndex(m => a.parsed.display.includes(m));
+      const bIdx = SIZE_ORDER.indexOf(b.parsed.display) !== -1 
+        ? SIZE_ORDER.indexOf(b.parsed.display) 
+        : MEMORY_ORDER.findIndex(m => b.parsed.display.includes(m));
+      
+      if (aIdx === -1 && bIdx === -1) return a.parsed.display.localeCompare(b.parsed.display);
+      if (aIdx === -1) return 1;
+      if (bIdx === -1) return -1;
+      return aIdx - bIdx;
     });
-    
-    const totalCount = sizes.length + colors.length + others.length;
-    
-    return { 
-      sizes, 
-      colors, 
-      others, 
-      isEmpty: totalCount < 2 // Need at least 2 variants to show selector
-    };
+
+    return { colors: colorItems, sizes: sizeItems, others: otherItems };
   }, [variants]);
 
-  // Don't render if no valid variants
-  if (groupedVariants.isEmpty) {
+  // Don't render if only one or no variants
+  if (variants.length <= 1) {
     return null;
   }
 
-  const hasSizes = groupedVariants.sizes.length > 0;
-  const hasColors = groupedVariants.colors.length > 0;
-  const hasOthers = groupedVariants.others.length > 0;
+  const hasColors = colors.length > 0;
+  const hasSizes = sizes.length > 0;
+  const hasOthers = others.length > 0;
 
   return (
     <div className="space-y-6">
-      {/* Size Selector */}
-      {hasSizes && (
-        <div className="nk-product-size">
-          <h4 className="text-sm font-heading uppercase tracking-wider mb-3">Size</h4>
-          <div className="nk-size-selector">
-            {groupedVariants.sizes.map(({ variant, parsed }) => {
-              const isSelected = selectedVariant?.id === variant.id;
-              const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
-              
-              return (
-                <div key={variant.id} className="inline-block">
-                  <input
-                    type="radio"
-                    id={`size-${variant.id}`}
-                    name="product-size"
-                    value={parsed.value}
-                    checked={isSelected}
-                    onChange={() => onVariantChange(variant)}
-                    disabled={isOutOfStock}
-                    className="sr-only"
-                  />
-                  <label
-                    htmlFor={`size-${variant.id}`}
-                    className={cn(
-                      "nk-size-label",
-                      isSelected && "selected",
-                      isOutOfStock && "out-of-stock"
-                    )}
-                    title={isOutOfStock ? "Out of stock" : undefined}
-                  >
-                    {parsed.display}
-                  </label>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Color Selector */}
+      {/* Color Selector - Attractive color swatches */}
       {hasColors && (
-        <div className="nk-product-color">
-          <h4 className="text-sm font-heading uppercase tracking-wider mb-3">
-            Color
-            {selectedVariant && (
-              <span className="ml-2 font-normal text-[var(--muted-foreground)] normal-case">
-                - {groupedVariants.colors.find(c => c.variant.id === selectedVariant.id)?.parsed.display || ""}
+        <div className="variant-selector">
+          <div className="flex items-center gap-3 mb-4">
+            <h4 className="text-sm font-heading uppercase tracking-wider text-white/80">
+              Color
+            </h4>
+            {selectedVariant && colors.find(c => c.variant.id === selectedVariant.id) && (
+              <span className="px-3 py-1 rounded-full bg-[var(--color-main-1)]/20 text-[var(--color-main-1)] text-sm font-medium">
+                {colors.find(c => c.variant.id === selectedVariant.id)?.parsed.display}
               </span>
             )}
-          </h4>
-          <div className="nk-color-selector">
-            {groupedVariants.colors.map(({ variant, parsed }) => {
+          </div>
+          
+          <div className="flex flex-wrap gap-3">
+            {colors.map(({ variant, parsed }) => {
               const isSelected = selectedVariant?.id === variant.id;
               const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
-              const colorHex = getColorHex(parsed.value);
-              
+              const colorStyle = parsed.colorInfo?.gradient 
+                ? { background: parsed.colorInfo.gradient }
+                : { backgroundColor: parsed.colorInfo?.hex || "#888" };
+
               return (
-                <div key={variant.id} className="inline-block">
-                  <input
-                    type="radio"
-                    id={`color-${variant.id}`}
-                    name="product-color"
-                    value={parsed.value}
-                    checked={isSelected}
-                    onChange={() => onVariantChange(variant)}
-                    disabled={isOutOfStock}
-                    className="sr-only"
-                  />
-                  <label
-                    htmlFor={`color-${variant.id}`}
+                <button
+                  key={variant.id}
+                  onClick={() => !isOutOfStock && onVariantChange(variant)}
+                  disabled={isOutOfStock}
+                  className={cn(
+                    "group relative w-12 h-12 rounded-full transition-all duration-300 cursor-pointer",
+                    "hover:scale-110 hover:shadow-lg hover:shadow-[var(--color-main-1)]/20",
+                    "focus:outline-none focus:ring-2 focus:ring-[var(--color-main-1)] focus:ring-offset-2 focus:ring-offset-[var(--color-dark-2)]",
+                    isSelected && "ring-2 ring-[var(--color-main-1)] ring-offset-2 ring-offset-[var(--color-dark-2)] scale-110",
+                    isOutOfStock && "opacity-40 cursor-not-allowed hover:scale-100"
+                  )}
+                  title={`${parsed.display}${isOutOfStock ? " (Out of stock)" : ""}`}
+                >
+                  {/* Color swatch */}
+                  <span
                     className={cn(
-                      "nk-color-label",
-                      isSelected && "selected",
-                      isOutOfStock && "out-of-stock"
+                      "absolute inset-1 rounded-full transition-all duration-300",
+                      "shadow-inner",
+                      parsed.colorInfo?.hex === "#FFFFFF" && "border border-white/30"
                     )}
-                    style={{ 
-                      backgroundColor: colorHex,
-                      color: colorHex,
-                    }}
-                    title={`${parsed.display}${isOutOfStock ? " (Out of stock)" : ""}`}
-                  >
+                    style={colorStyle}
+                  />
+                  
+                  {/* Shine effect */}
+                  <span className="absolute inset-1 rounded-full bg-gradient-to-br from-white/30 via-transparent to-transparent opacity-60" />
+                  
+                  {/* Selected checkmark */}
+                  {isSelected && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <svg 
+                        className={cn(
+                          "w-5 h-5 drop-shadow-lg",
+                          parsed.colorInfo?.hex === "#FFFFFF" || parsed.colorInfo?.hex === "#EAB308" 
+                            ? "text-gray-800" 
+                            : "text-white"
+                        )} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                  )}
+                  
+                  {/* Out of stock indicator */}
+                  {isOutOfStock && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="w-full h-0.5 bg-red-500 rotate-45 absolute" />
+                    </span>
+                  )}
+                  
+                  {/* Hover tooltip */}
+                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
                     {parsed.display}
-                  </label>
-                </div>
+                  </span>
+                </button>
               );
             })}
           </div>
         </div>
       )}
 
-      {/* Other Variants */}
-      {hasOthers && (
-        <div className="nk-product-variant">
-          <h4 className="text-sm font-heading uppercase tracking-wider mb-3">Options</h4>
-          <div className="nk-size-selector">
-            {groupedVariants.others.map(({ variant, parsed }) => {
+      {/* Size/Memory Selector - Modern pill buttons */}
+      {hasSizes && (
+        <div className="variant-selector">
+          <h4 className="text-sm font-heading uppercase tracking-wider text-white/80 mb-4">
+            {sizes.some(s => s.parsed.display.includes("GB") || s.parsed.display.includes("TB")) 
+              ? "Storage" 
+              : "Size"}
+          </h4>
+          
+          <div className="flex flex-wrap gap-2">
+            {sizes.map(({ variant, parsed }) => {
               const isSelected = selectedVariant?.id === variant.id;
               const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
-              
+
               return (
-                <div key={variant.id} className="inline-block">
-                  <input
-                    type="radio"
-                    id={`variant-${variant.id}`}
-                    name="product-variant"
-                    value={parsed.value}
-                    checked={isSelected}
-                    onChange={() => onVariantChange(variant)}
-                    disabled={isOutOfStock}
-                    className="sr-only"
-                  />
-                  <label
-                    htmlFor={`variant-${variant.id}`}
-                    className={cn(
-                      "nk-size-label",
-                      isSelected && "selected",
-                      isOutOfStock && "out-of-stock"
-                    )}
-                    title={isOutOfStock ? "Out of stock" : undefined}
-                  >
+                <button
+                  key={variant.id}
+                  onClick={() => !isOutOfStock && onVariantChange(variant)}
+                  disabled={isOutOfStock}
+                  className={cn(
+                    "relative px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-300",
+                    "border-2 cursor-pointer",
+                    "hover:border-[var(--color-main-1)] hover:text-[var(--color-main-1)]",
+                    "focus:outline-none focus:ring-2 focus:ring-[var(--color-main-1)]/50",
+                    isSelected 
+                      ? "bg-[var(--color-main-1)] border-[var(--color-main-1)] text-white shadow-lg shadow-[var(--color-main-1)]/30" 
+                      : "bg-transparent border-white/20 text-white/80 hover:bg-white/5",
+                    isOutOfStock && "opacity-40 cursor-not-allowed line-through hover:border-white/20 hover:text-white/80"
+                  )}
+                >
+                  {parsed.display}
+                  
+                  {/* Price difference indicator */}
+                  {variant.price && selectedVariant && variant.price !== selectedVariant.price && !isSelected && (
+                    <span className={cn(
+                      "absolute -top-2 -right-2 px-1.5 py-0.5 text-[10px] font-bold rounded-full",
+                      variant.price > selectedVariant.price 
+                        ? "bg-amber-500/20 text-amber-400" 
+                        : "bg-green-500/20 text-green-400"
+                    )}>
+                      {variant.price > selectedVariant.price ? "+" : "-"}
+                      {formatPrice(Math.abs(variant.price - selectedVariant.price))}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Other Options - Card style */}
+      {hasOthers && (
+        <div className="variant-selector">
+          <h4 className="text-sm font-heading uppercase tracking-wider text-white/80 mb-4">
+            Options
+          </h4>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {others.map(({ variant, parsed }) => {
+              const isSelected = selectedVariant?.id === variant.id;
+              const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
+              const hasImage = typeof variant.image === 'string' && variant.image;
+
+              return (
+                <button
+                  key={variant.id}
+                  onClick={() => !isOutOfStock && onVariantChange(variant)}
+                  disabled={isOutOfStock}
+                  className={cn(
+                    "relative p-3 rounded-xl transition-all duration-300 cursor-pointer",
+                    "border-2 text-left",
+                    "hover:border-[var(--color-main-1)]/50 hover:bg-[var(--color-main-1)]/5",
+                    "focus:outline-none focus:ring-2 focus:ring-[var(--color-main-1)]/50",
+                    isSelected 
+                      ? "border-[var(--color-main-1)] bg-[var(--color-main-1)]/10" 
+                      : "border-white/10 bg-white/5",
+                    isOutOfStock && "opacity-40 cursor-not-allowed"
+                  )}
+                >
+                  {hasImage && (
+                    <div className="relative w-full aspect-square mb-2 rounded-lg overflow-hidden bg-black/20">
+                      <Image
+                        src={variant.image as string}
+                        alt={parsed.display}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  
+                  <span className={cn(
+                    "block text-sm font-medium",
+                    isSelected ? "text-[var(--color-main-1)]" : "text-white/80"
+                  )}>
                     {parsed.display}
-                  </label>
-                </div>
+                  </span>
+                  
+                  {variant.price && (
+                    <span className="block text-xs text-white/50 mt-1">
+                      {formatPrice(variant.price)}
+                    </span>
+                  )}
+                  
+                  {/* Selected indicator */}
+                  {isSelected && (
+                    <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--color-main-1)] flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                  )}
+                  
+                  {isOutOfStock && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
+                      <span className="text-xs text-red-400 font-medium">Out of Stock</span>
+                    </span>
+                  )}
+                </button>
               );
             })}
           </div>
@@ -310,4 +420,3 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
     </div>
   );
 }
-
