@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ProductGrid } from "@/components/store";
+import { ProductCarousel } from "@/components/store";
 import { Button, ProductGridSkeleton, CategoryBannerSkeleton } from "@/components/ui";
 import { SITE_NAME } from "@/lib/constants";
 import { useProducts } from "@/hooks";
@@ -76,7 +76,9 @@ export function HomePageClient({
           {showFeaturedLoading ? (
             <ProductGridSkeleton count={3} columns={3} />
           ) : featuredProducts.length > 0 ? (
-            <ProductGrid products={featuredProducts} columns={3} />
+            <div className="px-4 lg:px-12">
+              <ProductCarousel products={featuredProducts} />
+            </div>
           ) : (
             <div className="text-center py-12 bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]">
               <svg className="w-12 h-12 mx-auto text-[var(--color-main-1)]/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +248,9 @@ export function HomePageClient({
           {showLatestLoading ? (
             <ProductGridSkeleton count={6} columns={3} />
           ) : latestProducts.length > 0 ? (
-            <ProductGrid products={latestProducts} columns={3} />
+            <div className="px-4 lg:px-12">
+              <ProductCarousel products={latestProducts} />
+            </div>
           ) : (
             <div className="text-center py-12 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)]">
               <svg className="w-12 h-12 mx-auto text-[var(--color-main-1)]/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
