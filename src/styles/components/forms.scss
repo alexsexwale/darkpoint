@@ -253,23 +253,43 @@ select.nk-form-control {
 
 // Button Sizes
 .nk-btn-sm {
-  padding: 10px 20px;
-  font-size: 0.8rem;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  
+  @media (min-width: 640px) {
+    padding: 10px 20px;
+    font-size: 0.8rem;
+  }
 }
 
 .nk-btn-md {
-  padding: 12px 30px;
-  font-size: 0.9rem;
+  padding: 10px 20px;
+  font-size: 0.8rem;
+  
+  @media (min-width: 640px) {
+    padding: 12px 30px;
+    font-size: 0.9rem;
+  }
 }
 
 .nk-btn-lg {
-  padding: 14px 36px;
-  font-size: 0.95rem;
+  padding: 12px 24px;
+  font-size: 0.85rem;
+  
+  @media (min-width: 640px) {
+    padding: 14px 36px;
+    font-size: 0.95rem;
+  }
 }
 
 .nk-btn-xl {
-  padding: 18px 45px;
-  font-size: 1rem;
+  padding: 14px 30px;
+  font-size: 0.9rem;
+  
+  @media (min-width: 640px) {
+    padding: 18px 45px;
+    font-size: 1rem;
+  }
 }
 
 // Full width button
@@ -421,23 +441,37 @@ select.nk-form-control {
 .nk-tabs {
   .nk-tabs-nav {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 0;
     list-style: none;
     padding: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    @media (min-width: 640px) {
+      flex-wrap: wrap;
+      overflow-x: visible;
+    }
   }
   
   .nk-tabs-nav-item {
     margin: 0;
+    flex-shrink: 0;
   }
   
   .nk-tabs-nav-link {
     display: inline-block;
-    padding: 12px 24px;
+    padding: 10px 16px;
     font-family: $font-headings;
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -447,6 +481,12 @@ select.nk-form-control {
     border-bottom: 2px solid transparent;
     cursor: pointer;
     transition: color 0.3s ease, border-color 0.3s ease;
+    white-space: nowrap;
+    
+    @media (min-width: 640px) {
+      padding: 12px 24px;
+      font-size: 0.95rem;
+    }
     
     &:hover {
       color: white;
@@ -464,7 +504,11 @@ select.nk-form-control {
   }
   
   .nk-tabs-content {
-    padding-top: 2rem;
+    padding-top: 1rem;
+    
+    @media (min-width: 640px) {
+      padding-top: 2rem;
+    }
   }
   
   .nk-tabs-pane {
@@ -478,13 +522,26 @@ select.nk-form-control {
 
 // Tab content box
 .nk-box-3 {
-  padding: 30px;
+  padding: 16px;
   background-color: rgba(14, 14, 14, 0.9);
+  
+  @media (min-width: 640px) {
+    padding: 24px;
+  }
+  
+  @media (min-width: 768px) {
+    padding: 30px;
+  }
   
   p {
     color: rgba(255, 255, 255, 0.8);
     line-height: 1.8;
     margin-bottom: 1rem;
+    font-size: 0.9rem;
+    
+    @media (min-width: 640px) {
+      font-size: 1rem;
+    }
     
     &:last-child {
       margin-bottom: 0;
@@ -506,8 +563,14 @@ select.nk-form-control {
   }
   
   td {
-    padding: 15px 20px;
+    padding: 10px 12px;
     vertical-align: middle;
+    font-size: 0.85rem;
+    
+    @media (min-width: 640px) {
+      padding: 15px 20px;
+      font-size: 1rem;
+    }
     
     &:first-child {
       font-weight: 500;
@@ -624,9 +687,9 @@ select.nk-form-control {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 50px;
-    padding: 10px 20px;
-    font-size: 0.9rem;
+    min-width: 40px;
+    padding: 8px 14px;
+    font-size: 0.8rem;
     font-weight: 500;
     text-align: center;
     cursor: pointer;
@@ -634,6 +697,12 @@ select.nk-form-control {
     color: rgba(255, 255, 255, 0.8);
     transition: 0.2s background-color, 0.2s color;
     margin-left: -1px;
+    
+    @media (min-width: 640px) {
+      min-width: 50px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+    }
     
     &:first-of-type {
       margin-left: 0;

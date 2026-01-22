@@ -137,12 +137,12 @@ export function ShareProductButton({ product, className }: ShareProductButtonPro
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-[var(--color-dark-3)] hover:border-[var(--color-main-1)] hover:bg-[var(--color-main-1)]/10 transition-all cursor-pointer"
+        className="w-full flex items-center justify-center gap-1.5 sm:gap-3 px-3 sm:px-6 py-2.5 sm:py-3 border border-[var(--color-dark-3)] hover:border-[var(--color-main-1)] hover:bg-[var(--color-main-1)]/10 transition-all cursor-pointer"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
         </svg>
-        <span className="font-heading text-sm tracking-wider">SHARE</span>
+        <span className="font-heading text-xs sm:text-sm tracking-wider">SHARE</span>
       </motion.button>
 
       {/* Share Options Dropdown */}

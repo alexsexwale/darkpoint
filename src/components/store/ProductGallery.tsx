@@ -249,14 +249,14 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
 
         {/* Thumbnails - Horizontal scroll on mobile */}
         {validImages.length > 1 && (
-          <div className="embla -mx-4 px-4 sm:mx-0 sm:px-0" ref={emblaThumbsRef}>
-            <div className="embla__container flex gap-2 sm:gap-3">
+          <div className="embla overflow-x-auto" ref={emblaThumbsRef}>
+            <div className="embla__container flex gap-2 sm:gap-3 w-max sm:w-auto sm:flex-wrap">
               {validImages.map((image, index) => (
                 <button
                   key={image.id}
                   onClick={() => onThumbClick(index)}
                   className={cn(
-                    "flex-[0_0_60px] sm:flex-[0_0_80px] min-w-0 aspect-square bg-[var(--color-dark-2)] p-1.5 sm:p-2 border-2 transition-colors cursor-pointer rounded-md sm:rounded-none",
+                    "w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 bg-[var(--color-dark-2)] p-1 sm:p-1.5 border-2 transition-colors cursor-pointer rounded-md sm:rounded-none",
                     selectedIndex === index
                       ? "border-[var(--color-main-1)]"
                       : "border-transparent hover:border-[var(--color-dark-4)]"
@@ -268,7 +268,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
                       alt={`Thumbnail ${index + 1}`}
                       fill
                       className="object-contain"
-                      sizes="80px"
+                      sizes="64px"
                       onError={() => handleImageError(image.src)}
                     />
                   </div>
