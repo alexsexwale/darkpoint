@@ -178,7 +178,7 @@ export function VariantSelectionModal({ product, isOpen, onClose }: VariantSelec
   }, [product.variants]);
 
   const effectivePrice = selectedVariant?.price || product.price;
-  // Always show as in stock - dropshipping fulfillment handles availability
+  // Always in stock - dropshipping fulfillment handles availability
   const isInStock = true;
 
   const handleAddToCart = () => {
@@ -266,6 +266,7 @@ export function VariantSelectionModal({ product, isOpen, onClose }: VariantSelec
                       <div className="flex flex-wrap gap-3">
                         {colors.map(({ variant, parsed }) => {
                           const isSelected = selectedVariant?.id === variant.id;
+                          const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
                           const colorStyle = parsed.colorInfo?.gradient 
                             ? { background: parsed.colorInfo.gradient }
                             : { backgroundColor: parsed.colorInfo?.hex || "#888" };
@@ -273,11 +274,13 @@ export function VariantSelectionModal({ product, isOpen, onClose }: VariantSelec
                           return (
                             <button
                               key={variant.id}
-                              onClick={() => setSelectedVariant(variant)}
+                              onClick={() => !isOutOfStock && setSelectedVariant(variant)}
+                              disabled={isOutOfStock}
                               className={cn(
                                 "relative w-11 h-11 rounded-full transition-all duration-200",
                                 "hover:scale-110 focus:outline-none",
-                                isSelected && "ring-2 ring-[var(--color-main-1)] ring-offset-2 ring-offset-[var(--color-dark-2)] scale-110"
+                                isSelected && "ring-2 ring-[var(--color-main-1)] ring-offset-2 ring-offset-[var(--color-dark-2)] scale-110",
+                                isOutOfStock && "opacity-40 cursor-not-allowed"
                               )}
                               title={parsed.display}
                             >
@@ -307,6 +310,12 @@ export function VariantSelectionModal({ product, isOpen, onClose }: VariantSelec
                                   </svg>
                                 </span>
                               )}
+                              
+                              {isOutOfStock && (
+                                <span className="absolute inset-0 flex items-center justify-center">
+                                  <span className="w-full h-0.5 bg-red-500 rotate-45 absolute" />
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -323,17 +332,20 @@ export function VariantSelectionModal({ product, isOpen, onClose }: VariantSelec
                       <div className="flex flex-wrap gap-2">
                         {sizes.map(({ variant, parsed }) => {
                           const isSelected = selectedVariant?.id === variant.id;
+                          const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
 
                           return (
                             <button
                               key={variant.id}
-                              onClick={() => setSelectedVariant(variant)}
+                              onClick={() => !isOutOfStock && setSelectedVariant(variant)}
+                              disabled={isOutOfStock}
                               className={cn(
                                 "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                                 "border-2 focus:outline-none",
                                 isSelected 
                                   ? "bg-[var(--color-main-1)] border-[var(--color-main-1)] text-white shadow-lg shadow-[var(--color-main-1)]/30" 
-                                  : "border-white/20 text-white/80 hover:border-[var(--color-main-1)] hover:text-[var(--color-main-1)]"
+                                  : "border-white/20 text-white/80 hover:border-[var(--color-main-1)] hover:text-[var(--color-main-1)]",
+                                isOutOfStock && "opacity-40 cursor-not-allowed line-through"
                               )}
                             >
                               {parsed.display}

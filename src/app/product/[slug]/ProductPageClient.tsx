@@ -210,8 +210,8 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
               )}
 
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`} />
-                <span className="text-sm">{product.inStock ? "In Stock" : "Out of Stock"}</span>
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-sm">In Stock</span>
               </div>
 
               <div className="pt-4">
@@ -313,8 +313,8 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
           )}
 
           <div className="flex items-center gap-2 mb-4">
-            <span className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`} />
-            <span className="text-xs">{product.inStock ? "In Stock" : "Out of Stock"}</span>
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-xs">In Stock</span>
           </div>
 
           <div className="mb-4">

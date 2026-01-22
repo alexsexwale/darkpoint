@@ -329,12 +329,9 @@ export function ProductCard({ product, className }: ProductCardProps) {
             {/* Add to Cart Icon */}
             <button
               onClick={handleAddToCart}
-              disabled={!product.inStock}
               className={cn(
                 "w-8 h-8 flex items-center justify-center rounded transition-all duration-200 cursor-pointer",
-                product.inStock
-                  ? "bg-[var(--color-main-1)] text-white hover:bg-[var(--color-main-1)]/80"
-                  : "bg-white/10 text-white/30 cursor-not-allowed"
+                "bg-[var(--color-main-1)] text-white hover:bg-[var(--color-main-1)]/80"
               )}
               aria-label="Add to cart"
             >
@@ -346,12 +343,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
         </div>
 
         {/* Badges */}
-        {!product.inStock && (
-          <span className="absolute top-4 left-4 px-2 py-1 text-xs bg-[var(--color-main-5)] text-white">
-            Out of Stock
-          </span>
-        )}
-        {product.featured && product.inStock && (
+        {product.featured && (
           <span className="absolute top-4 left-4 px-2 py-1 text-xs bg-[var(--color-main-1)] text-white">
             Featured
           </span>
