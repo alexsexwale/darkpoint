@@ -8,7 +8,7 @@ import { useRewardsStore } from "@/stores/rewardsStore";
 import { useShippingThreshold } from "@/hooks";
 import { Button, FreeDeliveryIndicator } from "@/components/ui";
 import { RewardSelector } from "@/components/cart/RewardSelector";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, getVariantDisplayName } from "@/lib/utils";
 
 export function CartContent() {
   const { items, removeItem, updateQuantity, subtotal, clearCart } = useCartStore();
@@ -112,7 +112,7 @@ export function CartContent() {
                         {item.variant && (
                           <p className="text-xs text-[var(--color-main-1)] mt-1 flex items-center gap-1.5">
                             <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-main-1)]" />
-                            <span className="font-medium">{item.variant.value || item.variant.name}</span>
+                            <span className="font-medium">{getVariantDisplayName(item.variant)}</span>
                           </p>
                         )}
                       </div>
@@ -239,7 +239,7 @@ export function CartContent() {
                         {item.variant && (
                           <p className="text-xs text-[var(--color-main-1)] mt-1 flex items-center gap-1.5">
                             <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-main-1)]" />
-                            <span className="font-medium">{item.variant.value || item.variant.name}</span>
+                            <span className="font-medium">{getVariantDisplayName(item.variant)}</span>
                           </p>
                         )}
 

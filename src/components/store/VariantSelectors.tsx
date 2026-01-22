@@ -128,11 +128,11 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
 
   return (
     <div className="space-y-6">
-      {/* Colors */}
+      {/* Colours */}
       {hasColors && (
         <div className="nk-product-color">
           <h4 className="text-sm font-heading uppercase tracking-wider mb-3">
-            Color
+            Colour
             {selectedVariant && colors.find(c => c.variant.id === selectedVariant.id) && (
               <span className="ml-2 font-normal text-[var(--muted-foreground)] normal-case">
                 - {colors.find(c => c.variant.id === selectedVariant.id)?.parsed.display}

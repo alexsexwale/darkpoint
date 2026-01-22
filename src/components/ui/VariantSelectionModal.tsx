@@ -253,11 +253,11 @@ export function VariantSelectionModal({ product, isOpen, onClose }: VariantSelec
 
                 {/* Variant Selectors */}
                 <div className="space-y-5 mb-6 max-h-[30vh] overflow-y-auto pr-2">
-                  {/* Colors */}
+                  {/* Colours */}
                   {hasColors && (
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <h4 className="text-sm font-medium text-white/70">Color:</h4>
+                        <h4 className="text-sm font-medium text-white/70">Colour:</h4>
                         {selectedVariant && colors.find(c => c.variant.id === selectedVariant.id) && (
                           <span className="text-sm font-medium text-[var(--color-main-1)]">
                             {colors.find(c => c.variant.id === selectedVariant.id)?.parsed.display}

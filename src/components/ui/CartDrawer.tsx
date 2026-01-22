@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/stores";
 import { useRewardsStore, getRewardDisplayInfo } from "@/stores/rewardsStore";
 import { useShippingThreshold } from "@/hooks";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, getVariantDisplayName } from "@/lib/utils";
 import { Button } from "./Button";
 import { FreeDeliveryIndicator } from "./FreeDeliveryIndicator";
 import { RewardSelector } from "@/components/cart/RewardSelector";
@@ -148,7 +148,7 @@ export function CartDrawer() {
                         {item.variant && (
                           <p className="text-xs text-[var(--color-main-1)] mt-1 flex items-center gap-1">
                             <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-main-1)]" />
-                            {item.variant.value || item.variant.name}
+                            {getVariantDisplayName(item.variant)}
                           </p>
                         )}
                         
