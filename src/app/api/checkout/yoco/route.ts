@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
       productImage?: string;
       variantId?: string;
       variantName?: string;
+      variantSku?: string;
       quantity: number;
       unitPrice: number;
     }) => ({
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
       product_image: item.productImage || null,
       variant_id: item.variantId || null,
       variant_name: item.variantName || null,
+      variant_sku: item.variantSku || null,
       quantity: item.quantity,
       unit_price: item.unitPrice,
       total_price: item.unitPrice * item.quantity,

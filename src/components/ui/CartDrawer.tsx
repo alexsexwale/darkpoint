@@ -143,6 +143,15 @@ export function CartDrawer() {
                         >
                           {item.product.name}
                         </Link>
+                        
+                        {/* Variant Info */}
+                        {item.variant && (
+                          <p className="text-xs text-[var(--color-main-1)] mt-1 flex items-center gap-1">
+                            <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-main-1)]" />
+                            {item.variant.value || item.variant.name}
+                          </p>
+                        )}
+                        
                         <p className="text-sm text-[var(--muted-foreground)] mt-1">
                           {formatPrice(item.variant?.price ?? item.product.price)}
                         </p>

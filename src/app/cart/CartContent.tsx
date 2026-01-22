@@ -110,8 +110,9 @@ export function CartContent() {
                           {item.product.name}
                         </Link>
                         {item.variant && (
-                          <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                            {item.variant.name}
+                          <p className="text-xs text-[var(--color-main-1)] mt-1 flex items-center gap-1.5">
+                            <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-main-1)]" />
+                            <span className="font-medium">{item.variant.value || item.variant.name}</span>
                           </p>
                         )}
                       </div>
@@ -236,8 +237,9 @@ export function CartContent() {
                         </div>
 
                         {item.variant && (
-                          <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                            {item.variant.name}
+                          <p className="text-xs text-[var(--color-main-1)] mt-1 flex items-center gap-1.5">
+                            <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-main-1)]" />
+                            <span className="font-medium">{item.variant.value || item.variant.name}</span>
                           </p>
                         )}
 

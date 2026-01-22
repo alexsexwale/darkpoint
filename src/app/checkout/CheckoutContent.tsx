@@ -244,7 +244,8 @@ export function CheckoutContent() {
           productSlug: item.product.slug,
           productImage: item.product.images[0]?.src || null,
           variantId: item.variant?.id || null,
-          variantName: item.variant?.name || null,
+          variantName: item.variant ? (item.variant.value || item.variant.name) : null,
+          variantSku: item.variant?.sku || null,
           quantity: item.quantity,
           unitPrice: item.variant?.price ?? item.product.price,
         })),
@@ -539,6 +540,12 @@ export function CheckoutContent() {
                   <tr key={item.id} className="border-b border-[var(--color-dark-3)]">
                     <td className="py-4 pr-2">
                       <span className="line-clamp-2">{item.product.name}</span>
+                      {item.variant && (
+                        <span className="block text-xs text-[var(--color-main-1)] mt-1 flex items-center gap-1">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-main-1)]" />
+                          {item.variant.value || item.variant.name}
+                        </span>
+                      )}
                       <span className="text-white/60"> × {item.quantity}</span>
                     </td>
                     <td className="py-4 text-right whitespace-nowrap">
