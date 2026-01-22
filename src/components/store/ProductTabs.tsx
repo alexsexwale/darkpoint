@@ -334,13 +334,13 @@ export function ProductTabs({ product }: ProductTabsProps) {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <input
             type="text"
             placeholder="Name *"
             value={authorName}
             onChange={(e) => setAuthorName(e.target.value)}
-            className="nk-form-control"
+            className="nk-form-control text-sm sm:text-base"
             required
           />
           <input
@@ -348,7 +348,7 @@ export function ProductTabs({ product }: ProductTabsProps) {
             placeholder="Title *"
             value={reviewTitle}
             onChange={(e) => setReviewTitle(e.target.value)}
-            className="nk-form-control"
+            className="nk-form-control text-sm sm:text-base"
             required
           />
         </div>
@@ -384,20 +384,20 @@ export function ProductTabs({ product }: ProductTabsProps) {
 
   return (
     <div className="nk-tabs">
-      {/* Tab Navigation */}
-      <ul className="nk-tabs-nav" role="tablist">
+      {/* Tab Navigation - Scrollable on mobile */}
+      <ul className="nk-tabs-nav overflow-x-auto flex-nowrap pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible sm:flex-wrap" role="tablist">
         {tabs.map((tab) => (
-          <li key={tab.id} className="nk-tabs-nav-item">
+          <li key={tab.id} className="nk-tabs-nav-item shrink-0">
             <button
               type="button"
               role="tab"
-              className={cn("nk-tabs-nav-link", activeTab === tab.id && "active")}
+              className={cn("nk-tabs-nav-link whitespace-nowrap text-sm sm:text-base", activeTab === tab.id && "active")}
               onClick={() => setActiveTab(tab.id)}
               aria-selected={activeTab === tab.id}
               aria-controls={`tab-${tab.id}`}
             >
               {tab.label}
-              {"count" in tab && <small>({tab.count})</small>}
+              {"count" in tab && <small className="ml-1">({tab.count})</small>}
             </button>
           </li>
         ))}
@@ -480,10 +480,10 @@ export function ProductTabs({ product }: ProductTabsProps) {
           role="tabpanel"
           className={cn("nk-tabs-pane", activeTab === "reviews" && "active")}
         >
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
             {/* Reviews Summary */}
-            <div className="nk-box-3">
-              <h3 className="text-xl font-heading uppercase tracking-wider text-center mb-6">
+            <div className="nk-box-3 p-4 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-heading uppercase tracking-wider text-center mb-4 sm:mb-6">
                 Reviews Summary
               </h3>
 
@@ -527,8 +527,8 @@ export function ProductTabs({ product }: ProductTabsProps) {
             </div>
 
             {/* Add Review Form */}
-            <div className="nk-box-3">
-              <h3 className="text-xl font-heading uppercase tracking-wider text-center mb-6">
+            <div className="nk-box-3 p-4 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-heading uppercase tracking-wider text-center mb-4 sm:mb-6">
                 Add a Review
               </h3>
               {renderReviewForm()}
@@ -537,26 +537,26 @@ export function ProductTabs({ product }: ProductTabsProps) {
 
           {/* Individual Reviews */}
           {reviews.length > 0 && (
-            <div className="mt-8" id="customer-reviews">
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-                <h4 className="text-lg font-heading uppercase tracking-wider">
+            <div className="mt-6 sm:mt-8" id="customer-reviews">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
+                <h4 className="text-base sm:text-lg font-heading uppercase tracking-wider">
                   Customer Reviews
                 </h4>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                   {/* Sort Dropdown */}
                   <select
                     value={sortBy}
                     onChange={(e) => handleSortChange(e.target.value)}
-                    className="bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white/80 text-sm px-3 py-1.5 rounded cursor-pointer"
+                    className="bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] text-white/80 text-xs sm:text-sm px-2 sm:px-3 py-1.5 rounded cursor-pointer"
                   >
                     <option value="recent">Most Recent</option>
                     <option value="helpful">Most Helpful</option>
                     <option value="highest">Highest Rated</option>
                     <option value="lowest">Lowest Rated</option>
                   </select>
-                  <p className="text-sm text-white/50">
-                    Showing {(currentPage - 1) * REVIEWS_PER_PAGE + 1}-
-                    {Math.min(currentPage * REVIEWS_PER_PAGE, totalReviews)} of {totalReviews} reviews
+                  <p className="text-xs sm:text-sm text-white/50">
+                    {(currentPage - 1) * REVIEWS_PER_PAGE + 1}-
+                    {Math.min(currentPage * REVIEWS_PER_PAGE, totalReviews)} of {totalReviews}
                   </p>
                 </div>
               </div>
@@ -573,16 +573,15 @@ export function ProductTabs({ product }: ProductTabsProps) {
                   ))}
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {reviews.map((review) => (
-                    <div key={review.id} className="nk-box-3 p-6">
-                      <div className="flex items-start justify-between mb-3">
+                    <div key={review.id} className="nk-box-3 p-4 sm:p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0 mb-3">
                         <div>
-                          <h5 className="font-medium">{review.title}</h5>
-                          <div className="flex items-center gap-2 text-sm text-white/60">
-                            <span className="flex items-center gap-1.5">
+                          <h5 className="font-medium text-sm sm:text-base">{review.title}</h5>
+                          <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 text-xs sm:text-sm text-white/60">
+                            <span className="flex items-center gap-1">
                               by {review.author_name}
-                              {/* VIP Badge - shows if reviewer has a badge */}
                               {(review as Review & { reviewer_badge?: string }).reviewer_badge && (
                                 <MiniBadge 
                                   badge={(review as Review & { reviewer_badge?: string }).reviewer_badge as BadgeType} 
@@ -598,38 +597,39 @@ export function ProductTabs({ product }: ProductTabsProps) {
                                     clipRule="evenodd"
                                   />
                                 </svg>
-                                Verified Purchase
+                                <span className="hidden sm:inline">Verified Purchase</span>
+                                <span className="sm:hidden">Verified</span>
                               </span>
                             )}
                           </div>
                         </div>
                         <Rating value={review.rating} size="sm" />
                       </div>
-                      <p className="text-white/80">{review.content}</p>
+                      <p className="text-white/80 text-sm sm:text-base">{review.content}</p>
 
                       {/* Review Actions */}
-                      <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
-                        <div className="flex items-center gap-2 text-sm text-white/50">
+                      <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 border-t border-white/10 pt-3 sm:pt-4">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-white/50">
                           <span>{new Date(review.created_at).toLocaleDateString()}</span>
                           <span>·</span>
-                          <span>{review.helpful_count} found this helpful</span>
+                          <span>{review.helpful_count} helpful</span>
                         </div>
 
                         {!review.is_own_review && (
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 sm:gap-3">
                             {/* Helpful Button */}
                             <button
                               type="button"
                               onClick={() => handleHelpful(review.id, true)}
                               className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded text-sm transition-colors cursor-pointer",
+                                "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs sm:text-sm transition-colors cursor-pointer",
                                 review.user_voted === true
                                   ? "bg-[var(--color-main-1)]/20 text-[var(--color-main-1)]"
                                   : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
                               )}
                             >
                               <svg
-                                className="w-4 h-4"
+                                className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                                 fill={review.user_voted === true ? "currentColor" : "none"}
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -648,10 +648,10 @@ export function ProductTabs({ product }: ProductTabsProps) {
                             <button
                               type="button"
                               onClick={() => handleReport(review.id)}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded text-sm bg-white/5 text-white/60 hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
+                              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs sm:text-sm bg-white/5 text-white/60 hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
                             >
                               <svg
-                                className="w-4 h-4"
+                                className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"

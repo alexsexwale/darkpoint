@@ -139,7 +139,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
   }
 
   return (
-    <div className="container py-8">
+    <div className="container py-4 sm:py-8">
       {/* SEO: Product structured data */}
       <ProductJsonLd 
         product={product} 
@@ -155,43 +155,45 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
         ]} 
       />
       
-      <div className="nk-gap-2" />
+      <div className="nk-gap-1 sm:nk-gap-2" />
 
-      {/* Breadcrumb */}
-      <nav className="text-sm text-[var(--muted-foreground)] mb-8">
-        <Link href="/" className="hover:text-white transition-colors">
-          Home
-        </Link>
-        <span className="mx-2">/</span>
-        <Link href="/store" className="hover:text-white transition-colors">
-          Store
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-white">{product.name}</span>
+      {/* Breadcrumb - Simplified on mobile */}
+      <nav className="text-xs sm:text-sm text-[var(--muted-foreground)] mb-4 sm:mb-8 overflow-hidden">
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+          <Link href="/" className="hover:text-white transition-colors shrink-0">
+            Home
+          </Link>
+          <span>/</span>
+          <Link href="/store" className="hover:text-white transition-colors shrink-0">
+            Store
+          </Link>
+          <span>/</span>
+          <span className="text-white truncate max-w-[200px] sm:max-w-none">{product.name}</span>
+        </div>
       </nav>
 
       {/* Product Details */}
-      <div className="nk-store-product grid lg:grid-cols-2 gap-12">
+      <div className="nk-store-product grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12">
         {/* Gallery */}
         <ProductGallery images={product.images} productName={product.name} />
 
         {/* Info */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Category */}
           <Link
             href={`/store?category=${product.category}`}
-            className="nk-product-category inline-block text-sm text-[var(--muted-foreground)] italic hover:text-[var(--color-main-1)] transition-colors"
+            className="nk-product-category inline-block text-xs sm:text-sm text-[var(--color-main-1)] font-medium uppercase tracking-wider hover:text-[var(--color-main-1)]/80 transition-colors"
           >
             {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
           </Link>
 
           {/* Title */}
-          <h1 className="nk-product-title text-4xl !mt-2 !mb-8">{product.name}</h1>
+          <h1 className="nk-product-title text-2xl sm:text-3xl lg:text-4xl !mt-1 sm:!mt-2 !mb-4 sm:!mb-8 leading-tight">{product.name}</h1>
 
           {/* Rating */}
-          <div className="nk-product-rating-wrapper flex items-center gap-4">
+          <div className="nk-product-rating-wrapper flex items-center gap-2 sm:gap-4 flex-wrap">
             <Rating value={stats?.average || 0} size="lg" showValue />
-            <span className="text-sm text-[var(--muted-foreground)]">
+            <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">
               ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
             </span>
           </div>
@@ -204,11 +206,13 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
 
           {/* Variant Selectors */}
           {hasVariants && (
-            <VariantSelectors
-              variants={product.variants!}
-              selectedVariant={selectedVariant}
-              onVariantChange={setSelectedVariant}
-            />
+            <div className="pt-2">
+              <VariantSelectors
+                variants={product.variants!}
+                selectedVariant={selectedVariant}
+                onVariantChange={setSelectedVariant}
+              />
+            </div>
           )}
 
           {/* Stock Status */}
@@ -218,13 +222,13 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                 product.inStock ? "bg-green-500" : "bg-red-500"
               }`}
             />
-            <span className="text-sm">
+            <span className="text-xs sm:text-sm">
               {product.inStock ? "In Stock" : "Out of Stock"}
             </span>
           </div>
 
-          {/* Add to Cart Section - Godlike Style */}
-          <div className="pt-4">
+          {/* Add to Cart Section */}
+          <div className="pt-2 sm:pt-4">
             <AddToCartButton 
               product={product} 
               selectedVariant={selectedVariant}
@@ -233,20 +237,20 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
           </div>
 
           {/* Wishlist & Share Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <AddToWishlistButton product={product} className="flex-1" />
             <ShareProductButton product={product} className="flex-1" />
           </div>
 
           {/* Tags */}
           {product.tags.length > 0 && (
-            <div className="pt-6 border-t border-[var(--color-dark-3)]">
-              <span className="text-sm text-[var(--muted-foreground)]">Tags: </span>
+            <div className="pt-4 sm:pt-6 border-t border-[var(--color-dark-3)]">
+              <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">Tags: </span>
               {product.tags.map((tag, index) => (
                 <span key={tag}>
                   <Link
                     href={`/store?search=${tag}`}
-                    className="text-sm text-[var(--muted-foreground)] hover:text-[var(--color-main-1)] transition-colors"
+                    className="text-xs sm:text-sm text-[var(--muted-foreground)] hover:text-[var(--color-main-1)] transition-colors"
                   >
                     {tag}
                   </Link>
@@ -258,29 +262,29 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
         </div>
       </div>
 
-      <div className="nk-gap-5" />
+      <div className="nk-gap-3 sm:nk-gap-5" />
 
-      {/* Product Tabs - Godlike Style */}
+      {/* Product Tabs */}
       <ProductTabs product={product} />
 
-      {/* Related Products placeholder - would need another API call */}
-      <div className="nk-gap-5" />
-      <div className="text-center mb-8">
-        <h2 className="text-3xl mb-4">You Might Also Like</h2>
-        <p className="text-[var(--muted-foreground)]">
+      {/* Related Products */}
+      <div className="nk-gap-3 sm:nk-gap-5" />
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl mb-2 sm:mb-4">You Might Also Like</h2>
+        <p className="text-sm sm:text-base text-[var(--muted-foreground)]">
           Explore more products in this category
         </p>
       </div>
       <div className="text-center">
         <Link
           href={`/store?category=${product.category}`}
-          className="inline-block px-6 py-3 border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
+          className="inline-block px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors rounded-lg sm:rounded-none"
         >
           View {product.category.charAt(0).toUpperCase() + product.category.slice(1)} Products
         </Link>
       </div>
 
-      <div className="nk-gap-4" />
+      <div className="nk-gap-3 sm:nk-gap-4" />
     </div>
   );
 }
