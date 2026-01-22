@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn, formatPrice } from "@/lib/utils";
 import { useCartStore, useWishlistStore, useUIStore } from "@/stores";
+import { VariantSelectionModal } from "./VariantSelectionModal";
 import type { Product } from "@/types";
 
 interface ProductCardProps {
@@ -22,11 +23,15 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const [mounted, setMounted] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [isWishlistLoading, setIsWishlistLoading] = useState(false);
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
   const dragStartX = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const { addItem, openCart } = useCartStore();
   const { toggleItem, isInWishlist } = useWishlistStore();
   const { openSignIn } = useUIStore();
+  
+  // Check if product has multiple variants that need selection
+  const hasMultipleVariants = product.variants && product.variants.length > 1;
 
   useEffect(() => {
     setMounted(true);
@@ -47,7 +52,20 @@ export function ProductCard({ product, className }: ProductCardProps) {
   };
 
   const handleAddToCart = () => {
-    addItem(product, 1);
+    // If product has multiple variants, show variant selection modal
+    if (hasMultipleVariants) {
+      setIsVariantModalOpen(true);
+      return;
+    }
+    
+    // If single variant, add it with its price
+    if (product.variants && product.variants.length === 1) {
+      const variant = product.variants[0];
+      addItem(product, 1, variant);
+    } else {
+      // No variants, add product as-is
+      addItem(product, 1);
+    }
     openCart();
   };
 
@@ -338,7 +356,23 @@ export function ProductCard({ product, className }: ProductCardProps) {
             Featured
           </span>
         )}
+        
+        {/* Variants badge */}
+        {hasMultipleVariants && (
+          <span className="absolute top-4 right-4 px-2 py-1 text-xs bg-[var(--color-dark-1)]/90 text-white/80 border border-[var(--color-dark-3)]">
+            {product.variants!.length} options
+          </span>
+        )}
       </div>
+      
+      {/* Variant Selection Modal */}
+      {hasMultipleVariants && (
+        <VariantSelectionModal
+          product={product}
+          isOpen={isVariantModalOpen}
+          onClose={() => setIsVariantModalOpen(false)}
+        />
+      )}
     </motion.div>
   );
 }

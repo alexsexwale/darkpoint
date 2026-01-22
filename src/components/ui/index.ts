@@ -8,6 +8,7 @@ export { CartDrawer } from "./CartDrawer";
 export { SearchModal } from "./SearchModal";
 export { SignInModal } from "./SignInModal";
 export { ForgotPasswordModal } from "./ForgotPasswordModal";
+export { VariantSelectionModal } from "./VariantSelectionModal";
 export { LinkEffect } from "./LinkEffect";
 export { NavLinkEffect } from "./NavLinkEffect";
 export { FreeDeliveryIndicator, ShippingTierBreakdown } from "./FreeDeliveryIndicator";
