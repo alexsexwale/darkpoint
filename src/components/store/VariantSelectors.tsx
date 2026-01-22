@@ -142,7 +142,6 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
           <div className="nk-color-selector">
             {colors.map(({ variant, parsed }) => {
               const isSelected = selectedVariant?.id === variant.id;
-              const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
               
               return (
                 <div key={variant.id} className="inline-block">
@@ -153,21 +152,19 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
                     value={parsed.display}
                     checked={isSelected}
                     onChange={() => onVariantChange(variant)}
-                    disabled={isOutOfStock}
                     className="sr-only"
                   />
                   <label
                     htmlFor={`color-${variant.id}`}
                     className={cn(
                       "nk-color-label",
-                      isSelected && "selected",
-                      isOutOfStock && "out-of-stock"
+                      isSelected && "selected"
                     )}
                     style={{ 
                       backgroundColor: parsed.colorHex,
                       color: parsed.colorHex,
                     }}
-                    title={`${parsed.display}${isOutOfStock ? " (Out of stock)" : ""}`}
+                    title={parsed.display}
                   >
                     {parsed.display}
                   </label>
@@ -187,7 +184,6 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
           <div className="nk-size-selector">
             {sizes.map(({ variant, parsed }) => {
               const isSelected = selectedVariant?.id === variant.id;
-              const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
               
               return (
                 <div key={variant.id} className="inline-block">
@@ -198,17 +194,14 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
                     value={parsed.display}
                     checked={isSelected}
                     onChange={() => onVariantChange(variant)}
-                    disabled={isOutOfStock}
                     className="sr-only"
                   />
                   <label
                     htmlFor={`size-${variant.id}`}
                     className={cn(
                       "nk-size-label",
-                      isSelected && "selected",
-                      isOutOfStock && "out-of-stock"
+                      isSelected && "selected"
                     )}
-                    title={isOutOfStock ? "Out of stock" : undefined}
                   >
                     {parsed.display}
                   </label>
@@ -226,7 +219,6 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
           <div className="nk-size-selector">
             {others.map(({ variant, parsed }) => {
               const isSelected = selectedVariant?.id === variant.id;
-              const isOutOfStock = variant.stock !== undefined && variant.stock <= 0;
               const hasImage = typeof variant.image === 'string' && variant.image;
               
               return (
@@ -238,17 +230,14 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
                     value={parsed.display}
                     checked={isSelected}
                     onChange={() => onVariantChange(variant)}
-                    disabled={isOutOfStock}
                     className="sr-only"
                   />
                   <label
                     htmlFor={`variant-${variant.id}`}
                     className={cn(
                       "nk-size-label",
-                      isSelected && "selected",
-                      isOutOfStock && "out-of-stock"
+                      isSelected && "selected"
                     )}
-                    title={isOutOfStock ? "Out of stock" : undefined}
                   >
                     {hasImage && (
                       <span className="relative w-6 h-6 mr-2 inline-block align-middle">

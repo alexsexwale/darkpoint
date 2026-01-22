@@ -18,10 +18,8 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
   // Use effective price if provided, otherwise fall back to product price
   const displayPrice = effectivePrice ?? product.price;
   
-  // Check stock based on selected variant or product
-  const isInStock = selectedVariant 
-    ? (selectedVariant.stock === undefined || selectedVariant.stock > 0)
-    : product.inStock;
+  // Always show as in stock - dropshipping fulfillment handles availability
+  const isInStock = true;
 
   const handleAddToCart = () => {
     // If variant is selected, pass it to the cart with the effective price
