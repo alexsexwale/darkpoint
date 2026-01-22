@@ -17,6 +17,7 @@ export interface ProductVariant {
   stock?: number;
   sku?: string;
   inStock?: boolean;
+  isHidden?: boolean; // Whether this variant is hidden on the website
 }
 
 export interface Product {

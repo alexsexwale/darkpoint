@@ -31,7 +31,7 @@ function transformProduct(dbProduct: {
   variant_group_name?: string | null;
 }): Product {
   const images = (dbProduct.images as Array<{ src: string; alt?: string }>) || [];
-  const variants = (dbProduct.variants as Array<{
+  const allVariants = (dbProduct.variants as Array<{
     id: string;
     name: string;
     value?: string;
@@ -41,10 +41,14 @@ function transformProduct(dbProduct: {
     image?: string;
     stock?: number;
     inStock?: boolean;
+    isHidden?: boolean;
     priceUSD?: number;
     costZAR?: number;
     attributes?: Record<string, string>;
   }>) || [];
+  
+  // Filter out hidden variants
+  const variants = allVariants.filter(v => !v.isHidden);
   
   return {
     id: dbProduct.cj_product_id,
