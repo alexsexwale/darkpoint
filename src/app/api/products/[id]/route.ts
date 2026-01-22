@@ -28,12 +28,14 @@ function transformProduct(dbProduct: {
   created_at: string;
   updated_at: string;
   variants: unknown;
+  variant_group_name?: string | null;
 }): Product {
   const images = (dbProduct.images as Array<{ src: string; alt?: string }>) || [];
   const variants = (dbProduct.variants as Array<{
     id: string;
     name: string;
     value?: string;
+    displayName?: string;
     price: number;
     sku?: string;
     image?: string;
@@ -63,10 +65,12 @@ function transformProduct(dbProduct: {
     featured: dbProduct.is_featured,
     createdAt: dbProduct.created_at,
     updatedAt: dbProduct.updated_at,
+    variantGroupName: dbProduct.variant_group_name || undefined,
     variants: variants.length > 0 ? variants.map((v, idx) => ({
       id: v.id || `${dbProduct.id}-variant-${idx}`,
       name: v.name,
       value: v.value,
+      displayName: v.displayName,
       price: v.price,
       sku: v.sku,
       image: v.image,
@@ -103,7 +107,7 @@ export async function GET(
     // Try to find by CJ product ID first (this is what's passed from the product page)
     let { data: product } = await supabase
       .from('admin_products')
-      .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants')
+      .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name')
       .eq('cj_product_id', productIdOrSlug)
       .eq('is_active', true)
       .single();
@@ -112,7 +116,7 @@ export async function GET(
     if (!product) {
       const { data: productBySlug } = await supabase
         .from('admin_products')
-        .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants')
+        .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name')
         .eq('slug', productIdOrSlug)
         .eq('is_active', true)
         .single();

@@ -206,6 +206,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                   variants={product.variants!}
                   selectedVariant={selectedVariant}
                   onVariantChange={setSelectedVariant}
+                  variantGroupName={product.variantGroupName}
                 />
               )}
 
@@ -308,6 +309,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                 variants={product.variants!}
                 selectedVariant={selectedVariant}
                 onVariantChange={setSelectedVariant}
+                variantGroupName={product.variantGroupName}
               />
             </div>
           )}

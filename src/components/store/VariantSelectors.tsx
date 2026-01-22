@@ -9,6 +9,7 @@ interface VariantSelectorsProps {
   variants: ProductVariant[];
   selectedVariant: ProductVariant | null;
   onVariantChange: (variant: ProductVariant) => void;
+  variantGroupName?: string; // Custom name for the variant options group
 }
 
 // Color mappings
@@ -64,6 +65,9 @@ function parseVariant(variant: ProductVariant): {
   display: string;
   colorHex?: string;
 } {
+  // If displayName is set, use it for display but still detect type for UI styling
+  const hasCustomDisplayName = variant.displayName && variant.displayName.trim().length > 0;
+  
   let rawValue = variant.value || variant.name || "";
   if (rawValue.length > 25) rawValue = extractAttributeFromName(rawValue);
   
@@ -74,7 +78,7 @@ function parseVariant(variant: ProductVariant): {
     if (lowerValue === colorName || lowerValue.includes(colorName)) {
       return {
         type: "color",
-        display: colorName.charAt(0).toUpperCase() + colorName.slice(1),
+        display: hasCustomDisplayName ? variant.displayName! : colorName.charAt(0).toUpperCase() + colorName.slice(1),
         colorHex: hex,
       };
     }
@@ -83,13 +87,13 @@ function parseVariant(variant: ProductVariant): {
   // Check for size
   const upperValue = rawValue.toUpperCase();
   if (SIZE_ORDER.includes(upperValue) || /\d+GB|\d+TB/i.test(upperValue)) {
-    return { type: "size", display: upperValue };
+    return { type: "size", display: hasCustomDisplayName ? variant.displayName! : upperValue };
   }
   
-  return { type: "other", display: rawValue };
+  return { type: "other", display: hasCustomDisplayName ? variant.displayName! : rawValue };
 }
 
-export function VariantSelectors({ variants, selectedVariant, onVariantChange }: VariantSelectorsProps) {
+export function VariantSelectors({ variants, selectedVariant, onVariantChange, variantGroupName }: VariantSelectorsProps) {
   const { colors, sizes, others } = useMemo(() => {
     if (!variants || variants.length === 0) {
       return { colors: [], sizes: [], others: [] };
@@ -215,7 +219,7 @@ export function VariantSelectors({ variants, selectedVariant, onVariantChange }:
       {/* Others */}
       {hasOthers && (
         <div className="nk-product-variant">
-          <h4 className="text-sm font-heading uppercase tracking-wider mb-3">Options</h4>
+          <h4 className="text-sm font-heading uppercase tracking-wider mb-3">{variantGroupName || "Options"}</h4>
           <div className="nk-size-selector">
             {others.map(({ variant, parsed }) => {
               const isSelected = selectedVariant?.id === variant.id;

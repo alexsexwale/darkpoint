@@ -8,6 +8,7 @@ export interface ProductVariant {
   id: string;
   name: string;
   value?: string;
+  displayName?: string; // Custom display name set in admin
   color?: string;
   size?: string;
   price: number;
@@ -31,6 +32,7 @@ export interface Product {
   tags: string[];
   images: ProductImage[];
   variants?: ProductVariant[];
+  variantGroupName?: string; // Custom name for variant options (e.g., "Wood Type" instead of "Options")
   rating: number;
   reviewCount: number;
   inStock: boolean;
