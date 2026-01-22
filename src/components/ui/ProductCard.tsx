@@ -12,11 +12,12 @@ import type { Product } from "@/types";
 interface ProductCardProps {
   product: Product;
   className?: string;
+  singleImage?: boolean; // Only show the first image, no carousel
 }
 
 const PLACEHOLDER_IMAGE = "/images/placeholder.png";
 
-export function ProductCard({ product, className }: ProductCardProps) {
+export function ProductCard({ product, className, singleImage = false }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -149,100 +150,116 @@ export function ProductCard({ product, className }: ProductCardProps) {
           "group-hover:bg-[var(--color-dark-1)] group-hover:border-[var(--color-main-1)]/30 group-hover:z-10"
         )}
       >
-        {/* Product Images - Swipeable Carousel with click to navigate */}
-        <div
-          className="nk-carousel-3 relative aspect-square mb-4 overflow-hidden cursor-grab active:cursor-grabbing"
-          onMouseDown={handleDragStart}
-          onMouseUp={(e) => {
-            handleDragEnd(e);
-            // If not a drag (small movement), navigate to product
-            const clientX = e.clientX;
-            const diff = Math.abs(dragStartX.current - clientX);
-            if (diff < 10) {
-              window.location.href = `/product/${product.slug}`;
-            }
-          }}
-          onMouseLeave={() => isDragging && setIsDragging(false)}
-          onTouchStart={handleDragStart}
-          onTouchEnd={(e) => {
-            handleDragEnd(e);
-            // If not a swipe (small movement), navigate to product
-            const clientX = e.changedTouches[0].clientX;
-            const diff = Math.abs(dragStartX.current - clientX);
-            if (diff < 10) {
-              window.location.href = `/product/${product.slug}`;
-            }
-          }}
-        >
+        {/* Product Images */}
+        {singleImage ? (
+          /* Single Image Mode - No carousel */
+          <Link href={`/product/${product.slug}`} className="block relative aspect-square mb-4 overflow-hidden">
+            <Image
+              src={validImages[0]?.src || PLACEHOLDER_IMAGE}
+              alt={validImages[0]?.alt || product.name}
+              fill
+              className="object-contain transition-transform duration-300 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              draggable={false}
+              onError={() => validImages[0] && handleImageError(validImages[0].id)}
+            />
+          </Link>
+        ) : (
+          /* Carousel Mode - Swipeable with click to navigate */
           <div
-            className="nk-carousel-inner flex transition-transform duration-300 ease-out h-full"
-            style={{
-              transform: `translateX(-${currentImageIndex * 100}%)`,
+            className="nk-carousel-3 relative aspect-square mb-4 overflow-hidden cursor-grab active:cursor-grabbing"
+            onMouseDown={handleDragStart}
+            onMouseUp={(e) => {
+              handleDragEnd(e);
+              // If not a drag (small movement), navigate to product
+              const clientX = e.clientX;
+              const diff = Math.abs(dragStartX.current - clientX);
+              if (diff < 10) {
+                window.location.href = `/product/${product.slug}`;
+              }
+            }}
+            onMouseLeave={() => isDragging && setIsDragging(false)}
+            onTouchStart={handleDragStart}
+            onTouchEnd={(e) => {
+              handleDragEnd(e);
+              // If not a swipe (small movement), navigate to product
+              const clientX = e.changedTouches[0].clientX;
+              const diff = Math.abs(dragStartX.current - clientX);
+              if (diff < 10) {
+                window.location.href = `/product/${product.slug}`;
+              }
             }}
           >
-            {validImages.map((image) => (
-              <div key={image.id} className="relative w-full h-full flex-shrink-0 cursor-pointer">
-                <Image
-                  src={image.src}
-                  alt={image.alt}
-                  fill
-                  className="object-contain transition-transform duration-300 group-hover:scale-105"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  draggable={false}
-                  onError={() => handleImageError(image.id)}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Navigation Arrows - Always visible when multiple images */}
-          {validImages.length > 1 && (
-            <>
-              <button
-                onClick={prevImage}
-                onMouseDown={(e) => e.stopPropagation()}
-                onMouseUp={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-                className={cn(
-                  "absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-[var(--color-main-1)] transition-all cursor-pointer z-10",
-                  isHovered ? "opacity-100" : "opacity-50"
-                )}
-                aria-label="Previous image"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <button
-                onClick={nextImage}
-                onMouseDown={(e) => e.stopPropagation()}
-                onMouseUp={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-                className={cn(
-                  "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-[var(--color-main-1)] transition-all cursor-pointer z-10",
-                  isHovered ? "opacity-100" : "opacity-50"
-                )}
-                aria-label="Next image"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </>
-          )}
-
-          {/* Image counter badge */}
-          {validImages.length > 1 && (
-            <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-xs text-white/80 z-10">
-              {currentImageIndex + 1} / {validImages.length}
+            <div
+              className="nk-carousel-inner flex transition-transform duration-300 ease-out h-full"
+              style={{
+                transform: `translateX(-${currentImageIndex * 100}%)`,
+              }}
+            >
+              {validImages.map((image) => (
+                <div key={image.id} className="relative w-full h-full flex-shrink-0 cursor-pointer">
+                  <Image
+                    src={image.src}
+                    alt={image.alt}
+                    fill
+                    className="object-contain transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    draggable={false}
+                    onError={() => handleImageError(image.id)}
+                  />
+                </div>
+              ))}
             </div>
-          )}
-        </div>
 
-        {/* Image Dots (if multiple images) - Always visible */}
-        {validImages.length > 1 && (
+            {/* Navigation Arrows - Always visible when multiple images */}
+            {validImages.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onMouseUp={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  className={cn(
+                    "absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-[var(--color-main-1)] transition-all cursor-pointer z-10",
+                    isHovered ? "opacity-100" : "opacity-50"
+                  )}
+                  aria-label="Previous image"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={nextImage}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onMouseUp={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  className={cn(
+                    "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/60 hover:bg-[var(--color-main-1)] transition-all cursor-pointer z-10",
+                    isHovered ? "opacity-100" : "opacity-50"
+                  )}
+                  aria-label="Next image"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
+            )}
+
+            {/* Image counter badge */}
+            {validImages.length > 1 && (
+              <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 text-xs text-white/80 z-10">
+                {currentImageIndex + 1} / {validImages.length}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Image Dots (if multiple images and not single image mode) */}
+        {!singleImage && validImages.length > 1 && (
           <div className="flex justify-center gap-1.5 mb-4">
             {validImages.slice(0, 5).map((_, index) => (
               <button

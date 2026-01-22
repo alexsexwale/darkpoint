@@ -90,7 +90,7 @@ export function ProductCarousel({
               key={product.id}
               className="shrink-0 grow-0 basis-[80%] sm:basis-[48%] md:basis-[33.333%] lg:basis-[25%] min-w-0 px-2"
             >
-              <ProductCard product={product} />
+              <ProductCard product={product} singleImage />
             </div>
           ))}
         </div>
