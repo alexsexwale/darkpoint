@@ -67,47 +67,98 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
     }
   };
   
+  // Desktop carousel
   const [emblaMainRef, emblaMainApi] = useEmblaCarousel({ loop: true });
   const [emblaThumbsRef, emblaThumbsApi] = useEmblaCarousel({
     containScroll: "keepSnaps",
     dragFree: true,
   });
+  
+  // Mobile carousel (separate instance)
+  const [emblaMobileRef, emblaMobileApi] = useEmblaCarousel({ loop: true });
+
+  // Reinitialize Embla when images array changes
+  useEffect(() => {
+    if (emblaMainApi) {
+      emblaMainApi.reInit();
+    }
+    if (emblaThumbsApi) {
+      emblaThumbsApi.reInit();
+    }
+    if (emblaMobileApi) {
+      emblaMobileApi.reInit();
+    }
+  }, [validImages, emblaMainApi, emblaThumbsApi, emblaMobileApi]);
 
   // When variant image changes (not on every render), scroll to show it
   // This only triggers when the user selects a different variant, not when manually scrolling
   useEffect(() => {
-    if (!emblaMainApi) return;
-    
     // Only scroll if the variant image actually changed
     if (variantImage && variantImage !== prevVariantImageRef.current) {
       prevVariantImageRef.current = variantImage;
       
-      // Find the variant image in the gallery
-      const variantImageIndex = validImages.findIndex(img => img.src === variantImage);
-      
-      if (variantImageIndex !== -1) {
-        emblaMainApi.scrollTo(variantImageIndex);
-        setSelectedIndex(variantImageIndex);
-      }
+      // Small delay to ensure Embla has reinitialized with new images
+      setTimeout(() => {
+        // Find the variant image in the gallery
+        const variantImageIndex = validImages.findIndex(img => img.src === variantImage);
+        
+        if (variantImageIndex !== -1) {
+          // Scroll both desktop and mobile carousels
+          if (emblaMainApi) {
+            emblaMainApi.scrollTo(variantImageIndex);
+          }
+          if (emblaMobileApi) {
+            emblaMobileApi.scrollTo(variantImageIndex);
+          }
+          setSelectedIndex(variantImageIndex);
+        }
+      }, 50);
     } else if (!variantImage) {
       prevVariantImageRef.current = null;
     }
-  }, [variantImage, validImages, emblaMainApi]);
+  }, [variantImage, validImages, emblaMainApi, emblaMobileApi]);
 
+  // Desktop thumbnail click
   const onThumbClick = useCallback(
     (index: number) => {
-      if (!emblaMainApi || !emblaThumbsApi) return;
-      emblaMainApi.scrollTo(index);
+      if (emblaMainApi) {
+        emblaMainApi.scrollTo(index);
+      }
+      if (emblaThumbsApi) {
+        emblaThumbsApi.scrollTo(index);
+      }
     },
     [emblaMainApi, emblaThumbsApi]
   );
 
+  // Mobile thumbnail click
+  const onMobileThumbClick = useCallback(
+    (index: number) => {
+      if (emblaMobileApi) {
+        emblaMobileApi.scrollTo(index);
+      }
+      setSelectedIndex(index);
+    },
+    [emblaMobileApi]
+  );
+
+  // Desktop carousel select handler
   const onSelect = useCallback(() => {
-    if (!emblaMainApi || !emblaThumbsApi) return;
-    setSelectedIndex(emblaMainApi.selectedScrollSnap());
-    emblaThumbsApi.scrollTo(emblaMainApi.selectedScrollSnap());
+    if (!emblaMainApi) return;
+    const index = emblaMainApi.selectedScrollSnap();
+    setSelectedIndex(index);
+    if (emblaThumbsApi) {
+      emblaThumbsApi.scrollTo(index);
+    }
   }, [emblaMainApi, emblaThumbsApi]);
 
+  // Mobile carousel select handler
+  const onMobileSelect = useCallback(() => {
+    if (!emblaMobileApi) return;
+    setSelectedIndex(emblaMobileApi.selectedScrollSnap());
+  }, [emblaMobileApi]);
+
+  // Desktop scroll functions
   const scrollPrev = useCallback(() => {
     if (emblaMainApi) emblaMainApi.scrollPrev();
   }, [emblaMainApi]);
@@ -116,12 +167,38 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
     if (emblaMainApi) emblaMainApi.scrollNext();
   }, [emblaMainApi]);
 
+  // Mobile scroll functions
+  const scrollMobilePrev = useCallback(() => {
+    if (emblaMobileApi) emblaMobileApi.scrollPrev();
+  }, [emblaMobileApi]);
+
+  const scrollMobileNext = useCallback(() => {
+    if (emblaMobileApi) emblaMobileApi.scrollNext();
+  }, [emblaMobileApi]);
+
+  // Desktop carousel event binding
   useEffect(() => {
     if (!emblaMainApi) return;
     onSelect();
     emblaMainApi.on("select", onSelect);
     emblaMainApi.on("reInit", onSelect);
+    return () => {
+      emblaMainApi.off("select", onSelect);
+      emblaMainApi.off("reInit", onSelect);
+    };
   }, [emblaMainApi, onSelect]);
+
+  // Mobile carousel event binding
+  useEffect(() => {
+    if (!emblaMobileApi) return;
+    onMobileSelect();
+    emblaMobileApi.on("select", onMobileSelect);
+    emblaMobileApi.on("reInit", onMobileSelect);
+    return () => {
+      emblaMobileApi.off("select", onMobileSelect);
+      emblaMobileApi.off("reInit", onMobileSelect);
+    };
+  }, [emblaMobileApi, onMobileSelect]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -254,12 +331,12 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
 
       {/* Mobile Gallery */}
       <div className="lg:hidden w-full">
-        <div className="relative overflow-hidden" ref={emblaMainRef}>
-          <div className="flex">
+        <div className="relative overflow-hidden embla" ref={emblaMobileRef}>
+          <div className="embla__container flex">
             {validImages.map((image, index) => (
               <div 
                 key={image.id} 
-                className="flex-[0_0_100%] min-w-0"
+                className="embla__slide flex-[0_0_100%] min-w-0"
                 onClick={() => setIsLightboxOpen(true)}
               >
                 <div className="relative aspect-square bg-[var(--color-dark-2)]">
@@ -280,7 +357,7 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
           {validImages.length > 1 && (
             <>
               <button
-                onClick={(e) => { e.stopPropagation(); scrollPrev(); }}
+                onClick={(e) => { e.stopPropagation(); scrollMobilePrev(); }}
                 className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 text-white rounded-full z-10"
                 aria-label="Previous"
               >
@@ -289,7 +366,7 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
                 </svg>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); scrollNext(); }}
+                onClick={(e) => { e.stopPropagation(); scrollMobileNext(); }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 text-white rounded-full z-10"
                 aria-label="Next"
               >
@@ -306,7 +383,7 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
             {validImages.map((image, index) => (
               <button
                 key={image.id}
-                onClick={() => onThumbClick(index)}
+                onClick={() => onMobileThumbClick(index)}
                 className={cn(
                   "w-14 h-14 flex-shrink-0 bg-[var(--color-dark-3)] p-1 border-2 transition-colors",
                   selectedIndex === index ? "border-white" : "border-transparent"
