@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useProduct } from "@/hooks";
-import { ProductGallery, ProductTabs, ProductDescription, VariantSelectors } from "@/components/store";
+import { ProductGallery, ProductTabs, VariantSelectors } from "@/components/store";
 import { Rating, ProductDetailSkeleton } from "@/components/ui";
 import { AddToCartButton } from "./AddToCartButton";
 import { AddToWishlistButton } from "./AddToWishlistButton";
@@ -190,8 +190,6 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                 </span>
               </div>
 
-              <ProductDescription description={product.description} maxLength={250} />
-
               {hasVariants && (
                 <VariantSelectors
                   variants={product.variants!}
@@ -291,10 +289,6 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
             <span className="text-xs text-[var(--muted-foreground)]">
               ({totalReviews} {totalReviews === 1 ? "review" : "reviews"})
             </span>
-          </div>
-
-          <div className="mb-4">
-            <ProductDescription description={product.description} maxLength={200} />
           </div>
 
           {hasVariants && (
