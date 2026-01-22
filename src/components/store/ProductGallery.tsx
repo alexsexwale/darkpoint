@@ -47,6 +47,18 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
     }
     return sanitized;
   }, [images, failedImages, productName]);
+  
+  const handleImageError = (src: string) => {
+    if (src !== PLACEHOLDER_IMAGE) {
+      setFailedImages((prev) => new Set([...prev, src]));
+    }
+  };
+  
+  const [emblaMainRef, emblaMainApi] = useEmblaCarousel({ loop: true });
+  const [emblaThumbsRef, emblaThumbsApi] = useEmblaCarousel({
+    containScroll: "keepSnaps",
+    dragFree: true,
+  });
 
   // When variant image changes, scroll to it or show it first
   useEffect(() => {
@@ -62,18 +74,6 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
       setSelectedIndex(variantImageIndex);
     }
   }, [variantImage, validImages, emblaMainApi, selectedIndex]);
-  
-  const handleImageError = (src: string) => {
-    if (src !== PLACEHOLDER_IMAGE) {
-      setFailedImages((prev) => new Set([...prev, src]));
-    }
-  };
-  
-  const [emblaMainRef, emblaMainApi] = useEmblaCarousel({ loop: true });
-  const [emblaThumbsRef, emblaThumbsApi] = useEmblaCarousel({
-    containScroll: "keepSnaps",
-    dragFree: true,
-  });
 
   const onThumbClick = useCallback(
     (index: number) => {
