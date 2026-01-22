@@ -19,12 +19,12 @@ export function HomePageClient({
   // Use client-side fetching only if no initial products were provided (SSR fallback)
   const { products: clientFeatured, loading: featuredLoading } = useProducts({
     featured: true,
-    limit: 3,
+    limit: 8,
   });
 
   const { products: clientLatest, loading: latestLoading } = useProducts({
     sortBy: "newest",
-    limit: 6,
+    limit: 8,
   });
 
   // Use SSR products if available, otherwise fall back to client-fetched
@@ -74,11 +74,9 @@ export function HomePageClient({
             </p>
           </div>
           {showFeaturedLoading ? (
-            <ProductGridSkeleton count={3} columns={3} />
+            <ProductGridSkeleton count={4} columns={4} />
           ) : featuredProducts.length > 0 ? (
-            <div className="px-4 lg:px-12">
-              <ProductCarousel products={featuredProducts} />
-            </div>
+            <ProductCarousel products={featuredProducts} />
           ) : (
             <div className="text-center py-12 bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]">
               <svg className="w-12 h-12 mx-auto text-[var(--color-main-1)]/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,11 +244,9 @@ export function HomePageClient({
             </p>
           </div>
           {showLatestLoading ? (
-            <ProductGridSkeleton count={6} columns={3} />
+            <ProductGridSkeleton count={4} columns={4} />
           ) : latestProducts.length > 0 ? (
-            <div className="px-4 lg:px-12">
-              <ProductCarousel products={latestProducts} />
-            </div>
+            <ProductCarousel products={latestProducts} />
           ) : (
             <div className="text-center py-12 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)]">
               <svg className="w-12 h-12 mx-auto text-[var(--color-main-1)]/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
