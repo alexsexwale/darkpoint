@@ -71,7 +71,7 @@ function transformProduct(dbProduct: {
       sku: v.sku,
       image: v.image,
       stock: v.stock,
-      inStock: v.inStock ?? (v.stock === undefined || v.stock > 0),
+      inStock: true, // Always in stock - dropshipping fulfillment handles availability
       attributes: v.attributes || {},
     })) : undefined,
   };

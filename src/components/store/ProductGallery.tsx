@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import useEmblaCarousel from "embla-carousel-react";
@@ -33,6 +33,7 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
   const [isHovered, setIsHovered] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const prevVariantImageRef = useRef<string | null>(null);
   
   // Build the images array, including variant image at the start if it exists and is different
   const validImages = useMemo(() => {
@@ -72,18 +73,26 @@ export function ProductGallery({ images, productName, variantImage }: ProductGal
     dragFree: true,
   });
 
-  // When variant image changes, scroll to show it (it's at index 0 if it's a new image)
+  // When variant image changes (not on every render), scroll to show it
+  // This only triggers when the user selects a different variant, not when manually scrolling
   useEffect(() => {
-    if (!variantImage || !emblaMainApi) return;
+    if (!emblaMainApi) return;
     
-    // Find the variant image in the gallery
-    const variantImageIndex = validImages.findIndex(img => img.src === variantImage);
-    
-    if (variantImageIndex !== -1 && variantImageIndex !== selectedIndex) {
-      emblaMainApi.scrollTo(variantImageIndex);
-      setSelectedIndex(variantImageIndex);
+    // Only scroll if the variant image actually changed
+    if (variantImage && variantImage !== prevVariantImageRef.current) {
+      prevVariantImageRef.current = variantImage;
+      
+      // Find the variant image in the gallery
+      const variantImageIndex = validImages.findIndex(img => img.src === variantImage);
+      
+      if (variantImageIndex !== -1) {
+        emblaMainApi.scrollTo(variantImageIndex);
+        setSelectedIndex(variantImageIndex);
+      }
+    } else if (!variantImage) {
+      prevVariantImageRef.current = null;
     }
-  }, [variantImage, validImages, emblaMainApi, selectedIndex]);
+  }, [variantImage, validImages, emblaMainApi]);
 
   const onThumbClick = useCallback(
     (index: number) => {
