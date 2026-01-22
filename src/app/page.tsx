@@ -4,6 +4,9 @@ import { HomePageClient } from "./HomePageClient";
 import { ProductGridSkeleton } from "@/components/ui";
 import type { Product } from "@/types";
 
+// Revalidate homepage data every 60 seconds to pick up featured product changes
+export const revalidate = 60;
+
 // Create a server-side Supabase client for SSR
 function getSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -63,13 +66,14 @@ async function getInitialProducts(): Promise<{
   }
 
   try {
-    // Fetch featured products
+    // Fetch featured products - get enough for the carousel
     const { data: featuredData } = await supabase
       .from("admin_products")
       .select("id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, slug")
       .eq("is_active", true)
       .eq("is_featured", true)
-      .limit(3);
+      .order("updated_at", { ascending: false })
+      .limit(12);
 
     // Fetch latest products
     const { data: latestData } = await supabase
@@ -77,7 +81,7 @@ async function getInitialProducts(): Promise<{
       .select("id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, slug")
       .eq("is_active", true)
       .order("created_at", { ascending: false })
-      .limit(6);
+      .limit(12);
 
     return {
       featuredProducts: (featuredData || []).map(transformProduct),

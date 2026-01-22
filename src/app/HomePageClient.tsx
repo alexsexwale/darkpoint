@@ -263,24 +263,33 @@ export function HomePageClient({
   initialFeaturedProducts = [], 
   initialLatestProducts = [] 
 }: HomePageClientProps) {
-  // Use client-side fetching only if no initial products were provided (SSR fallback)
+  // Always fetch fresh client-side data to ensure we have the latest featured products
   const { products: clientFeatured, loading: featuredLoading } = useProducts({
     featured: true,
-    limit: 8,
+    limit: 12,
   });
 
   const { products: clientLatest, loading: latestLoading } = useProducts({
     sortBy: "newest",
-    limit: 8,
+    limit: 12,
   });
 
-  // Use SSR products if available, otherwise fall back to client-fetched
-  const featuredProducts = initialFeaturedProducts.length > 0 ? initialFeaturedProducts : clientFeatured;
-  const latestProducts = initialLatestProducts.length > 0 ? initialLatestProducts : clientLatest;
+  // Prefer client-fetched data once loaded (more up-to-date), fall back to SSR for initial render
+  const featuredProducts = !featuredLoading && clientFeatured.length > 0 
+    ? clientFeatured 
+    : initialFeaturedProducts.length > 0 
+      ? initialFeaturedProducts 
+      : clientFeatured;
   
-  // Only show loading state if we don't have SSR products and client is still loading
-  const showFeaturedLoading = initialFeaturedProducts.length === 0 && featuredLoading;
-  const showLatestLoading = initialLatestProducts.length === 0 && latestLoading;
+  const latestProducts = !latestLoading && clientLatest.length > 0 
+    ? clientLatest 
+    : initialLatestProducts.length > 0 
+      ? initialLatestProducts 
+      : clientLatest;
+  
+  // Only show loading state if we have no products at all and client is still loading
+  const showFeaturedLoading = featuredProducts.length === 0 && featuredLoading;
+  const showLatestLoading = latestProducts.length === 0 && latestLoading;
 
   return (
     <div>
