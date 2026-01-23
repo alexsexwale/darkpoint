@@ -50,14 +50,64 @@ function isColorValue(value: string): { isColor: boolean; hex?: string } {
   return { isColor: false };
 }
 
-// Check if a value looks like a size
-function isSizeValue(value: string): boolean {
+// Check if a value looks like a size (but not just a single letter like M/L which could be style)
+function isSizeValue(value: string, context: { hasManyStyleLetters: boolean }): boolean {
   const upper = value.toUpperCase().trim();
-  return SIZE_ORDER.includes(upper) || /^\d+$/.test(upper) || /\d+GB|\d+TB/i.test(upper);
+  
+  // Storage sizes are always sizes
+  if (/\d+GB|\d+TB/i.test(upper)) return true;
+  
+  // Pure numbers are sizes
+  if (/^\d+$/.test(upper)) return true;
+  
+  // Multi-character sizes like XS, XL, XXL are sizes
+  if (['XS', 'XL', 'XXL', 'XXXL', '2XL', '3XL', '4XL', 'XXS'].includes(upper)) return true;
+  
+  // Single letters S, M, L are ONLY sizes if we don't have many style letters
+  // If variants include A, B, C, D, E, F, G, H, I, J, K, N, O - then M and L are probably style letters
+  if (['S', 'M', 'L'].includes(upper)) {
+    return !context.hasManyStyleLetters;
+  }
+  
+  return false;
+}
+
+// Analyze all variants to understand the dimension structure
+function analyzeVariantStructure(variants: ProductVariant[], productName: string): {
+  hasManyStyleLetters: boolean;
+  allParts: string[][];
+} {
+  const allParts: string[][] = [];
+  const singleLetters = new Set<string>();
+  
+  for (const variant of variants) {
+    let variantPart = variant.name || variant.value || "";
+    if (productName && variantPart.toLowerCase().startsWith(productName.toLowerCase())) {
+      variantPart = variantPart.slice(productName.length).trim();
+    }
+    const parts = variantPart.split(/[\s_\-\/]+/).filter(p => p.length > 0);
+    allParts.push(parts);
+    
+    for (const part of parts) {
+      if (/^[A-Z]$/i.test(part)) {
+        singleLetters.add(part.toUpperCase());
+      }
+    }
+  }
+  
+  // If we have many single letters including non-size letters, treat all as style
+  const nonSizeLetters = [...singleLetters].filter(l => !['S', 'M', 'L'].includes(l));
+  const hasManyStyleLetters = nonSizeLetters.length >= 3; // Has A, B, C, D, etc.
+  
+  return { hasManyStyleLetters, allParts };
 }
 
 // Parse variant name to extract attributes
-function parseVariantAttributes(variant: ProductVariant, productName: string): Record<string, string> {
+function parseVariantAttributes(
+  variant: ProductVariant, 
+  productName: string,
+  context: { hasManyStyleLetters: boolean }
+): Record<string, string> {
   // If variant already has attributes, use them
   if (variant.attributes && Object.keys(variant.attributes).length > 0) {
     return variant.attributes;
@@ -80,7 +130,7 @@ function parseVariantAttributes(variant: ProductVariant, productName: string): R
     const colorCheck = isColorValue(part);
     if (colorCheck.isColor) {
       attributes["Colour"] = part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
-    } else if (isSizeValue(part)) {
+    } else if (isSizeValue(part, context)) {
       attributes["Size"] = part.toUpperCase();
     } else if (part.length <= 10) {
       // Likely a style/option letter or short code
@@ -106,11 +156,14 @@ function extractDimensions(variants: ProductVariant[], productName: string): {
   dimensions: Map<string, Set<string>>;
   variantAttributeMap: Map<string, Record<string, string>>;
 } {
+  // First, analyze the structure to understand what we're dealing with
+  const context = analyzeVariantStructure(variants, productName);
+  
   const dimensions = new Map<string, Set<string>>();
   const variantAttributeMap = new Map<string, Record<string, string>>();
   
   for (const variant of variants) {
-    const attrs = parseVariantAttributes(variant, productName);
+    const attrs = parseVariantAttributes(variant, productName, context);
     variantAttributeMap.set(variant.id, attrs);
     
     for (const [key, value] of Object.entries(attrs)) {
