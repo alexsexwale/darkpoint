@@ -113,17 +113,22 @@ export async function GET(
     // Base fields that always exist
     const baseFields = 'id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name';
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let product: any = null;
+    
     // Try to find by CJ product ID first (this is what's passed from the product page)
     // First try with variant_dimension_names, fall back to without if column doesn't exist
-    let { data: product, error } = await supabase
+    const { data: productWithDimNames, error } = await supabase
       .from('admin_products')
       .select(`${baseFields}, variant_dimension_names`)
       .eq('cj_product_id', productIdOrSlug)
       .eq('is_active', true)
       .single();
 
-    // If error includes column not found, try without variant_dimension_names
-    if (error && (error.message?.includes('variant_dimension_names') || error.code === '42703' || error.code === 'PGRST204')) {
+    if (!error && productWithDimNames) {
+      product = productWithDimNames;
+    } else if (error && (error.message?.includes('variant_dimension_names') || error.code === '42703' || error.code === 'PGRST204')) {
+      // Column doesn't exist, try without it
       const { data: productFallback } = await supabase
         .from('admin_products')
         .select(baseFields)
@@ -142,7 +147,9 @@ export async function GET(
         .eq('is_active', true)
         .single();
       
-      if (slugError && (slugError.message?.includes('variant_dimension_names') || slugError.code === '42703' || slugError.code === 'PGRST204')) {
+      if (!slugError && productBySlug) {
+        product = productBySlug;
+      } else if (slugError && (slugError.message?.includes('variant_dimension_names') || slugError.code === '42703' || slugError.code === 'PGRST204')) {
         const { data: productBySlugFallback } = await supabase
           .from('admin_products')
           .select(baseFields)
@@ -150,8 +157,6 @@ export async function GET(
           .eq('is_active', true)
           .single();
         product = productBySlugFallback;
-      } else {
-        product = productBySlug;
       }
     }
 
