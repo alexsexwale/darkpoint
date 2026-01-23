@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 import { Rating } from "@/components/ui";
 import { ReportReviewModal } from "@/components/ui/ReportReviewModal";
 import { ProductDescription } from "./ProductDescription";
 import { MiniBadge, type BadgeType } from "@/components/gamification";
 import { useReviewsStore, type Review, type ReviewStats } from "@/stores/reviewsStore";
 import { useAuthStore, useUIStore } from "@/stores";
+import { FREE_SHIPPING_THRESHOLD } from "@/lib/constants";
 import type { Product } from "@/types";
 
 interface ProductTabsProps {
@@ -432,7 +433,7 @@ export function ProductTabs({ product }: ProductTabsProps) {
               {[
                 "Premium quality materials",
                 "1 year warranty included",
-                "Free shipping on orders over R500",
+                `Free shipping on orders over ${formatPrice(FREE_SHIPPING_THRESHOLD)}`,
                 "30-day money-back guarantee",
               ].map((item) => (
                 <li key={item} className="flex items-center gap-2">
