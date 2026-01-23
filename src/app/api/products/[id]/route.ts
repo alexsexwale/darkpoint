@@ -29,6 +29,7 @@ function transformProduct(dbProduct: {
   updated_at: string;
   variants: unknown;
   variant_group_name?: string | null;
+  variant_dimension_names?: Record<string, string> | null;
 }): Product {
   const images = (dbProduct.images as Array<{ src: string; alt?: string }>) || [];
   const allVariants = (dbProduct.variants as Array<{
@@ -70,6 +71,7 @@ function transformProduct(dbProduct: {
     createdAt: dbProduct.created_at,
     updatedAt: dbProduct.updated_at,
     variantGroupName: dbProduct.variant_group_name || undefined,
+    variantDimensionNames: dbProduct.variant_dimension_names || undefined,
     variants: variants.length > 0 ? variants.map((v, idx) => ({
       id: v.id || `${dbProduct.id}-variant-${idx}`,
       name: v.name,
@@ -111,7 +113,7 @@ export async function GET(
     // Try to find by CJ product ID first (this is what's passed from the product page)
     let { data: product } = await supabase
       .from('admin_products')
-      .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name')
+      .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name, variant_dimension_names')
       .eq('cj_product_id', productIdOrSlug)
       .eq('is_active', true)
       .single();
@@ -120,7 +122,7 @@ export async function GET(
     if (!product) {
       const { data: productBySlug } = await supabase
         .from('admin_products')
-        .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name')
+        .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name, variant_dimension_names')
         .eq('slug', productIdOrSlug)
         .eq('is_active', true)
         .single();

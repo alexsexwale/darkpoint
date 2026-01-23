@@ -268,6 +268,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                   selectedAttributes={selectedAttributes}
                   onAttributeChange={handleAttributeChange}
                   variantGroupName={product.variantGroupName}
+                  variantDimensionNames={product.variantDimensionNames}
                 />
               )}
 
@@ -374,6 +375,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                 selectedAttributes={selectedAttributes}
                 onAttributeChange={handleAttributeChange}
                 variantGroupName={product.variantGroupName}
+                variantDimensionNames={product.variantDimensionNames}
               />
             </div>
           )}

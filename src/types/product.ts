@@ -34,7 +34,8 @@ export interface Product {
   tags: string[];
   images: ProductImage[];
   variants?: ProductVariant[];
-  variantGroupName?: string; // Custom name for variant options (e.g., "Wood Type" instead of "Options")
+  variantGroupName?: string; // Legacy: Custom name for variant options
+  variantDimensionNames?: Record<string, string>; // Custom names for each dimension (e.g., {"Option": "Microphone Type", "Colour": "Colour"})
   rating: number;
   reviewCount: number;
   inStock: boolean;

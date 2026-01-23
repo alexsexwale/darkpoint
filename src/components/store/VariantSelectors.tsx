@@ -11,7 +11,8 @@ interface VariantSelectorsProps {
   onVariantChange: (variant: ProductVariant | null) => void;
   selectedAttributes: Record<string, string>;
   onAttributeChange: (attribute: string, value: string) => void;
-  variantGroupName?: string;
+  variantGroupName?: string; // Legacy: for single-dimension products
+  variantDimensionNames?: Record<string, string>; // Custom names for each dimension
 }
 
 // Color mappings for visual display
@@ -282,7 +283,8 @@ export function VariantSelectors({
   onVariantChange,
   selectedAttributes,
   onAttributeChange,
-  variantGroupName 
+  variantGroupName,
+  variantDimensionNames 
 }: VariantSelectorsProps) {
   // Extract product name from first variant for parsing
   const productName = useMemo(() => {
@@ -420,7 +422,19 @@ export function VariantSelectors({
   }
 
   // Multi-dimension - show each dimension separately
-  const dimensionEntries = Array.from(dimensions.entries());
+  // Sort dimensions to ensure Colour is always first, then Size, then others
+  const dimensionEntries = Array.from(dimensions.entries()).sort(([a], [b]) => {
+    const order: Record<string, number> = {
+      'Colour': 0,
+      'Color': 0,
+      'Size': 1,
+      'Style': 2,
+      'Option': 3,
+    };
+    const aOrder = order[a] ?? 99;
+    const bOrder = order[b] ?? 99;
+    return aOrder - bOrder;
+  });
   const requiredSelections = dimensionEntries.length;
   const currentSelections = Object.keys(selectedAttributes).length;
   const allSelected = currentSelections >= requiredSelections;
@@ -447,11 +461,14 @@ export function VariantSelectors({
           ? allValues 
           : allValues.filter(v => availableValues.has(v));
         
-        // Determine display name for dimension
-        let dimensionLabel = key;
-        if (key === 'Colour' || key === 'Color') dimensionLabel = 'Colour';
-        else if (key === 'Size') dimensionLabel = 'Size';
-        else if (key === 'Style') dimensionLabel = 'Style';
+        // Determine display name for dimension - use custom name if provided
+        let dimensionLabel = variantDimensionNames?.[key] || key;
+        // Fallback to standard names if no custom name
+        if (!variantDimensionNames?.[key]) {
+          if (key === 'Colour' || key === 'Color') dimensionLabel = 'Colour';
+          else if (key === 'Size') dimensionLabel = 'Size';
+          else if (key === 'Style') dimensionLabel = 'Style';
+        }
 
         // Don't show dimension if no values available (shouldn't happen, but safety check)
         if (valuesToShow.length === 0) return null;
