@@ -110,23 +110,49 @@ export async function GET(
       }, { status: 400 });
     }
 
+    // Base fields that always exist
+    const baseFields = 'id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name';
+    
     // Try to find by CJ product ID first (this is what's passed from the product page)
-    let { data: product } = await supabase
+    // First try with variant_dimension_names, fall back to without if column doesn't exist
+    let { data: product, error } = await supabase
       .from('admin_products')
-      .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name, variant_dimension_names')
+      .select(`${baseFields}, variant_dimension_names`)
       .eq('cj_product_id', productIdOrSlug)
       .eq('is_active', true)
       .single();
 
+    // If error includes column not found, try without variant_dimension_names
+    if (error && (error.message?.includes('variant_dimension_names') || error.code === '42703' || error.code === 'PGRST204')) {
+      const { data: productFallback } = await supabase
+        .from('admin_products')
+        .select(baseFields)
+        .eq('cj_product_id', productIdOrSlug)
+        .eq('is_active', true)
+        .single();
+      product = productFallback;
+    }
+
     // If not found by CJ ID, try by slug
     if (!product) {
-      const { data: productBySlug } = await supabase
+      const { data: productBySlug, error: slugError } = await supabase
         .from('admin_products')
-        .select('id, cj_product_id, name, description, short_description, sell_price, compare_at_price, category, tags, images, is_featured, is_active, slug, created_at, updated_at, variants, variant_group_name, variant_dimension_names')
+        .select(`${baseFields}, variant_dimension_names`)
         .eq('slug', productIdOrSlug)
         .eq('is_active', true)
         .single();
-      product = productBySlug;
+      
+      if (slugError && (slugError.message?.includes('variant_dimension_names') || slugError.code === '42703' || slugError.code === 'PGRST204')) {
+        const { data: productBySlugFallback } = await supabase
+          .from('admin_products')
+          .select(baseFields)
+          .eq('slug', productIdOrSlug)
+          .eq('is_active', true)
+          .single();
+        product = productBySlugFallback;
+      } else {
+        product = productBySlug;
+      }
     }
 
     if (!product) {
