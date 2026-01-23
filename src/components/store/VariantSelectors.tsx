@@ -205,6 +205,40 @@ function findMatchingVariant(
   return null;
 }
 
+// Get available values for a dimension based on current selections in other dimensions
+function getAvailableValuesForDimension(
+  dimensionKey: string,
+  selectedAttributes: Record<string, string>,
+  variants: ProductVariant[],
+  variantAttributeMap: Map<string, Record<string, string>>
+): Set<string> {
+  const availableValues = new Set<string>();
+  
+  // Get selected attributes except for the dimension we're checking
+  const otherSelections = Object.entries(selectedAttributes)
+    .filter(([key]) => key !== dimensionKey);
+  
+  for (const variant of variants) {
+    const attrs = variantAttributeMap.get(variant.id) || {};
+    
+    // Check if this variant matches all other selected attributes
+    let matchesOthers = true;
+    for (const [key, value] of otherSelections) {
+      if (attrs[key] !== value) {
+        matchesOthers = false;
+        break;
+      }
+    }
+    
+    // If it matches, this variant's value for dimensionKey is available
+    if (matchesOthers && attrs[dimensionKey]) {
+      availableValues.add(attrs[dimensionKey]);
+    }
+  }
+  
+  return availableValues;
+}
+
 // Get image for a specific attribute value
 function getImageForAttribute(
   variants: ProductVariant[],
@@ -393,16 +427,34 @@ export function VariantSelectors({
 
   return (
     <div className="space-y-6">
-      {dimensionEntries.map(([key, valuesSet]) => {
-        const values = sortDimensionValues(key, Array.from(valuesSet));
+      {dimensionEntries.map(([key, valuesSet], dimIndex) => {
+        const allValues = sortDimensionValues(key, Array.from(valuesSet));
         const selectedValue = selectedAttributes[key];
-        const isColorDimension = values.some(v => isColorValue(v).isColor);
+        const isColorDimension = allValues.some(v => isColorValue(v).isColor);
+        
+        // Get available values based on selections in OTHER dimensions
+        const availableValues = getAvailableValuesForDimension(
+          key, 
+          selectedAttributes, 
+          variants, 
+          variantAttributeMap
+        );
+        
+        // For the first dimension (usually colour), show all values
+        // For subsequent dimensions, only show values available with current selections
+        const isFirstDimension = dimIndex === 0;
+        const valuesToShow = isFirstDimension 
+          ? allValues 
+          : allValues.filter(v => availableValues.has(v));
         
         // Determine display name for dimension
         let dimensionLabel = key;
         if (key === 'Colour' || key === 'Color') dimensionLabel = 'Colour';
         else if (key === 'Size') dimensionLabel = 'Size';
         else if (key === 'Style') dimensionLabel = 'Style';
+
+        // Don't show dimension if no values available (shouldn't happen, but safety check)
+        if (valuesToShow.length === 0) return null;
 
         return (
           <div key={key}>
@@ -414,15 +466,15 @@ export function VariantSelectors({
                 </span>
               )}
               {!selectedValue && (
-                <span className="ml-2 font-normal text-red-400/80 normal-case text-xs">
-                  (required)
+                <span className="ml-2 font-normal text-amber-400/80 normal-case text-xs">
+                  (select one)
                 </span>
               )}
             </h4>
             <div className={cn(
               isColorDimension ? "nk-color-selector" : "flex flex-wrap gap-2"
             )}>
-              {values.map((value) => {
+              {valuesToShow.map((value) => {
                 const isSelected = selectedValue === value;
                 const colorCheck = isColorValue(value);
                 const imageUrl = getImageForAttribute(variants, variantAttributeMap, key, value);
@@ -476,39 +528,17 @@ export function VariantSelectors({
         );
       })}
 
-      {/* Selection status message */}
-      {!allSelected && (
-        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-          <p className="text-sm text-amber-400 flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Please select {dimensionEntries.filter(([k]) => !selectedAttributes[k]).map(([k]) => k.toLowerCase()).join(' and ')} to add to cart
-          </p>
-        </div>
-      )}
-
-      {/* Show selected variant info */}
+      {/* Show selected variant info when complete */}
       {allSelected && selectedVariant && (
         <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
           <p className="text-sm text-green-400 flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            Selected: {Object.entries(selectedAttributes).map(([k, v]) => `${k}: ${v}`).join(', ')}
-            {selectedVariant.price && <span className="ml-2 font-bold">{formatPrice(selectedVariant.price)}</span>}
-          </p>
-        </div>
-      )}
-
-      {/* Warning if no matching variant */}
-      {allSelected && !selectedVariant && (
-        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-          <p className="text-sm text-red-400 flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            This combination is not available. Please try a different selection.
+            <span>
+              Selected: {Object.entries(selectedAttributes).map(([k, v]) => `${k}: ${v}`).join(', ')}
+              {selectedVariant.price && <span className="ml-2 font-bold">{formatPrice(selectedVariant.price)}</span>}
+            </span>
           </p>
         </div>
       )}
