@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useMemo, useCallback } from "react";
+import { useEffect, useRef, useMemo, useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import gsap from "gsap";
 import { ProductGrid } from "@/components/store";
@@ -10,6 +10,8 @@ import { StoreToolbar } from "./StoreToolbar";
 import { ProductList } from "./ProductList";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { useProducts } from "@/hooks";
+
+const PRODUCTS_PER_PAGE = 15;
 
 interface StorePageClientProps {
   currentCategory?: string;
@@ -21,6 +23,7 @@ interface StorePageClientProps {
   currentOnSale?: boolean;
   currentSort?: string;
   currentView?: "grid" | "list";
+  currentPage?: number;
 }
 
 export function StorePageClient({
@@ -33,13 +36,15 @@ export function StorePageClient({
   currentOnSale = false,
   currentSort = "featured",
   currentView = "grid",
+  currentPage = 1,
 }: StorePageClientProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [page, setPage] = useState(currentPage);
 
-  // Fetch products from API
-  const { products, loading, error } = useProducts({
+  // Fetch products from API - get all then paginate client-side for smooth UX
+  const { products, loading, error, pagination } = useProducts({
     category: currentCategory,
     keywords: currentSearch,
     minPrice: currentMinPrice,
@@ -47,15 +52,23 @@ export function StorePageClient({
     inStock: currentInStock,
     featured: currentFeatured,
     sortBy: currentSort,
-    limit: 20,
+    limit: 200, // Fetch more for client-side pagination
   });
 
-  // Scroll to top when products finish loading
+  // Reset to page 1 when filters change
   useEffect(() => {
-    if (!loading && products.length > 0) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    setPage(1);
+  }, [currentCategory, currentSearch, currentMinPrice, currentMaxPrice, currentInStock, currentFeatured, currentSort]);
+
+  // Scroll to products section when page changes (not on initial load)
+  const isInitialLoad = useRef(true);
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return;
     }
-  }, [loading, products.length]);
+    // Don't scroll on filter changes, only on pagination
+  }, [currentCategory, currentSearch, currentMinPrice, currentMaxPrice, currentInStock, currentFeatured, currentSort]);
 
   // Create query string helper
   const createQueryString = useCallback(
@@ -119,6 +132,62 @@ export function StorePageClient({
         return filtered.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
     }
   }, [products, currentSort, currentOnSale]);
+
+  // Pagination calculations
+  const totalProducts = sortedProducts.length;
+  const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE);
+  const startIndex = (page - 1) * PRODUCTS_PER_PAGE;
+  const endIndex = startIndex + PRODUCTS_PER_PAGE;
+  const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = useCallback((newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [totalPages]);
+
+  // Generate page numbers to display
+  const getPageNumbers = useCallback(() => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible + 2) {
+      // Show all pages if not many
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      if (page > 3) {
+        pages.push('...');
+      }
+      
+      // Show pages around current
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+      
+      for (let i = start; i <= end; i++) {
+        if (!pages.includes(i)) {
+          pages.push(i);
+        }
+      }
+      
+      if (page < totalPages - 2) {
+        pages.push('...');
+      }
+      
+      // Always show last page
+      if (!pages.includes(totalPages)) {
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  }, [page, totalPages]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -217,13 +286,20 @@ export function StorePageClient({
         <div className="flex-1 min-w-0">
           {/* Toolbar */}
           <StoreToolbar
-            productCount={loading ? 0 : sortedProducts.length}
+            productCount={loading ? 0 : totalProducts}
             sortBy={currentSort}
             onSortChange={handleSortChange}
             viewMode={currentView}
             onViewModeChange={handleViewModeChange}
             loading={loading}
           />
+          
+          {/* Products count info */}
+          {!loading && totalProducts > 0 && (
+            <div className="mb-4 text-sm text-white/50">
+              Showing {startIndex + 1}-{Math.min(endIndex, totalProducts)} of {totalProducts} products
+            </div>
+          )}
 
           {/* Loading State */}
           {loading ? (
@@ -266,11 +342,11 @@ export function StorePageClient({
                 </div>
               )}
             </div>
-          ) : sortedProducts.length > 0 ? (
+          ) : totalProducts > 0 ? (
             currentView === "grid" ? (
-              <ProductGrid products={sortedProducts} columns={3} />
+              <ProductGrid products={paginatedProducts} columns={3} />
             ) : (
-              <ProductList products={sortedProducts} />
+              <ProductList products={paginatedProducts} />
             )
           ) : (
             <div className="text-center py-20 bg-[var(--color-dark-2)] border border-[var(--color-dark-3)]">
@@ -298,24 +374,104 @@ export function StorePageClient({
 
           <div className="nk-gap-4" />
 
-          {/* Pagination - Godlike style */}
-          {!loading && sortedProducts.length > 0 && (
-            <div className="nk-pagination nk-pagination-center text-center">
-              <nav className="inline-block align-middle">
-                <a href="#" className="inline-block px-[9px] py-[9px] text-white no-underline transition-opacity hover:opacity-60 cursor-pointer">
-                  1
-                </a>
-                <a href="#" className="inline-block px-[9px] py-[9px] text-white no-underline transition-opacity hover:opacity-60 cursor-pointer">
-                  2
-                </a>
-                <a href="#" className="nk-pagination-current-white inline-block w-[34px] h-[34px] px-[6px] py-[6px] text-center leading-[22px] text-[var(--color-dark-1)] bg-white rounded-[17px] cursor-pointer">
-                  3
-                </a>
-                <a href="#" className="inline-block px-[9px] py-[9px] text-white no-underline transition-opacity hover:opacity-60 cursor-pointer">
-                  4
-                </a>
-                <span className="inline-block px-[9px] py-[9px] text-white">...</span>
-              </nav>
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
+            <div className="flex flex-col items-center gap-4">
+              {/* Page indicator */}
+              <div className="text-sm text-white/40">
+                Page <span className="text-[var(--color-main-1)] font-bold">{page}</span> of <span className="font-medium text-white/60">{totalPages}</span>
+              </div>
+              
+              {/* Pagination controls */}
+              <div className="flex items-center gap-2">
+                {/* Previous button */}
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                  className={`
+                    flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm
+                    transition-all duration-300 ease-out
+                    ${page === 1 
+                      ? 'bg-white/5 text-white/30 cursor-not-allowed' 
+                      : 'bg-white/10 text-white hover:bg-[var(--color-main-1)] hover:text-black hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-main-1)]/20'
+                    }
+                  `}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Prev
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1">
+                  {getPageNumbers().map((pageNum, idx) => (
+                    pageNum === '...' ? (
+                      <span key={`ellipsis-${idx}`} className="px-2 text-white/40">•••</span>
+                    ) : (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum as number)}
+                        className={`
+                          relative w-10 h-10 rounded-full font-bold text-sm
+                          transition-all duration-300 ease-out
+                          ${page === pageNum 
+                            ? 'bg-gradient-to-br from-[var(--color-main-1)] to-[var(--color-main-2)] text-black scale-110 shadow-lg shadow-[var(--color-main-1)]/30' 
+                            : 'bg-white/5 text-white/70 hover:bg-white/15 hover:text-white hover:scale-105'
+                          }
+                        `}
+                      >
+                        {pageNum}
+                        {page === pageNum && (
+                          <span className="absolute inset-0 rounded-full animate-ping bg-[var(--color-main-1)]/30" style={{ animationDuration: '2s' }} />
+                        )}
+                      </button>
+                    )
+                  ))}
+                </div>
+
+                {/* Next button */}
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
+                  className={`
+                    flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm
+                    transition-all duration-300 ease-out
+                    ${page === totalPages 
+                      ? 'bg-white/5 text-white/30 cursor-not-allowed' 
+                      : 'bg-white/10 text-white hover:bg-[var(--color-main-1)] hover:text-black hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-main-1)]/20'
+                    }
+                  `}
+                >
+                  Next
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Quick jump for many pages */}
+              {totalPages > 5 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-white/40">Jump to:</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handlePageChange(1)}
+                      disabled={page === 1}
+                      className="px-2 py-1 rounded bg-white/5 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      First
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={page === totalPages}
+                      className="px-2 py-1 rounded bg-white/5 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      Last
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
