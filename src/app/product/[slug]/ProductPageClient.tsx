@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useProduct } from "@/hooks";
 import { ProductGallery, ProductTabs, VariantSelectors } from "@/components/store";
 import { Rating, ProductDetailSkeleton } from "@/components/ui";
@@ -51,6 +52,12 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { stats, totalReviews, fetchProductReviews } = useReviewsStore();
   const trackedProductRef = useRef<string | null>(null);
+  const initializedFromUrlRef = useRef(false);
+  
+  // URL handling for shareable variant links
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   
   // Fetch reviews stats for rating display
   useEffect(() => {
@@ -59,18 +66,63 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
     }
   }, [product, fetchProductReviews]);
   
+  // Initialize attributes from URL on first load
+  useEffect(() => {
+    if (product?.variants && product.variants.length > 0 && !initializedFromUrlRef.current) {
+      initializedFromUrlRef.current = true;
+      
+      const urlAttributes: Record<string, string> = {};
+      
+      // Read variant params from URL (e.g., ?colour=Green&option=Strap)
+      searchParams.forEach((value, key) => {
+        // Normalize key to match dimension names
+        const normalizedKey = key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
+        urlAttributes[normalizedKey] = value;
+      });
+      
+      if (Object.keys(urlAttributes).length > 0) {
+        setSelectedAttributes(urlAttributes);
+      }
+    }
+  }, [product, searchParams]);
+  
+  // Update URL when attributes change
+  const updateUrlWithAttributes = useCallback((attributes: Record<string, string>) => {
+    const params = new URLSearchParams();
+    
+    Object.entries(attributes).forEach(([key, value]) => {
+      // Use lowercase keys for cleaner URLs
+      params.set(key.toLowerCase(), value);
+    });
+    
+    const queryString = params.toString();
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    
+    // Use replace to avoid adding to history for every selection
+    router.replace(newUrl, { scroll: false });
+  }, [pathname, router]);
+  
   // Handle attribute change for multi-dimensional variants
-  const handleAttributeChange = (attribute: string, value: string) => {
-    setSelectedAttributes(prev => ({
-      ...prev,
-      [attribute]: value
-    }));
-  };
+  const handleAttributeChange = useCallback((attribute: string, value: string) => {
+    setSelectedAttributes(prev => {
+      const newAttributes = {
+        ...prev,
+        [attribute]: value
+      };
+      
+      // Update URL with new attributes
+      updateUrlWithAttributes(newAttributes);
+      
+      return newAttributes;
+    });
+  }, [updateUrlWithAttributes]);
   
   // Reset selection when product changes
   useEffect(() => {
-    setSelectedVariant(null);
-    setSelectedAttributes({});
+    if (!initializedFromUrlRef.current) {
+      setSelectedVariant(null);
+      setSelectedAttributes({});
+    }
   }, [product?.id]);
 
   // Track product view for "Window Shopper" quest (only for authenticated users)
