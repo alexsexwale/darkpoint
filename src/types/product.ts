@@ -18,6 +18,7 @@ export interface ProductVariant {
   sku?: string;
   inStock?: boolean;
   isHidden?: boolean; // Whether this variant is hidden on the website
+  attributes?: Record<string, string>; // Multi-dimensional attributes like { "Size": "M", "Style": "A" }
 }
 
 export interface Product {

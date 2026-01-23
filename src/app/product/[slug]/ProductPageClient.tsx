@@ -46,6 +46,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
   const productId = extractProductId(slug);
   const { product, loading, error } = useProduct(productId);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const { updateQuestProgress, initDailyQuests, logActivity } = useGamificationStore();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { stats, totalReviews, fetchProductReviews } = useReviewsStore();
@@ -58,13 +59,19 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
     }
   }, [product, fetchProductReviews]);
   
-  // Set default variant when product loads
+  // Handle attribute change for multi-dimensional variants
+  const handleAttributeChange = (attribute: string, value: string) => {
+    setSelectedAttributes(prev => ({
+      ...prev,
+      [attribute]: value
+    }));
+  };
+  
+  // Reset selection when product changes
   useEffect(() => {
-    if (product?.variants && product.variants.length > 0 && !selectedVariant) {
-      // Select the first variant by default
-      setSelectedVariant(product.variants[0]);
-    }
-  }, [product, selectedVariant]);
+    setSelectedVariant(null);
+    setSelectedAttributes({});
+  }, [product?.id]);
 
   // Track product view for "Window Shopper" quest (only for authenticated users)
   useEffect(() => {
@@ -206,6 +213,8 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                   variants={product.variants!}
                   selectedVariant={selectedVariant}
                   onVariantChange={setSelectedVariant}
+                  selectedAttributes={selectedAttributes}
+                  onAttributeChange={handleAttributeChange}
                   variantGroupName={product.variantGroupName}
                 />
               )}
@@ -220,6 +229,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                   product={product} 
                   selectedVariant={selectedVariant}
                   effectivePrice={effectivePrice}
+                  hasVariants={hasVariants}
                 />
               </div>
 
@@ -309,6 +319,8 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                 variants={product.variants!}
                 selectedVariant={selectedVariant}
                 onVariantChange={setSelectedVariant}
+                selectedAttributes={selectedAttributes}
+                onAttributeChange={handleAttributeChange}
                 variantGroupName={product.variantGroupName}
               />
             </div>
@@ -324,6 +336,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
               product={product} 
               selectedVariant={selectedVariant}
               effectivePrice={effectivePrice}
+              hasVariants={hasVariants}
             />
           </div>
 

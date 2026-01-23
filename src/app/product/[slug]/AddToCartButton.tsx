@@ -9,19 +9,24 @@ interface AddToCartButtonProps {
   product: Product;
   selectedVariant?: ProductVariant | null;
   effectivePrice?: number;
+  hasVariants?: boolean; // Whether product has variants that need selection
 }
 
-export function AddToCartButton({ product, selectedVariant, effectivePrice }: AddToCartButtonProps) {
+export function AddToCartButton({ product, selectedVariant, effectivePrice, hasVariants }: AddToCartButtonProps) {
   const [quantity, setQuantity] = useState(1);
   const { addItem, openCart } = useCartStore();
 
   // Use effective price if provided, otherwise fall back to product price
   const displayPrice = effectivePrice ?? product.price;
   
-  // Always in stock - dropshipping fulfillment handles availability
+  // Require variant selection if product has variants
+  const requiresVariantSelection = hasVariants && !selectedVariant;
   const isInStock = true;
+  const canAddToCart = isInStock && !requiresVariantSelection;
 
   const handleAddToCart = () => {
+    if (!canAddToCart) return;
+    
     // If variant is selected, pass it to the cart with the effective price
     if (selectedVariant) {
       // Create variant with effective price
@@ -34,6 +39,13 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
       addItem(product, quantity);
     }
     openCart();
+  };
+  
+  // Button text based on state
+  const getButtonText = () => {
+    if (!isInStock) return "Out of Stock";
+    if (requiresVariantSelection) return "Select Options";
+    return "Add to Cart";
   };
 
   const incrementQuantity = () => {
@@ -76,13 +88,13 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
 
         <button
           type="button"
-          className="nk-btn nk-btn-primary nk-btn-lg link-effect-4"
+          className={`nk-btn nk-btn-lg link-effect-4 ${canAddToCart ? 'nk-btn-primary' : 'nk-btn-outline opacity-60'}`}
           onClick={handleAddToCart}
-          disabled={!isInStock}
+          disabled={!canAddToCart}
         >
           <span className="nk-btn-inner" />
           <span className="nk-btn-content">
-            {isInStock ? "Add to Cart" : "Out of Stock"}
+            {getButtonText()}
           </span>
         </button>
 
@@ -138,10 +150,14 @@ export function AddToCartButton({ product, selectedVariant, effectivePrice }: Ad
           <button
             type="button"
             onClick={handleAddToCart}
-            disabled={!isInStock}
-            className="flex-1 h-10 px-4 bg-[var(--color-main-1)] text-white font-medium text-sm hover:bg-[var(--color-main-1)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={!canAddToCart}
+            className={`flex-1 h-10 px-4 font-medium text-sm transition-colors disabled:cursor-not-allowed ${
+              canAddToCart 
+                ? 'bg-[var(--color-main-1)] text-white hover:bg-[var(--color-main-1)]/90' 
+                : 'bg-white/10 text-white/60 border border-white/20'
+            }`}
           >
-            {isInStock ? "Add to Cart" : "Out of Stock"}
+            {getButtonText()}
           </button>
         </div>
       </div>
