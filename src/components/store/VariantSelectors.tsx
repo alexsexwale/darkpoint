@@ -330,7 +330,9 @@ export function VariantSelectors({
     const dimensionKeys = Array.from(dimensions.keys());
     
     for (const key of dimensionKeys) {
-      const allValues = Array.from(dimensions.get(key) || []);
+      const dimensionSet = dimensions.get(key);
+      if (!dimensionSet) continue;
+      const allValues: string[] = Array.from(dimensionSet);
       
       // Get available values based on current selections in OTHER dimensions
       const availableValues = getAvailableValuesForDimension(
@@ -342,7 +344,7 @@ export function VariantSelectors({
       
       // For the first dimension, use all values; for others, filter by availability
       const isFirstDimension = dimensionKeys.indexOf(key) === 0;
-      const valuesToConsider = isFirstDimension 
+      const valuesToConsider: string[] = isFirstDimension 
         ? allValues 
         : allValues.filter(v => availableValues.has(v));
       
