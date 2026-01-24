@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { cn, formatPrice } from "@/lib/utils";
 import type { ProductVariant } from "@/types";
@@ -323,6 +323,37 @@ export function VariantSelectors({
     onAttributeChange(key, value);
   }, [onAttributeChange]);
 
+  // Auto-select dimensions that only have one available value
+  useEffect(() => {
+    if (isSingleDimension) return;
+    
+    const dimensionKeys = Array.from(dimensions.keys());
+    
+    for (const key of dimensionKeys) {
+      const allValues = Array.from(dimensions.get(key) || []);
+      
+      // Get available values based on current selections in OTHER dimensions
+      const availableValues = getAvailableValuesForDimension(
+        key, 
+        selectedAttributes, 
+        variants, 
+        variantAttributeMap
+      );
+      
+      // For the first dimension, use all values; for others, filter by availability
+      const isFirstDimension = dimensionKeys.indexOf(key) === 0;
+      const valuesToConsider = isFirstDimension 
+        ? allValues 
+        : allValues.filter(v => availableValues.has(v));
+      
+      // If only one value is available and it's not selected, auto-select it
+      if (valuesToConsider.length === 1 && selectedAttributes[key] !== valuesToConsider[0]) {
+        onAttributeChange(key, valuesToConsider[0]);
+        break; // Only select one at a time to avoid cascading issues
+      }
+    }
+  }, [dimensions, selectedAttributes, variants, variantAttributeMap, isSingleDimension, onAttributeChange]);
+
   // Find matching variant when attributes change
   useMemo(() => {
     if (isSingleDimension) return;
@@ -461,6 +492,14 @@ export function VariantSelectors({
           ? allValues 
           : allValues.filter(v => availableValues.has(v));
         
+        // Don't show dimension if no values available (shouldn't happen, but safety check)
+        if (valuesToShow.length === 0) return null;
+        
+        // If only one value is available, don't show the dimension (it's auto-selected via useEffect)
+        if (valuesToShow.length === 1) {
+          return null;
+        }
+        
         // Determine display name for dimension - use custom name if provided
         let dimensionLabel = variantDimensionNames?.[key] || key;
         // Fallback to standard names if no custom name
@@ -469,9 +508,6 @@ export function VariantSelectors({
           else if (key === 'Size') dimensionLabel = 'Size';
           else if (key === 'Style') dimensionLabel = 'Style';
         }
-
-        // Don't show dimension if no values available (shouldn't happen, but safety check)
-        if (valuesToShow.length === 0) return null;
 
         return (
           <div key={key}>
