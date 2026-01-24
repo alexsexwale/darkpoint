@@ -144,7 +144,8 @@ export function StorePageClient({
   const handlePageChange = useCallback((newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setPage(newPage);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Scroll to top of page instantly
+      window.scrollTo(0, 0);
     }
   }, [totalPages]);
 
