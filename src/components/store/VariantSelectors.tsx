@@ -182,16 +182,30 @@ function extractDimensions(variants: ProductVariant[], productName: string): {
 function findMatchingVariant(
   variants: ProductVariant[],
   variantAttributeMap: Map<string, Record<string, string>>,
-  selectedAttributes: Record<string, string>
+  selectedAttributes: Record<string, string>,
+  dimensions: Map<string, Set<string>>
 ): ProductVariant | null {
   const selectedKeys = Object.keys(selectedAttributes);
   if (selectedKeys.length === 0) return null;
+  
+  // Identify dimensions that only have 1 value globally (optional attributes)
+  const singleValueDimensions = new Set<string>();
+  for (const [key, values] of dimensions.entries()) {
+    if (values.size === 1) {
+      singleValueDimensions.add(key);
+    }
+  }
   
   for (const variant of variants) {
     const attrs = variantAttributeMap.get(variant.id) || {};
     let matches = true;
     
     for (const [key, value] of Object.entries(selectedAttributes)) {
+      // If the variant doesn't have this attribute, but the dimension only has 1 value,
+      // consider it a match (the variant implicitly has this value)
+      if (attrs[key] === undefined && singleValueDimensions.has(key)) {
+        continue;
+      }
       if (attrs[key] !== value) {
         matches = false;
         break;
@@ -334,6 +348,13 @@ export function VariantSelectors({
       if (!dimensionSet) continue;
       const allValues: string[] = Array.from(dimensionSet);
       
+      // PRIORITY: If dimension only has 1 value GLOBALLY, always auto-select it
+      // This handles cases where a dimension like "Option" only has one value across all variants
+      if (allValues.length === 1 && selectedAttributes[key] !== allValues[0]) {
+        onAttributeChange(key, allValues[0]);
+        break; // Only select one at a time to avoid cascading issues
+      }
+      
       // Get available values based on current selections in OTHER dimensions
       const availableValues = getAvailableValuesForDimension(
         key, 
@@ -364,7 +385,7 @@ export function VariantSelectors({
     const allSelected = dimensionKeys.every(key => selectedAttributes[key]);
     
     if (allSelected) {
-      const match = findMatchingVariant(variants, variantAttributeMap, selectedAttributes);
+      const match = findMatchingVariant(variants, variantAttributeMap, selectedAttributes, dimensions);
       if (match !== selectedVariant) {
         onVariantChange(match);
       }
