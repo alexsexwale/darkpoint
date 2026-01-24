@@ -168,8 +168,17 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
     return selectedVariant.image.src || null;
   }, [selectedVariant]);
   
-  // Check if product has variants
+  // Check if product has variants that need selection
   const hasVariants = product?.variants && product.variants.length > 0;
+  const hasSingleVariant = product?.variants && product.variants.length === 1;
+  const requiresVariantSelection = hasVariants && !hasSingleVariant && !selectedVariant;
+  
+  // Auto-select single variant
+  useEffect(() => {
+    if (hasSingleVariant && product?.variants && !selectedVariant) {
+      setSelectedVariant(product.variants[0]);
+    }
+  }, [hasSingleVariant, product?.variants, selectedVariant]);
 
   if (loading) {
     return <ProductDetailSkeleton />;
@@ -260,7 +269,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                 </span>
               </div>
 
-              {hasVariants && (
+              {hasVariants && !hasSingleVariant && (
                 <VariantSelectors
                   variants={product.variants!}
                   selectedVariant={selectedVariant}
@@ -282,7 +291,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
                   product={product} 
                   selectedVariant={selectedVariant}
                   effectivePrice={effectivePrice}
-                  hasVariants={hasVariants}
+                  hasVariants={hasVariants && !hasSingleVariant}
                 />
               </div>
 
@@ -366,7 +375,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
             </span>
           </div>
 
-          {hasVariants && (
+          {hasVariants && !hasSingleVariant && (
             <div className="mb-4 pb-4 border-b border-[var(--color-dark-3)]">
               <VariantSelectors
                 variants={product.variants!}
@@ -390,7 +399,7 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
               product={product} 
               selectedVariant={selectedVariant}
               effectivePrice={effectivePrice}
-              hasVariants={hasVariants}
+              hasVariants={hasVariants && !hasSingleVariant}
             />
           </div>
 
