@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Rating } from "@/components/ui";
 import { ReportReviewModal } from "@/components/ui/ReportReviewModal";
 import { ProductDescription } from "./ProductDescription";
 import { MiniBadge, type BadgeType } from "@/components/gamification";
 import { useReviewsStore, type Review, type ReviewStats } from "@/stores/reviewsStore";
 import { useAuthStore, useUIStore } from "@/stores";
-import { FREE_SHIPPING_THRESHOLD } from "@/lib/constants";
 import type { Product } from "@/types";
 
 interface ProductTabsProps {
@@ -414,44 +413,6 @@ export function ProductTabs({ product }: ProductTabsProps) {
         >
           <div className="nk-box-3">
             <ProductDescription description={product.description} maxLength={500} />
-
-            <div className="mt-8 pt-8 border-t border-[var(--color-dark-3)]">
-              <h4 className="text-lg font-heading uppercase tracking-wider mb-4">
-                Why Choose Darkpoint?
-              </h4>
-              <p className="text-[var(--muted-foreground)] mb-4">
-                At Darkpoint, we pride ourselves on offering only the highest quality gaming
-                products. Each item is carefully selected to ensure it meets the standards that
-                gamers expect and deserve.
-              </p>
-              <p className="text-[var(--muted-foreground)]">
-                This product comes with our satisfaction guarantee. If you&apos;re not completely
-                happy with your purchase, our customer support team is here to help make it right.
-              </p>
-            </div>
-            <ul className="mt-6 space-y-2">
-              {[
-                "Premium quality materials",
-                "1 year warranty included",
-                `Free shipping on orders over ${formatPrice(FREE_SHIPPING_THRESHOLD)}`,
-                "30-day money-back guarantee",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <svg
-                    className="w-5 h-5 text-[var(--color-main-1)]"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
 
