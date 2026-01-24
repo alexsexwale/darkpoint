@@ -387,7 +387,13 @@ export function StorePageClient({
               <div className="flex items-center gap-2">
                 {/* Previous button */}
                 <button
-                  onClick={() => handlePageChange(page - 1)}
+                  type="button"
+                  onClick={() => {
+                    if (page > 1) {
+                      setPage(page - 1);
+                      window.scrollTo(0, 0);
+                    }
+                  }}
                   disabled={page === 1}
                   className={`
                     flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm
@@ -411,8 +417,13 @@ export function StorePageClient({
                       <span key={`ellipsis-${idx}`} className="px-2 text-white/40">•••</span>
                     ) : (
                       <button
+                        type="button"
                         key={pageNum}
-                        onClick={() => handlePageChange(pageNum as number)}
+                        onClick={() => {
+                          const num = pageNum as number;
+                          setPage(num);
+                          window.scrollTo(0, 0);
+                        }}
                         className={`
                           relative w-10 h-10 rounded-full font-bold text-sm
                           transition-all duration-300 ease-out
@@ -433,7 +444,13 @@ export function StorePageClient({
 
                 {/* Next button */}
                 <button
-                  onClick={() => handlePageChange(page + 1)}
+                  type="button"
+                  onClick={() => {
+                    if (page < totalPages) {
+                      setPage(page + 1);
+                      window.scrollTo(0, 0);
+                    }
+                  }}
                   disabled={page === totalPages}
                   className={`
                     flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm
@@ -457,14 +474,22 @@ export function StorePageClient({
                   <span className="text-white/40">Jump to:</span>
                   <div className="flex gap-1">
                     <button
-                      onClick={() => handlePageChange(1)}
+                      type="button"
+                      onClick={() => {
+                        setPage(1);
+                        window.scrollTo(0, 0);
+                      }}
                       disabled={page === 1}
                       className="px-2 py-1 rounded bg-white/5 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       First
                     </button>
                     <button
-                      onClick={() => handlePageChange(totalPages)}
+                      type="button"
+                      onClick={() => {
+                        setPage(totalPages);
+                        window.scrollTo(0, 0);
+                      }}
                       disabled={page === totalPages}
                       className="px-2 py-1 rounded bg-white/5 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
