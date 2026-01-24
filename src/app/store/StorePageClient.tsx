@@ -13,6 +13,19 @@ import { useProducts } from "@/hooks";
 
 const PRODUCTS_PER_PAGE = 15;
 
+// Robust scroll to top function
+const scrollToTop = () => {
+  // Try multiple methods for cross-browser compatibility
+  setTimeout(() => {
+    // Method 1: window.scrollTo
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    // Method 2: document.documentElement (for some browsers)
+    document.documentElement.scrollTop = 0;
+    // Method 3: document.body (for older browsers)
+    document.body.scrollTop = 0;
+  }, 0);
+};
+
 interface StorePageClientProps {
   currentCategory?: string;
   currentSearch?: string;
@@ -139,15 +152,6 @@ export function StorePageClient({
   const startIndex = (page - 1) * PRODUCTS_PER_PAGE;
   const endIndex = startIndex + PRODUCTS_PER_PAGE;
   const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
-
-  // Handle page change
-  const handlePageChange = useCallback((newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setPage(newPage);
-      // Scroll to top of page instantly
-      window.scrollTo(0, 0);
-    }
-  }, [totalPages]);
 
   // Generate page numbers to display
   const getPageNumbers = useCallback(() => {
@@ -391,7 +395,7 @@ export function StorePageClient({
                   onClick={() => {
                     if (page > 1) {
                       setPage(page - 1);
-                      window.scrollTo(0, 0);
+                      scrollToTop();
                     }
                   }}
                   disabled={page === 1}
@@ -422,7 +426,7 @@ export function StorePageClient({
                         onClick={() => {
                           const num = pageNum as number;
                           setPage(num);
-                          window.scrollTo(0, 0);
+                          scrollToTop();
                         }}
                         className={`
                           relative w-10 h-10 rounded-full font-bold text-sm
@@ -448,7 +452,7 @@ export function StorePageClient({
                   onClick={() => {
                     if (page < totalPages) {
                       setPage(page + 1);
-                      window.scrollTo(0, 0);
+                      scrollToTop();
                     }
                   }}
                   disabled={page === totalPages}
@@ -477,7 +481,7 @@ export function StorePageClient({
                       type="button"
                       onClick={() => {
                         setPage(1);
-                        window.scrollTo(0, 0);
+                        scrollToTop();
                       }}
                       disabled={page === 1}
                       className="px-2 py-1 rounded bg-white/5 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
@@ -488,7 +492,7 @@ export function StorePageClient({
                       type="button"
                       onClick={() => {
                         setPage(totalPages);
-                        window.scrollTo(0, 0);
+                        scrollToTop();
                       }}
                       disabled={page === totalPages}
                       className="px-2 py-1 rounded bg-white/5 text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
