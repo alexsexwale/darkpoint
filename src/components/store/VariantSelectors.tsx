@@ -401,13 +401,35 @@ export function VariantSelectors({
     return extractDimensions(variants, productName);
   }, [variants, productName]);
 
-  // Check if this is a single-dimension product (original behavior)
-  const isSingleDimension = dimensions.size <= 1;
+  // Check if this is effectively a single-dimension product
+  // Dimensions with only 1 value are auto-selected and don't count as "real" dimensions
+  const meaningfulDimensions = useMemo(() => {
+    return Array.from(dimensions.entries()).filter(([, values]) => values.size > 1);
+  }, [dimensions]);
+  
+  const isSingleDimension = dimensions.size <= 1 || meaningfulDimensions.length <= 1;
 
   // For single dimension products, fall back to simple selection
+  // Also auto-select any single-value dimensions
   const handleSimpleSelect = useCallback((variant: ProductVariant) => {
+    // Auto-select any single-value dimensions
+    for (const [key, values] of dimensions.entries()) {
+      if (values.size === 1) {
+        const singleValue = Array.from(values)[0];
+        if (selectedAttributes[key] !== singleValue) {
+          onAttributeChange(key, singleValue);
+        }
+      }
+    }
+    // Also set the attribute for the selected variant
+    const attrs = variantAttributeMap.get(variant.id) || {};
+    for (const [key, value] of Object.entries(attrs)) {
+      if (selectedAttributes[key] !== value) {
+        onAttributeChange(key, value);
+      }
+    }
     onVariantChange(variant);
-  }, [onVariantChange]);
+  }, [onVariantChange, dimensions, selectedAttributes, onAttributeChange, variantAttributeMap]);
 
   // Handle attribute selection for multi-dimension
   const handleAttributeSelect = useCallback((key: string, value: string) => {
@@ -475,7 +497,10 @@ export function VariantSelectors({
 
   // Single dimension - use simple variant selection
   if (isSingleDimension) {
-    const [dimensionKey, dimensionValues] = Array.from(dimensions.entries())[0] || ["Option", new Set()];
+    // Use the meaningful dimension (one with multiple values) if available
+    const [dimensionKey, dimensionValues] = meaningfulDimensions.length > 0 
+      ? meaningfulDimensions[0] 
+      : (Array.from(dimensions.entries())[0] || ["Option", new Set()]);
     const sortedValues = sortDimensionValues(dimensionKey, Array.from(dimensionValues));
     const isColorDimension = sortedValues.some(v => isColorValue(v).isColor);
 
