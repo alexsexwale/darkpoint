@@ -144,7 +144,24 @@ function parseVariantAttributes(
   
   // First, check if the LAST part is a colour - if so, combine with modifiers like "Camouflage", "Matte", "Glossy"
   // Common colour modifiers that should be combined with the colour name
-  const colourModifiers = ['camouflage', 'camo', 'matte', 'glossy', 'metallic', 'neon', 'pastel', 'dark', 'light', 'bright', 'deep', 'army', 'military', 'rose', 'sky', 'ocean', 'forest', 'midnight', 'royal'];
+  const colourModifiers = [
+    // Camouflage/military
+    'camouflage', 'camo', 'army', 'military',
+    // Finish types
+    'matte', 'glossy', 'metallic', 'chrome', 'frosted', 'transparent', 'clear',
+    // Intensity modifiers
+    'neon', 'pastel', 'dark', 'light', 'bright', 'deep', 'pale', 'vivid',
+    // Nature-inspired
+    'rose', 'sky', 'ocean', 'forest', 'midnight', 'royal', 'sunset', 'ice',
+    // Patterns and designs (common for gaming accessories)
+    'colorful', 'colourful', 'rainbow', 'dynamic', 'english', 'graffiti', 'galaxy', 'marble',
+    'flame', 'fire', 'water', 'skull', 'cracks', 'carbon', 'fiber', 'wood', 'stone',
+    'dragon', 'tiger', 'leopard', 'zebra', 'snake', 'animal',
+    // Texture descriptors
+    'soft', 'silicone', 'rubber', 'gel', 'leather', 'fabric',
+    // Style descriptors
+    'classic', 'vintage', 'retro', 'modern', 'pro', 'elite', 'premium', 'limited'
+  ];
   
   if (parts.length >= 2) {
     const lastPart = parts[parts.length - 1];
