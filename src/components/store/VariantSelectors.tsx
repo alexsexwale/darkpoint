@@ -229,8 +229,14 @@ function parseVariantAttributes(
   return attributes;
 }
 
-// Get the variant suffix (what remains after removing product name)
-function getVariantSuffix(variant: ProductVariant, productName: string): string {
+// Get the display value for a variant - prioritizes displayName set in admin
+function getVariantDisplayValue(variant: ProductVariant, productName: string): string {
+  // Use custom display name if set in admin
+  if (variant.displayName && variant.displayName.trim()) {
+    return variant.displayName.trim();
+  }
+  
+  // Fall back to parsing the variant name
   let variantPart = variant.name || variant.value || "";
   if (productName && variantPart.toLowerCase().startsWith(productName.toLowerCase())) {
     variantPart = variantPart.slice(productName.length).trim();
@@ -289,11 +295,8 @@ function extractDimensions(variants: ProductVariant[], productName: string): {
     simpleDimensions.set("Style", new Set());
     
     for (const variant of variants) {
-      const suffix = getVariantSuffix(variant, productName);
-      // Capitalize first letter of each word
-      const displayValue = suffix.split(/\s+/).map(w => 
-        w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
-      ).join(' ');
+      // Use custom display name if available, otherwise parse from variant name
+      const displayValue = getVariantDisplayValue(variant, productName);
       
       simpleDimensions.get("Style")!.add(displayValue);
       simpleAttributeMap.set(variant.id, { "Style": displayValue });
@@ -565,14 +568,15 @@ export function VariantSelectors({
             {variantGroupName || variantDimensionNames?.[dimensionKey] || dimensionKey}
             {selectedVariant && (
               <span className="ml-2 font-normal text-[var(--muted-foreground)] normal-case">
-                - {variantAttributeMap.get(selectedVariant.id)?.[dimensionKey] || selectedVariant.value || selectedVariant.name}
+                - {selectedVariant.displayName || variantAttributeMap.get(selectedVariant.id)?.[dimensionKey] || selectedVariant.value || selectedVariant.name}
               </span>
             )}
           </h4>
           <div className={isColorDimension ? "nk-color-selector" : "flex flex-wrap gap-2"}>
             {variants.map((variant) => {
               const attrs = variantAttributeMap.get(variant.id) || {};
-              const displayValue = attrs[dimensionKey] || variant.value || variant.name;
+              // Prioritize custom displayName from admin, then parsed attributes, then fallbacks
+              const displayValue = variant.displayName || attrs[dimensionKey] || variant.value || variant.name;
               const isSelected = selectedVariant?.id === variant.id;
               const colorCheck = isColorValue(displayValue);
               const hasImage = typeof variant.image === 'string' && variant.image;
