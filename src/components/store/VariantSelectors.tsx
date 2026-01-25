@@ -229,6 +229,15 @@ function parseVariantAttributes(
   return attributes;
 }
 
+// Get the variant suffix (what remains after removing product name)
+function getVariantSuffix(variant: ProductVariant, productName: string): string {
+  let variantPart = variant.name || variant.value || "";
+  if (productName && variantPart.toLowerCase().startsWith(productName.toLowerCase())) {
+    variantPart = variantPart.slice(productName.length).trim();
+  }
+  return variantPart || variant.value || variant.name || "Default";
+}
+
 // Extract all unique dimensions and their values from variants
 function extractDimensions(variants: ProductVariant[], productName: string): {
   dimensions: Map<string, Set<string>>;
@@ -240,6 +249,7 @@ function extractDimensions(variants: ProductVariant[], productName: string): {
   const dimensions = new Map<string, Set<string>>();
   const variantAttributeMap = new Map<string, Record<string, string>>();
   
+  // First pass: parse all variants
   for (const variant of variants) {
     const attrs = parseVariantAttributes(variant, productName, context);
     variantAttributeMap.set(variant.id, attrs);
@@ -250,6 +260,45 @@ function extractDimensions(variants: ProductVariant[], productName: string): {
       }
       dimensions.get(key)!.add(value);
     }
+  }
+  
+  // Check if variants have inconsistent dimension structures
+  // If some variants have Colour and some have Option (but not both), it's inconsistent
+  const dimensionKeys = Array.from(dimensions.keys());
+  
+  // Count how many variants have each dimension
+  const dimensionCounts = new Map<string, number>();
+  for (const variant of variants) {
+    const attrs = variantAttributeMap.get(variant.id) || {};
+    for (const key of Object.keys(attrs)) {
+      dimensionCounts.set(key, (dimensionCounts.get(key) || 0) + 1);
+    }
+  }
+  
+  // Check for inconsistency: if we have multiple dimensions but no dimension covers all variants
+  const totalVariants = variants.length;
+  const hasInconsistentDimensions = dimensionKeys.length > 1 && 
+    !Array.from(dimensionCounts.values()).some(count => count === totalVariants);
+  
+  // If inconsistent (some have Colour, some have Option, etc.), fall back to single "Style" dimension
+  if (hasInconsistentDimensions) {
+    const simpleDimensions = new Map<string, Set<string>>();
+    const simpleAttributeMap = new Map<string, Record<string, string>>();
+    
+    simpleDimensions.set("Style", new Set());
+    
+    for (const variant of variants) {
+      const suffix = getVariantSuffix(variant, productName);
+      // Capitalize first letter of each word
+      const displayValue = suffix.split(/\s+/).map(w => 
+        w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+      ).join(' ');
+      
+      simpleDimensions.get("Style")!.add(displayValue);
+      simpleAttributeMap.set(variant.id, { "Style": displayValue });
+    }
+    
+    return { dimensions: simpleDimensions, variantAttributeMap: simpleAttributeMap };
   }
   
   return { dimensions, variantAttributeMap };
