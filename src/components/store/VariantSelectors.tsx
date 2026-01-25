@@ -242,6 +242,7 @@ function getVariantSuffix(variant: ProductVariant, productName: string): string 
 function extractDimensions(variants: ProductVariant[], productName: string): {
   dimensions: Map<string, Set<string>>;
   variantAttributeMap: Map<string, Record<string, string>>;
+  useImageSelector: boolean; // Flag to always use image selectors instead of colour circles
 } {
   // First, analyze the structure to understand what we're dealing with
   const context = analyzeVariantStructure(variants, productName);
@@ -298,10 +299,11 @@ function extractDimensions(variants: ProductVariant[], productName: string): {
       simpleAttributeMap.set(variant.id, { "Style": displayValue });
     }
     
-    return { dimensions: simpleDimensions, variantAttributeMap: simpleAttributeMap };
+    // Use image selectors for inconsistent dimensions (mixed styles/colours/patterns)
+    return { dimensions: simpleDimensions, variantAttributeMap: simpleAttributeMap, useImageSelector: true };
   }
   
-  return { dimensions, variantAttributeMap };
+  return { dimensions, variantAttributeMap, useImageSelector: false };
 }
 
 // Find variant matching all selected attributes
@@ -443,9 +445,9 @@ export function VariantSelectors({
   }, [variants]);
 
   // Extract dimensions and attribute map
-  const { dimensions, variantAttributeMap } = useMemo(() => {
+  const { dimensions, variantAttributeMap, useImageSelector } = useMemo(() => {
     if (!variants || variants.length === 0) {
-      return { dimensions: new Map(), variantAttributeMap: new Map() };
+      return { dimensions: new Map(), variantAttributeMap: new Map(), useImageSelector: false };
     }
     return extractDimensions(variants, productName);
   }, [variants, productName]);
@@ -553,20 +555,21 @@ export function VariantSelectors({
       ? meaningfulDimensions[0] 
       : (Array.from(dimensions.entries())[0] || ["Option", new Set()]);
     const sortedValues = sortDimensionValues(dimensionKey, Array.from(dimensionValues));
-    const isColorDimension = sortedValues.some(v => isColorValue(v).isColor);
+    // Only use colour circles if NOT in image selector mode (mixed styles/patterns should show images)
+    const isColorDimension = !useImageSelector && sortedValues.some(v => isColorValue(v).isColor);
 
     return (
       <div className="space-y-4">
         <div>
           <h4 className="text-sm font-heading uppercase tracking-wider mb-3">
-            {variantGroupName || dimensionKey}
+            {variantGroupName || variantDimensionNames?.[dimensionKey] || dimensionKey}
             {selectedVariant && (
               <span className="ml-2 font-normal text-[var(--muted-foreground)] normal-case">
                 - {variantAttributeMap.get(selectedVariant.id)?.[dimensionKey] || selectedVariant.value || selectedVariant.name}
               </span>
             )}
           </h4>
-          <div className={isColorDimension ? "nk-color-selector" : "nk-size-selector flex flex-wrap gap-2"}>
+          <div className={isColorDimension ? "nk-color-selector" : "flex flex-wrap gap-2"}>
             {variants.map((variant) => {
               const attrs = variantAttributeMap.get(variant.id) || {};
               const displayValue = attrs[dimensionKey] || variant.value || variant.name;
@@ -574,6 +577,7 @@ export function VariantSelectors({
               const colorCheck = isColorValue(displayValue);
               const hasImage = typeof variant.image === 'string' && variant.image;
 
+              // Only show colour circles if in colour mode (not image selector mode)
               if (isColorDimension && colorCheck.isColor) {
                 return (
                   <div key={variant.id} className="inline-block">
@@ -594,6 +598,30 @@ export function VariantSelectors({
                       {displayValue}
                     </label>
                   </div>
+                );
+              }
+
+              // For image selector mode, show larger image thumbnails
+              if (useImageSelector && hasImage) {
+                return (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    onClick={() => handleSimpleSelect(variant)}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all",
+                      isSelected
+                        ? "border-[var(--color-main-1)] bg-[var(--color-main-1)]/10"
+                        : "border-transparent bg-[var(--color-dark-3)] hover:border-[var(--color-dark-4)]"
+                    )}
+                  >
+                    <span className="relative w-12 h-12 rounded overflow-hidden">
+                      <Image src={variant.image as string} alt={displayValue} fill className="object-cover" />
+                    </span>
+                    <span className="text-xs text-center max-w-[80px] truncate" title={displayValue}>
+                      {displayValue}
+                    </span>
+                  </button>
                 );
               }
 
