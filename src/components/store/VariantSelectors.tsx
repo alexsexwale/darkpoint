@@ -36,6 +36,14 @@ const COLOR_MAP: Record<string, string> = {
   cyan: "#06B6D4",
   teal: "#14B8A6",
   coral: "#FF6B6B",
+  // Camouflage and special colours
+  "camouflage black": "#3D3D29",
+  "camouflage green": "#4B5320",
+  "camouflage": "#78866B",
+  "army green": "#4B5320",
+  "military green": "#4B5320",
+  "khaki": "#C3B091",
+  "olive": "#808000",
 };
 
 const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "2XL", "3XL", "4XL"];
@@ -43,6 +51,13 @@ const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "2XL", "3XL
 // Check if a value looks like a color
 function isColorValue(value: string): { isColor: boolean; hex?: string } {
   const lower = value.toLowerCase().trim();
+  
+  // First check for exact match (including multi-word colours like "camouflage black")
+  if (COLOR_MAP[lower]) {
+    return { isColor: true, hex: COLOR_MAP[lower] };
+  }
+  
+  // Then check if value contains a known colour
   for (const [colorName, hex] of Object.entries(COLOR_MAP)) {
     if (lower === colorName || lower.includes(colorName)) {
       return { isColor: true, hex };
@@ -127,6 +142,51 @@ function parseVariantAttributes(
   
   const attributes: Record<string, string> = {};
   
+  // First, check if the LAST part is a colour - if so, combine with modifiers like "Camouflage", "Matte", "Glossy"
+  // Common colour modifiers that should be combined with the colour name
+  const colourModifiers = ['camouflage', 'camo', 'matte', 'glossy', 'metallic', 'neon', 'pastel', 'dark', 'light', 'bright', 'deep', 'army', 'military', 'rose', 'sky', 'ocean', 'forest', 'midnight', 'royal'];
+  
+  if (parts.length >= 2) {
+    const lastPart = parts[parts.length - 1];
+    const colorCheck = isColorValue(lastPart);
+    
+    if (colorCheck.isColor) {
+      // Check if previous parts are colour modifiers
+      let colourParts: string[] = [lastPart];
+      let nonColourParts: string[] = [];
+      
+      for (let i = parts.length - 2; i >= 0; i--) {
+        const part = parts[i];
+        if (colourModifiers.includes(part.toLowerCase())) {
+          colourParts.unshift(part);
+        } else {
+          nonColourParts = parts.slice(0, i + 1);
+          break;
+        }
+      }
+      
+      // Combine colour parts into a single colour value (e.g., "Camouflage Black")
+      const fullColour = colourParts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+      attributes["Colour"] = fullColour;
+      
+      // Process remaining non-colour parts
+      for (const part of nonColourParts) {
+        if (isSizeValue(part, context)) {
+          attributes["Size"] = part.toUpperCase();
+        } else if (part.length <= 10) {
+          if (/^[A-Z]$/i.test(part)) {
+            attributes["Style"] = part.toUpperCase();
+          } else {
+            attributes["Option"] = part;
+          }
+        }
+      }
+      
+      return attributes;
+    }
+  }
+  
+  // Standard parsing for single-part variants or no colour modifier detected
   for (const part of parts) {
     const colorCheck = isColorValue(part);
     if (colorCheck.isColor) {
