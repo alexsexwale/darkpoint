@@ -415,7 +415,8 @@ export function VariantSelectors({
     // Auto-select any single-value dimensions
     for (const [key, values] of dimensions.entries()) {
       if (values.size === 1) {
-        const singleValue = Array.from(values)[0];
+        const valuesArray: string[] = Array.from(values);
+        const singleValue: string = valuesArray[0];
         if (selectedAttributes[key] !== singleValue) {
           onAttributeChange(key, singleValue);
         }
