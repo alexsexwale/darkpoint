@@ -287,8 +287,12 @@ function extractDimensions(variants: ProductVariant[], productName: string): {
   const hasInconsistentDimensions = dimensionKeys.length > 1 && 
     !Array.from(dimensionCounts.values()).some(count => count === totalVariants);
   
-  // If inconsistent (some have Colour, some have Option, etc.), fall back to single "Style" dimension
-  if (hasInconsistentDimensions) {
+  // Check if most variants have custom display names set - if so, use those instead of parsing
+  const variantsWithDisplayNames = variants.filter(v => v.displayName && v.displayName.trim()).length;
+  const hasCustomDisplayNames = variantsWithDisplayNames >= totalVariants * 0.5; // At least 50% have display names
+  
+  // If inconsistent OR has custom display names, fall back to single "Style" dimension
+  if (hasInconsistentDimensions || hasCustomDisplayNames) {
     const simpleDimensions = new Map<string, Set<string>>();
     const simpleAttributeMap = new Map<string, Record<string, string>>();
     
