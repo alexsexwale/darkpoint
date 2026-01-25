@@ -474,8 +474,9 @@ export function VariantSelectors({
     // Also set the attribute for the selected variant
     const attrs = variantAttributeMap.get(variant.id) || {};
     for (const [key, value] of Object.entries(attrs)) {
-      if (selectedAttributes[key] !== value) {
-        onAttributeChange(key, value);
+      const strValue = value as string;
+      if (selectedAttributes[key] !== strValue) {
+        onAttributeChange(key, strValue);
       }
     }
     onVariantChange(variant);
