@@ -496,7 +496,8 @@ export function VariantSelectors({
     onAttributeChange(key, value);
   }, [onAttributeChange]);
 
-  // Auto-select dimensions that only have one available value
+  // Auto-select dimensions that only have one value GLOBALLY
+  // We don't auto-select based on filtered availability anymore - users can see all options
   useEffect(() => {
     if (isSingleDimension) return;
     
@@ -507,34 +508,14 @@ export function VariantSelectors({
       if (!dimensionSet) continue;
       const allValues: string[] = Array.from(dimensionSet);
       
-      // PRIORITY: If dimension only has 1 value GLOBALLY, always auto-select it
+      // Only auto-select if dimension has exactly 1 value GLOBALLY
       // This handles cases where a dimension like "Option" only has one value across all variants
       if (allValues.length === 1 && selectedAttributes[key] !== allValues[0]) {
         onAttributeChange(key, allValues[0]);
         break; // Only select one at a time to avoid cascading issues
       }
-      
-      // Get available values based on current selections in OTHER dimensions
-      const availableValues = getAvailableValuesForDimension(
-        key, 
-        selectedAttributes, 
-        variants, 
-        variantAttributeMap
-      );
-      
-      // For the first dimension, use all values; for others, filter by availability
-      const isFirstDimension = dimensionKeys.indexOf(key) === 0;
-      const valuesToConsider: string[] = isFirstDimension 
-        ? allValues 
-        : allValues.filter(v => availableValues.has(v));
-      
-      // If only one value is available and it's not selected, auto-select it
-      if (valuesToConsider.length === 1 && selectedAttributes[key] !== valuesToConsider[0]) {
-        onAttributeChange(key, valuesToConsider[0]);
-        break; // Only select one at a time to avoid cascading issues
-      }
     }
-  }, [dimensions, selectedAttributes, variants, variantAttributeMap, isSingleDimension, onAttributeChange]);
+  }, [dimensions, selectedAttributes, isSingleDimension, onAttributeChange]);
 
   // Find matching variant when attributes change
   useMemo(() => {
@@ -697,18 +678,16 @@ export function VariantSelectors({
           variantAttributeMap
         );
         
-        // For the first dimension (usually colour), show all values
-        // For subsequent dimensions, only show values available with current selections
-        const isFirstDimension = dimIndex === 0;
-        const valuesToShow = isFirstDimension 
-          ? allValues 
-          : allValues.filter(v => availableValues.has(v));
+        // Always show ALL values for all dimensions
+        // We'll mark unavailable ones as disabled instead of hiding them
+        const valuesToShow = allValues;
         
-        // Don't show dimension if no values available (shouldn't happen, but safety check)
+        // Don't show dimension if no values exist at all
         if (valuesToShow.length === 0) return null;
         
-        // If only one value is available, don't show the dimension (it's auto-selected via useEffect)
-        if (valuesToShow.length === 1) {
+        // Only hide single-value dimensions if it's the ONLY dimension or all values globally are 1
+        // Don't hide based on filtered availability - user should always see all options
+        if (allValues.length === 1) {
           return null;
         }
         
@@ -743,6 +722,8 @@ export function VariantSelectors({
                 const isSelected = selectedValue === value;
                 const colorCheck = isColorValue(value);
                 const imageUrl = getImageForAttribute(variants, variantAttributeMap, key, value);
+                // Check if this value is available with current selections in other dimensions
+                const isAvailable = availableValues.size === 0 || availableValues.has(value);
 
                 if (isColorDimension && colorCheck.isColor) {
                   return (
@@ -752,14 +733,19 @@ export function VariantSelectors({
                         id={`${key}-${value}`}
                         name={`dimension-${key}`}
                         checked={isSelected}
-                        onChange={() => handleAttributeSelect(key, value)}
+                        onChange={() => isAvailable && handleAttributeSelect(key, value)}
+                        disabled={!isAvailable}
                         className="sr-only"
                       />
                       <label
                         htmlFor={`${key}-${value}`}
-                        className={cn("nk-color-label", isSelected && "selected")}
+                        className={cn(
+                          "nk-color-label", 
+                          isSelected && "selected",
+                          !isAvailable && "opacity-30 cursor-not-allowed"
+                        )}
                         style={{ backgroundColor: colorCheck.hex, color: colorCheck.hex }}
-                        title={value}
+                        title={isAvailable ? value : `${value} (not available with current selection)`}
                       >
                         {value}
                       </label>
@@ -771,16 +757,20 @@ export function VariantSelectors({
                   <button
                     key={value}
                     type="button"
-                    onClick={() => handleAttributeSelect(key, value)}
+                    onClick={() => isAvailable && handleAttributeSelect(key, value)}
+                    disabled={!isAvailable}
                     className={cn(
                       "px-4 py-2 border rounded-lg text-sm font-medium transition-all flex items-center gap-2",
                       isSelected
                         ? "border-[var(--color-main-1)] bg-[var(--color-main-1)]/10 text-[var(--color-main-1)]"
-                        : "border-[var(--color-dark-4)] bg-[var(--color-dark-3)] text-white/80 hover:border-[var(--color-main-1)]/50 hover:bg-[var(--color-dark-4)]"
+                        : isAvailable
+                          ? "border-[var(--color-dark-4)] bg-[var(--color-dark-3)] text-white/80 hover:border-[var(--color-main-1)]/50 hover:bg-[var(--color-dark-4)]"
+                          : "border-[var(--color-dark-4)] bg-[var(--color-dark-3)]/50 text-white/30 cursor-not-allowed"
                     )}
+                    title={isAvailable ? value : `${value} (not available with current selection)`}
                   >
                     {imageUrl && (
-                      <span className="relative w-6 h-6 inline-block rounded overflow-hidden">
+                      <span className={cn("relative w-6 h-6 inline-block rounded overflow-hidden", !isAvailable && "opacity-50")}>
                         <Image src={imageUrl} alt={value} fill className="object-cover" />
                       </span>
                     )}
