@@ -36,6 +36,19 @@ const COLOR_MAP: Record<string, string> = {
   cyan: "#06B6D4",
   teal: "#14B8A6",
   coral: "#FF6B6B",
+  // Multi-word colours (must check these FIRST before single words)
+  "rose gold": "#B76E79",
+  "space gray": "#4A4A4A",
+  "space grey": "#4A4A4A",
+  "midnight blue": "#191970",
+  "sky blue": "#87CEEB",
+  "hot pink": "#FF69B4",
+  "light blue": "#ADD8E6",
+  "dark blue": "#00008B",
+  "light green": "#90EE90",
+  "dark green": "#006400",
+  "light pink": "#FFB6C1",
+  "dark pink": "#E75480",
   // Camouflage and special colours
   "camouflage black": "#3D3D29",
   "camouflage green": "#4B5320",
@@ -137,10 +150,32 @@ function parseVariantAttributes(
     variantPart = variantPart.slice(productName.length).trim();
   }
   
-  // Split by common delimiters
-  const parts = variantPart.split(/[\s_\-\/]+/).filter(p => p.length > 0);
-  
   const attributes: Record<string, string> = {};
+  
+  // FIRST: Check for multi-word colours in the variant part (e.g., "Rose Gold", "Space Gray")
+  // We need to do this BEFORE splitting to avoid breaking up colour names
+  const lowerVariantPart = variantPart.toLowerCase();
+  const multiWordColours = Object.keys(COLOR_MAP).filter(c => c.includes(' ')).sort((a, b) => b.length - a.length);
+  
+  for (const multiColour of multiWordColours) {
+    if (lowerVariantPart.includes(multiColour)) {
+      // Found a multi-word colour - extract it and remove from variantPart
+      const colourIndex = lowerVariantPart.indexOf(multiColour);
+      const actualColour = variantPart.slice(colourIndex, colourIndex + multiColour.length);
+      // Properly capitalize
+      const formattedColour = actualColour.split(/\s+/).map(w => 
+        w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+      ).join(' ');
+      attributes["Colour"] = formattedColour;
+      // Remove the colour from variantPart for further processing
+      variantPart = variantPart.slice(0, colourIndex) + variantPart.slice(colourIndex + multiColour.length);
+      variantPart = variantPart.trim();
+      break;
+    }
+  }
+  
+  // Split remaining part by common delimiters
+  const parts = variantPart.split(/[\s_\-\/]+/).filter(p => p.length > 0);
   
   // First, check if the LAST part is a colour - if so, combine with modifiers like "Camouflage", "Matte", "Glossy"
   // Common colour modifiers that should be combined with the colour name
@@ -163,7 +198,8 @@ function parseVariantAttributes(
     'classic', 'vintage', 'retro', 'modern', 'pro', 'elite', 'premium', 'limited'
   ];
   
-  if (parts.length >= 2) {
+  // Skip colour modifier logic if we already found a multi-word colour
+  if (!attributes["Colour"] && parts.length >= 2) {
     const lastPart = parts[parts.length - 1];
     const colorCheck = isColorValue(lastPart);
     
@@ -199,6 +235,13 @@ function parseVariantAttributes(
         }
       }
       
+      // Process size from remaining parts if colour was found
+      for (const part of parts) {
+        if (isSizeValue(part, context) && !attributes["Size"]) {
+          attributes["Size"] = part.toUpperCase();
+        }
+      }
+      
       return attributes;
     }
   }
@@ -206,23 +249,28 @@ function parseVariantAttributes(
   // Standard parsing for single-part variants or no colour modifier detected
   for (const part of parts) {
     const colorCheck = isColorValue(part);
-    if (colorCheck.isColor) {
+    // Only set colour if not already set by multi-word colour detection
+    if (colorCheck.isColor && !attributes["Colour"]) {
       attributes["Colour"] = part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
     } else if (isSizeValue(part, context)) {
       attributes["Size"] = part.toUpperCase();
-    } else if (part.length <= 10) {
-      // Likely a style/option letter or short code
+    } else if (part.length <= 10 && !attributes["Colour"]) {
+      // Likely a style/option letter or short code - but skip if it might be part of a colour we already found
       if (/^[A-Z]$/i.test(part)) {
         attributes["Style"] = part.toUpperCase();
-      } else {
-        // Generic option
-        attributes["Option"] = part;
+      } else if (!attributes["Option"]) {
+        // Generic option - but don't add if it looks like part of a colour name
+        const lowerPart = part.toLowerCase();
+        const isColourRelated = ['rose', 'space', 'hot', 'light', 'dark', 'sky', 'midnight'].includes(lowerPart);
+        if (!isColourRelated) {
+          attributes["Option"] = part;
+        }
       }
     }
   }
   
-  // If we couldn't parse anything meaningful, use the whole variant part
-  if (Object.keys(attributes).length === 0 && variantPart) {
+  // If we couldn't parse anything meaningful, use the whole variant part (but not if empty)
+  if (Object.keys(attributes).length === 0 && variantPart && variantPart.trim()) {
     attributes["Option"] = variantPart;
   }
   
