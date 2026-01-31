@@ -31,6 +31,18 @@ const GAME_CATEGORIES: GameCategory[] = [
     highlight: "MOST POPULAR",
   },
   {
+    id: "casino",
+    name: "Casino Games",
+    description: "Test your luck and skill! Play Blackjack and Texas Hold'em Poker against AI opponents.",
+    icon: "🎰",
+    path: "/games/casino",
+    color: "from-emerald-500 to-emerald-700",
+    gradient: "from-emerald-500/20 to-emerald-700/20",
+    features: ["Blackjack", "Texas Hold'em", "Virtual Chips", "4 AI Levels"],
+    gameCount: "2 Games",
+    highlight: "NEW",
+  },
+  {
     id: "board",
     name: "Board Games",
     description: "Challenge your mind with classic strategy games. Play against AI opponents with 4 difficulty levels.",
@@ -167,7 +179,7 @@ export function GamesPageClient() {
           </motion.div>
 
           {/* Category Cards */}
-          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
             {GAME_CATEGORIES.map((category, index) => (
               <motion.div
                 key={category.id}
@@ -270,7 +282,7 @@ export function GamesPageClient() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { value: "30+", label: "Retro Consoles", icon: "🎮" },
-              { value: "12+", label: "Classic Games", icon: "🎯" },
+              { value: "14+", label: "Classic Games", icon: "🎯" },
               { value: "4", label: "AI Difficulty Levels", icon: "🤖" },
               { value: "Free", label: "To Play", icon: "✨" },
             ].map((stat, index) => (
