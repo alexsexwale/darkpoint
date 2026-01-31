@@ -393,7 +393,7 @@ export function GamesPageClient() {
                             Board Games
                           </h3>
                           <span className="text-xs text-[var(--muted-foreground)]">
-                            2 Games Available
+                            6 Games Available
                           </span>
                         </div>
                       </div>
@@ -405,7 +405,7 @@ export function GamesPageClient() {
                       Challenge the AI in classic board games. Choose from 4 difficulty levels - from beginner to master!
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {["Checkers", "Chess"].map((game) => (
+                      {["Chess", "Checkers", "Connect Four", "Reversi", "Backgammon", "Tic-Tac-Toe"].map((game) => (
                         <span
                           key={game}
                           className="text-xs px-2 py-1 bg-[var(--color-dark-3)]/50 rounded-lg text-[var(--muted-foreground)]"
@@ -413,9 +413,6 @@ export function GamesPageClient() {
                           {game}
                         </span>
                       ))}
-                      <span className="text-xs px-2 py-1 bg-amber-500/20 rounded-lg text-amber-400">
-                        4 AI Levels
-                      </span>
                     </div>
                   </div>
                 </div>

@@ -34,6 +34,7 @@ const baseNavLinks: NavLink[] = [
     children: [
       { label: "Retro Arcade", href: "/games" },
       { label: "Card Games", href: "/games/cards" },
+      { label: "Board Games", href: "/games/board" },
     ],
   },
   {

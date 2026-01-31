@@ -39,6 +39,50 @@ const BOARD_GAMES: BoardGame[] = [
     color: "from-slate-600 to-slate-800",
     features: ["4 Difficulty Levels", "All Special Moves", "Move Hints", "Undo Moves"],
   },
+  {
+    id: "connect-four",
+    name: "Connect Four",
+    description: "Drop your colored discs to connect four in a row - horizontally, vertically, or diagonally!",
+    icon: "🔴",
+    players: "vs AI",
+    difficulty: "Medium",
+    path: "/games/board/connect-four",
+    color: "from-blue-500 to-blue-700",
+    features: ["4 Difficulty Levels", "Drop Mechanics", "Win Detection", "Undo Moves"],
+  },
+  {
+    id: "tic-tac-toe",
+    name: "Tic-Tac-Toe",
+    description: "The classic game of X's and O's. Get three in a row to win!",
+    icon: "❌",
+    players: "vs AI",
+    difficulty: "Easy",
+    path: "/games/board/tic-tac-toe",
+    color: "from-blue-400 to-pink-500",
+    features: ["4 Difficulty Levels", "Perfect AI Play", "Quick Games", "Undo Moves"],
+  },
+  {
+    id: "reversi",
+    name: "Reversi",
+    description: "Flip your opponent's pieces by surrounding them. Control the most squares to win!",
+    icon: "⚫",
+    players: "vs AI",
+    difficulty: "Medium",
+    path: "/games/board/reversi",
+    color: "from-green-600 to-green-800",
+    features: ["4 Difficulty Levels", "Flip Mechanics", "Strategic Corners", "Undo Moves"],
+  },
+  {
+    id: "backgammon",
+    name: "Backgammon",
+    description: "Roll the dice and race your pieces around the board. Bear off all 15 pieces to win!",
+    icon: "🎲",
+    players: "vs AI",
+    difficulty: "Medium",
+    path: "/games/board/backgammon",
+    color: "from-amber-600 to-amber-800",
+    features: ["4 Difficulty Levels", "Dice Rolling", "Bearing Off", "Hit & Block"],
+  },
 ];
 
 const DIFFICULTY_COLORS = {
@@ -131,8 +175,8 @@ export function BoardGamesHubClient() {
 
       {/* Games Grid */}
       <section className="py-12">
-        <div className="container max-w-4xl">
-          <div className="grid md:grid-cols-2 gap-6">
+        <div className="container max-w-6xl">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {BOARD_GAMES.map((game, index) => (
               <motion.div
                 key={game.id}
