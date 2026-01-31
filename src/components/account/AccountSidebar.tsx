@@ -25,7 +25,7 @@ const gamificationNavItems: AccountNavItem[] = [
   { label: "🎁 Referrals", href: "/account/referrals" },
   { label: "🎡 Spin Wheel", href: "/rewards/spin" },
   { label: "🛒 Rewards Shop", href: "/rewards/shop" },
-  { label: "🕹️ Retro Arcade", href: "/games" },
+  { label: "🕹️ Retro Arcade", href: "/arcade" },
 ];
 
 interface AccountSidebarProps {

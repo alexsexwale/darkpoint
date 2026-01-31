@@ -32,7 +32,8 @@ const baseNavLinks: NavLink[] = [
     label: "Games",
     href: "/games",
     children: [
-      { label: "Retro Arcade", href: "/games" },
+      { label: "Game Zone", href: "/games" },
+      { label: "Retro Arcade", href: "/arcade" },
       { label: "Card Games", href: "/games/cards" },
       { label: "Board Games", href: "/games/board" },
     ],
@@ -88,9 +89,14 @@ function NavLinksInternal({ className, mobile, onLinkClick }: NavLinksProps) {
       return pathname === "/store" && !searchParams.has("category");
     }
     
-    // Special case for /games (Retro Arcade) - only highlight if exactly on /games, not sub-paths
+    // Special case for /games (Game Zone) - only highlight if exactly on /games, not sub-paths
     if (href === "/games") {
       return pathname === "/games";
+    }
+    
+    // Special case for /arcade - highlight for /arcade and /arcade/* paths
+    if (href === "/arcade") {
+      return pathname === "/arcade" || pathname.startsWith("/arcade/");
     }
     
     // For other paths without query params (like /store/mystery-boxes), just match the pathname

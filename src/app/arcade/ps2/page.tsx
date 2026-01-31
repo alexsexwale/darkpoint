@@ -9,4 +9,3 @@ export const metadata: Metadata = {
 export default function PS2Page() {
   return <PS2EmulatorPage />;
 }
-

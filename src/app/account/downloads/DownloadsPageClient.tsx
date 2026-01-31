@@ -470,7 +470,7 @@ export function DownloadsPageClient() {
               <ol className="list-decimal list-inside space-y-1">
                 <li>Download the game you want to play</li>
                 <li>Extract the ZIP file (you'll get .bin/.cue or .iso files)</li>
-                <li>Go to the <a href="/games" className="text-[var(--color-main-1)] hover:underline">Retro Arcade</a></li>
+                <li>Go to the <a href="/arcade" className="text-[var(--color-main-1)] hover:underline">Retro Arcade</a></li>
                 <li>Launch the emulator and drag your ROM file onto it</li>
               </ol>
               {currentPlatformInfo?.note && (

@@ -98,7 +98,7 @@ export function PS2EmulatorPage() {
     }
     
     // Navigate away - use window.location for a full page reload to ensure cleanup
-    window.location.href = "/games";
+    window.location.href = "/arcade";
   };
 
   // Cancel exit
@@ -268,7 +268,7 @@ export function PS2EmulatorPage() {
     // Check for cross-origin isolation first
     if (!isCrossOriginIsolated()) {
       setError(
-        "Cross-origin isolation is not enabled. Please restart the dev server and ensure you're accessing this page directly at /games/ps2"
+        "Cross-origin isolation is not enabled. Please restart the dev server and ensure you're accessing this page directly at /arcade/ps2"
       );
       setStatus("error");
       return;
@@ -466,7 +466,7 @@ export function PS2EmulatorPage() {
                     Try Again
                   </Button>
                   <Button variant="outline" onClick={handleExitRequest}>
-                    Back to Games
+                    Back to Arcade
                   </Button>
                 </div>
               </div>
