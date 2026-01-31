@@ -28,7 +28,14 @@ const baseNavLinks: NavLink[] = [
       { label: "Audio", href: "/store?category=audio" },
     ],
   },
-  { label: "Games", href: "/games" },
+  {
+    label: "Games",
+    href: "/games",
+    children: [
+      { label: "Retro Arcade", href: "/games" },
+      { label: "Card Games", href: "/games/cards" },
+    ],
+  },
   {
     label: "Rewards",
     href: "/rewards",
@@ -80,8 +87,13 @@ function NavLinksInternal({ className, mobile, onLinkClick }: NavLinksProps) {
       return pathname === "/store" && !searchParams.has("category");
     }
     
+    // Special case for /games (Retro Arcade) - only highlight if exactly on /games, not sub-paths
+    if (href === "/games") {
+      return pathname === "/games";
+    }
+    
     // For other paths without query params (like /store/mystery-boxes), just match the pathname
-    return pathname === href;
+    return pathname === href || pathname.startsWith(href + "/");
   };
 
   // Check if a parent link should be highlighted
