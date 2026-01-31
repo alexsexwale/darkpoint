@@ -7,6 +7,7 @@ import { Button } from "@/components/ui";
 import {
   Card,
   Player,
+  Rank,
   createDeck,
   shuffleDeck,
   drawCards,
@@ -202,7 +203,7 @@ export function GoFishGame() {
       
       setGameState(prev => ({
         ...prev,
-        message: `${currentPlayer.name} asks ${target.name} for ${RANK_DISPLAY[rank]}s...`,
+        message: `${currentPlayer.name} asks ${target.name} for ${RANK_DISPLAY[rank as Rank]}s...`,
       }));
 
       await delay(1500);
@@ -226,7 +227,7 @@ export function GoFishGame() {
           return {
             ...prev,
             players: newPlayers,
-            lastAction: `${currentPlayer.name} got ${matchingCards.length} ${RANK_DISPLAY[rank]}${matchingCards.length > 1 ? 's' : ''} from ${target.name}!`,
+            lastAction: `${currentPlayer.name} got ${matchingCards.length} ${RANK_DISPLAY[rank as Rank]}${matchingCards.length > 1 ? 's' : ''} from ${target.name}!`,
           };
         });
 
@@ -260,7 +261,7 @@ export function GoFishGame() {
               players: newPlayers,
               deck: remaining,
               lastAction: gotAskedRank 
-                ? `${currentPlayer.name} drew a ${RANK_DISPLAY[rank]}!`
+                ? `${currentPlayer.name} drew a ${RANK_DISPLAY[rank as Rank]}!`
                 : `${currentPlayer.name} drew a card.`,
             };
           });
@@ -328,7 +329,7 @@ export function GoFishGame() {
 
     setGameState(prev => ({
       ...prev,
-      message: `You ask ${target.name} for ${RANK_DISPLAY[selectedRank]}s...`,
+      message: `You ask ${target.name} for ${RANK_DISPLAY[selectedRank as Rank]}s...`,
     }));
 
     await delay(1000);
@@ -349,7 +350,7 @@ export function GoFishGame() {
         return {
           ...prev,
           players: newPlayers,
-          lastAction: `You got ${matchingCards.length} ${RANK_DISPLAY[selectedRank]}${matchingCards.length > 1 ? 's' : ''}!`,
+          lastAction: `You got ${matchingCards.length} ${RANK_DISPLAY[selectedRank as Rank]}${matchingCards.length > 1 ? 's' : ''}!`,
           message: "You get another turn!",
         };
       });
@@ -580,7 +581,7 @@ export function GoFishGame() {
                       }`}
                       onClick={() => setSelectedRank(rank)}
                     >
-                      {RANK_DISPLAY[rank]}
+                      {RANK_DISPLAY[rank as Rank]}
                     </button>
                   ))}
                 </div>
