@@ -72,6 +72,28 @@ const CARD_GAMES: CardGame[] = [
     supportsMultiplayer: true,
     gameType: "hearts",
   },
+  {
+    id: "go-fish",
+    name: "Go Fish",
+    description: "Ask opponents for cards to collect books of four. The player with the most books wins!",
+    icon: "🐟",
+    players: "2-4 Players",
+    difficulty: "Easy",
+    path: "/games/cards/go-fish",
+    color: "from-cyan-500 to-blue-600",
+    features: ["AI Opponents", "Simple Rules", "Family Friendly", "Quick Games"],
+  },
+  {
+    id: "freecell",
+    name: "FreeCell",
+    description: "A strategic solitaire game. Use the four free cells wisely to solve each deal!",
+    icon: "🎯",
+    players: "1 Player",
+    difficulty: "Medium",
+    path: "/games/cards/freecell",
+    color: "from-teal-500 to-emerald-600",
+    features: ["Undo Moves", "Auto-Complete", "Timer", "Move Counter"],
+  },
 ];
 
 const DIFFICULTY_COLORS = {
