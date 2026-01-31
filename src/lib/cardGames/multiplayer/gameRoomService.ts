@@ -2,6 +2,28 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { GameType, RoomVisibility } from "@/types/database";
 import { GameRoom, RoomPlayer, CreateRoomOptions, JoinRoomOptions } from "./types";
 
+// Type for game_rooms table operations (until types are regenerated)
+type GameRoomRow = {
+  id: string;
+  code: string;
+  game_type: GameType;
+  visibility: RoomVisibility;
+  host_id: string;
+  host_name: string;
+  status: "waiting" | "playing" | "finished";
+  max_players: number;
+  current_players: RoomPlayer[];
+  game_state: unknown;
+  settings: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const gameRoomsTable = () => supabase.from("game_rooms" as any) as any;
+
 // Generate a 6-character alphanumeric room code
 export function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Removed confusing chars (0,O,1,I)
@@ -49,8 +71,7 @@ export async function createRoom(options: CreateRoomOptions): Promise<GameRoom> 
     joinedAt: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase
-    .from("game_rooms")
+  const { data, error } = await gameRoomsTable()
     .insert({
       code,
       game_type: options.gameType,
@@ -78,8 +99,7 @@ export async function getRoomByCode(code: string): Promise<GameRoom | null> {
     throw new Error("Supabase is not configured");
   }
 
-  const { data, error } = await supabase
-    .from("game_rooms")
+  const { data, error } = await gameRoomsTable()
     .select()
     .eq("code", code.toUpperCase())
     .single();
@@ -101,8 +121,7 @@ export async function getRoomById(id: string): Promise<GameRoom | null> {
     throw new Error("Supabase is not configured");
   }
 
-  const { data, error } = await supabase
-    .from("game_rooms")
+  const { data, error } = await gameRoomsTable()
     .select()
     .eq("id", id)
     .single();
@@ -148,8 +167,7 @@ export async function joinRoom(
       p.id === options.playerId ? { ...p, isConnected: true } : p
     );
     
-    const { data, error } = await supabase
-      .from("game_rooms")
+    const { data, error } = await gameRoomsTable()
       .update({ current_players: updatedPlayers })
       .eq("id", roomId)
       .select()
@@ -171,8 +189,7 @@ export async function joinRoom(
 
   const updatedPlayers = [...room.players, newPlayer];
 
-  const { data, error } = await supabase
-    .from("game_rooms")
+  const { data, error } = await gameRoomsTable()
     .update({ current_players: updatedPlayers })
     .eq("id", roomId)
     .select()
@@ -199,7 +216,7 @@ export async function leaveRoom(roomId: string, playerId: string): Promise<void>
 
   // If no players left, delete room
   if (updatedPlayers.length === 0) {
-    await supabase.from("game_rooms").delete().eq("id", roomId);
+    await gameRoomsTable().delete().eq("id", roomId);
     return;
   }
 
@@ -210,8 +227,7 @@ export async function leaveRoom(roomId: string, playerId: string): Promise<void>
     updatedPlayers[0] = { ...updatedPlayers[0], isHost: true };
   }
 
-  const { error } = await supabase
-    .from("game_rooms")
+  const { error } = await gameRoomsTable()
     .update({
       current_players: updatedPlayers,
       host_id: newHostId,
@@ -244,8 +260,7 @@ export async function setPlayerReady(
     p.id === playerId ? { ...p, isReady } : p
   );
 
-  const { data, error } = await supabase
-    .from("game_rooms")
+  const { data, error } = await gameRoomsTable()
     .update({ current_players: updatedPlayers })
     .eq("id", roomId)
     .select()
@@ -268,8 +283,7 @@ export async function startGame(
     throw new Error("Supabase is not configured");
   }
 
-  const { data, error } = await supabase
-    .from("game_rooms")
+  const { data, error } = await gameRoomsTable()
     .update({
       status: "playing",
       game_state: initialGameState,
@@ -296,8 +310,7 @@ export async function updateGameState(
     throw new Error("Supabase is not configured");
   }
 
-  const { error } = await supabase
-    .from("game_rooms")
+  const { error } = await gameRoomsTable()
     .update({ game_state: gameState })
     .eq("id", roomId);
 
@@ -313,8 +326,7 @@ export async function endGame(roomId: string): Promise<void> {
     throw new Error("Supabase is not configured");
   }
 
-  const { error } = await supabase
-    .from("game_rooms")
+  const { error } = await gameRoomsTable()
     .update({
       status: "finished",
       finished_at: new Date().toISOString(),
@@ -333,8 +345,7 @@ export async function getPublicRooms(gameType?: GameType): Promise<GameRoom[]> {
     throw new Error("Supabase is not configured");
   }
 
-  let query = supabase
-    .from("game_rooms")
+  let query = gameRoomsTable()
     .select()
     .eq("visibility", "public")
     .eq("status", "waiting")
@@ -372,8 +383,7 @@ export async function updatePlayerConnection(
     p.id === playerId ? { ...p, isConnected } : p
   );
 
-  await supabase
-    .from("game_rooms")
+  await gameRoomsTable()
     .update({ current_players: updatedPlayers })
     .eq("id", roomId);
 }
@@ -384,8 +394,7 @@ export async function deleteRoom(roomId: string): Promise<void> {
     throw new Error("Supabase is not configured");
   }
 
-  const { error } = await supabase
-    .from("game_rooms")
+  const { error } = await gameRoomsTable()
     .delete()
     .eq("id", roomId);
 
