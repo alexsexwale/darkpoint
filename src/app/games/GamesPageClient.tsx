@@ -310,6 +310,121 @@ export function GamesPageClient() {
         </div>
       </section>
 
+      {/* Card Games & Board Games Section */}
+      <section className="py-12">
+        <div className="container max-w-5xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-10"
+          >
+            <h2 className="text-2xl font-heading mb-2">Classic Games</h2>
+            <div className="w-16 h-0.5 bg-[var(--color-main-1)] mx-auto rounded-full" />
+            <p className="text-[var(--muted-foreground)] mt-4 max-w-lg mx-auto">
+              Enjoy timeless card games and board games. Play against AI opponents or challenge friends online!
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Card Games */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <Link href="/games/cards">
+                <div className="group relative h-full">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-red-500 to-pink-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
+                  <div className="relative bg-[var(--color-dark-2)]/80 backdrop-blur border border-[var(--color-dark-3)] rounded-xl p-6 h-full transition-all duration-300 group-hover:border-red-500/30 group-hover:bg-[var(--color-dark-2)]">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <span className="text-3xl">🃏</span>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-heading group-hover:text-red-400 transition-colors">
+                            Card Games
+                          </h3>
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            4 Games Available
+                          </span>
+                        </div>
+                      </div>
+                      <svg className="w-6 h-6 text-[var(--muted-foreground)] group-hover:text-red-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                    <p className="text-[var(--muted-foreground)] text-sm mb-4">
+                      Play classic card games like Crazy Eights, Hearts, Go Fish, and FreeCell. Challenge AI or play online multiplayer!
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Crazy Eights", "Hearts", "Go Fish", "FreeCell"].map((game) => (
+                        <span
+                          key={game}
+                          className="text-xs px-2 py-1 bg-[var(--color-dark-3)]/50 rounded-lg text-[var(--muted-foreground)]"
+                        >
+                          {game}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+
+            {/* Board Games */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <Link href="/games/board">
+                <div className="group relative h-full">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500" />
+                  <div className="relative bg-[var(--color-dark-2)]/80 backdrop-blur border border-[var(--color-dark-3)] rounded-xl p-6 h-full transition-all duration-300 group-hover:border-amber-500/30 group-hover:bg-[var(--color-dark-2)]">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <span className="text-3xl">♟️</span>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-heading group-hover:text-amber-400 transition-colors">
+                            Board Games
+                          </h3>
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            2 Games Available
+                          </span>
+                        </div>
+                      </div>
+                      <svg className="w-6 h-6 text-[var(--muted-foreground)] group-hover:text-amber-400 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                    <p className="text-[var(--muted-foreground)] text-sm mb-4">
+                      Challenge the AI in classic board games. Choose from 4 difficulty levels - from beginner to master!
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Checkers", "Chess"].map((game) => (
+                        <span
+                          key={game}
+                          className="text-xs px-2 py-1 bg-[var(--color-dark-3)]/50 rounded-lg text-[var(--muted-foreground)]"
+                        >
+                          {game}
+                        </span>
+                      ))}
+                      <span className="text-xs px-2 py-1 bg-amber-500/20 rounded-lg text-amber-400">
+                        4 AI Levels
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* ROM Downloads Link */}
       {/* <section className="py-12">
         <div className="container max-w-3xl">
