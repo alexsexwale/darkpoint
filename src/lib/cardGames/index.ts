@@ -22,3 +22,6 @@ export {
   CARD_HEIGHT,
   CARD_RADIUS,
 } from "./cardRenderer";
+
+// Multiplayer module
+export * from "./multiplayer";

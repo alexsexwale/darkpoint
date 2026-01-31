@@ -3,6 +3,11 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui";
+import { useAuthStore, useMultiplayerStore } from "@/stores";
+import { GameType } from "@/types/database";
+import { createRoom } from "@/lib/cardGames/multiplayer";
 
 interface CardGame {
   id: string;
@@ -14,6 +19,8 @@ interface CardGame {
   path: string;
   color: string;
   features: string[];
+  supportsMultiplayer?: boolean;
+  gameType?: GameType;
 }
 
 const CARD_GAMES: CardGame[] = [
@@ -48,7 +55,9 @@ const CARD_GAMES: CardGame[] = [
     difficulty: "Easy",
     path: "/games/cards/crazy-eights",
     color: "from-orange-500 to-red-500",
-    features: ["AI Opponents", "Local Multiplayer", "Wild Cards", "Quick Games"],
+    features: ["AI Opponents", "Online Multiplayer", "Wild Cards", "Quick Games"],
+    supportsMultiplayer: true,
+    gameType: "crazy_eights",
   },
   {
     id: "hearts",
@@ -59,7 +68,9 @@ const CARD_GAMES: CardGame[] = [
     difficulty: "Hard",
     path: "/games/cards/hearts",
     color: "from-pink-500 to-rose-600",
-    features: ["AI Opponents", "Card Passing", "Shoot the Moon", "Score Tracking"],
+    features: ["AI Opponents", "Online Multiplayer", "Shoot the Moon", "Score Tracking"],
+    supportsMultiplayer: true,
+    gameType: "hearts",
   },
 ];
 
@@ -70,7 +81,50 @@ const DIFFICULTY_COLORS = {
 };
 
 export function CardGamesHubClient() {
+  const router = useRouter();
+  const { user } = useAuthStore();
+  const { getPlayerId, getPlayerName, setCurrentRoom } = useMultiplayerStore();
   const [hoveredGame, setHoveredGame] = useState<string | null>(null);
+  const [showMultiplayerModal, setShowMultiplayerModal] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<CardGame | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+
+  const playerId = getPlayerId(user?.id || null);
+  const playerName = getPlayerName(user?.user_metadata?.display_name || user?.user_metadata?.username || null);
+
+  const handleCreateGame = async (visibility: "private" | "public") => {
+    if (!selectedGame?.gameType) return;
+    if (!user) {
+      router.push("/auth/login?redirect=/games/cards");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const room = await createRoom({
+        gameType: selectedGame.gameType,
+        visibility,
+        hostId: playerId,
+        hostName: playerName,
+        maxPlayers: selectedGame.gameType === "hearts" ? 4 : 4,
+      });
+      
+      setCurrentRoom(room.code, selectedGame.gameType);
+      router.push(`/games/cards/room/${room.code}`);
+    } catch (err) {
+      console.error("Error creating game:", err);
+    } finally {
+      setCreating(false);
+      setShowMultiplayerModal(false);
+    }
+  };
+
+  const handleJoinByCode = () => {
+    if (joinCode.length === 6) {
+      router.push(`/games/cards/room/${joinCode.toUpperCase()}`);
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -236,6 +290,183 @@ export function CardGamesHubClient() {
           </div>
         </div>
       </section>
+
+      {/* Online Multiplayer Section */}
+      <section className="py-12 bg-gradient-to-b from-transparent to-[var(--color-dark-2)]/30">
+        <div className="container max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-8"
+          >
+            <h2 className="text-2xl font-heading mb-2">Play Online</h2>
+            <div className="w-16 h-0.5 bg-[var(--color-main-1)] mx-auto rounded-full mb-4" />
+            <p className="text-[var(--muted-foreground)]">
+              Play with friends or join public games
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Create/Join Private Game */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-[var(--color-dark-2)]/50 backdrop-blur border border-[var(--color-dark-3)] p-6 rounded-xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--color-main-1)] to-purple-600 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-heading text-lg">Private Game</h3>
+                  <p className="text-sm text-[var(--muted-foreground)]">Invite friends with a code</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
+                    placeholder="Enter code"
+                    className="flex-1 px-4 py-2 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg text-white placeholder-[var(--muted-foreground)] uppercase tracking-widest font-mono text-center focus:outline-none focus:border-[var(--color-main-1)]"
+                    maxLength={6}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleJoinByCode}
+                    disabled={joinCode.length !== 6}
+                  >
+                    Join
+                  </Button>
+                </div>
+                <div className="text-center text-xs text-[var(--muted-foreground)]">or</div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    onClick={() => {
+                      setSelectedGame(CARD_GAMES.find(g => g.gameType === "crazy_eights") || null);
+                      setShowMultiplayerModal(true);
+                    }}
+                  >
+                    <span className="mr-2">🎱</span> Create Crazy Eights
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    onClick={() => {
+                      setSelectedGame(CARD_GAMES.find(g => g.gameType === "hearts") || null);
+                      setShowMultiplayerModal(true);
+                    }}
+                  >
+                    <span className="mr-2">💜</span> Create Hearts
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Browse Public Games */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="bg-[var(--color-dark-2)]/50 backdrop-blur border border-[var(--color-dark-3)] p-6 rounded-xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-heading text-lg">Public Games</h3>
+                  <p className="text-sm text-[var(--muted-foreground)]">Join games with other players</p>
+                </div>
+              </div>
+              
+              <p className="text-sm text-[var(--muted-foreground)] mb-4">
+                Browse available public games or create your own for anyone to join.
+              </p>
+              
+              <Link href="/games/cards/lobby">
+                <Button variant="outline" className="w-full">
+                  Browse Game Lobby
+                </Button>
+              </Link>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Multiplayer Modal */}
+      {showMultiplayerModal && selectedGame && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowMultiplayerModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-6 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-3xl">{selectedGame.icon}</span>
+              <div>
+                <h2 className="text-xl font-heading">Create {selectedGame.name}</h2>
+                <p className="text-sm text-[var(--muted-foreground)]">Choose game visibility</p>
+              </div>
+            </div>
+
+            {!user && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4 text-yellow-400 text-sm">
+                You need to log in to host a game
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <button
+                className="w-full p-4 bg-[var(--color-dark-3)]/50 hover:bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg transition-colors text-left disabled:opacity-50"
+                onClick={() => handleCreateGame("private")}
+                disabled={creating || !user}
+              >
+                <div className="font-medium">Private Game</div>
+                <div className="text-sm text-[var(--muted-foreground)]">
+                  Share a code with friends to join
+                </div>
+              </button>
+              <button
+                className="w-full p-4 bg-[var(--color-dark-3)]/50 hover:bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg transition-colors text-left disabled:opacity-50"
+                onClick={() => handleCreateGame("public")}
+                disabled={creating || !user}
+              >
+                <div className="font-medium">Public Game</div>
+                <div className="text-sm text-[var(--muted-foreground)]">
+                  Anyone can join from the lobby
+                </div>
+              </button>
+            </div>
+
+            <button
+              className="mt-4 w-full text-sm text-[var(--muted-foreground)] hover:text-white transition-colors"
+              onClick={() => setShowMultiplayerModal(false)}
+            >
+              Cancel
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* How to Play Section */}
       <section className="py-16 bg-gradient-to-b from-[var(--color-dark-2)]/30 to-transparent">

@@ -29,7 +29,7 @@ import {
   AI_THINK_DELAY,
 } from "@/lib/cardGames/ai";
 
-type GameMode = "ai" | "local";
+type GameMode = "ai";
 type GamePhase = "idle" | "passing" | "playing" | "trickEnd" | "roundEnd" | "gameEnd";
 type PassDirection = "left" | "right" | "across" | "none";
 
@@ -569,7 +569,7 @@ export function HeartsGame() {
             <div>
               <h1 className="text-2xl font-heading">Hearts</h1>
               <p className="text-sm text-[var(--muted-foreground)]">
-                {gameState.mode === "ai" ? "vs AI" : "Local Multiplayer"} 
+                vs AI 
                 {gameState.phase !== "idle" && ` • Round ${gameState.roundNumber}`}
               </p>
             </div>
@@ -809,15 +809,16 @@ export function HeartsGame() {
                       You against 3 computer opponents
                     </div>
                   </button>
-                  <button
-                    className="w-full p-4 bg-[var(--color-dark-3)]/50 hover:bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg transition-colors text-left"
-                    onClick={() => startGame("local")}
-                  >
-                    <div className="font-medium">Local Multiplayer</div>
-                    <div className="text-sm text-[var(--muted-foreground)]">
-                      4 players, pass and play
-                    </div>
-                  </button>
+                  <div className="pt-3 border-t border-[var(--color-dark-3)]">
+                    <p className="text-sm text-[var(--muted-foreground)] text-center mb-3">
+                      Want to play with friends online?
+                    </p>
+                    <Link href="/games/cards" className="block">
+                      <Button variant="outline" className="w-full">
+                        Create Online Game
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
                 <button
                   className="mt-4 w-full text-sm text-[var(--muted-foreground)] hover:text-white transition-colors"

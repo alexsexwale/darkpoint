@@ -31,7 +31,7 @@ import {
   AI_THINK_DELAY,
 } from "@/lib/cardGames/ai";
 
-type GameMode = "ai" | "local";
+type GameMode = "ai";
 type GameStatus = "idle" | "setup" | "playing" | "roundEnd" | "gameEnd";
 
 interface CrazyEightsState {
@@ -136,15 +136,9 @@ export function CrazyEightsGame() {
   const startGame = useCallback((mode: GameMode, numPlayers: number) => {
     const players: Player[] = [];
     
-    if (mode === "ai") {
-      players.push(createHumanPlayer("You"));
-      for (let i = 1; i < numPlayers; i++) {
-        players.push(createAIPlayer(i));
-      }
-    } else {
-      for (let i = 0; i < numPlayers; i++) {
-        players.push(createHumanPlayer(`Player ${i + 1}`));
-      }
+    players.push(createHumanPlayer("You"));
+    for (let i = 1; i < numPlayers; i++) {
+      players.push(createAIPlayer(i));
     }
 
     // Create and shuffle deck
@@ -351,9 +345,7 @@ export function CrazyEightsGame() {
             </Link>
             <div>
               <h1 className="text-2xl font-heading">Crazy Eights</h1>
-              <p className="text-sm text-[var(--muted-foreground)]">
-                {gameState.mode === "ai" ? "vs AI" : "Local Multiplayer"}
-              </p>
+              <p className="text-sm text-[var(--muted-foreground)]">vs AI</p>
             </div>
           </div>
 
@@ -508,53 +500,6 @@ export function CrazyEightsGame() {
                 </div>
               )}
 
-              {/* Local multiplayer - current player's hand (hidden by default) */}
-              {gameState.mode === "local" && currentPlayer && (
-                <div className="border-t border-[var(--color-dark-3)] pt-6">
-                  <div className="text-sm text-[var(--color-main-1)] text-center mb-3">
-                    {currentPlayer.name}&apos;s Turn
-                  </div>
-                  <div className="flex justify-center flex-wrap gap-2">
-                    {currentPlayer.hand.map((card) => {
-                      const isPlayable = canPlayCard(card);
-                      const isSelected = selectedCards.some(c => c.id === card.id);
-                      
-                      return (
-                        <motion.div
-                          key={card.id}
-                          whileHover={isPlayable ? { y: -8 } : {}}
-                          className={!isPlayable ? "opacity-50" : "cursor-pointer"}
-                        >
-                          <PlayingCard
-                            card={card}
-                            selected={isSelected}
-                            onClick={() => handleCardClick(card)}
-                            disabled={!isPlayable}
-                          />
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex justify-center gap-3 mt-4">
-                    {selectedCards.length > 0 && (
-                      <Button variant="primary" onClick={handlePlaySelected}>
-                        Play Card
-                      </Button>
-                    )}
-                    {playableCards.length === 0 && canDrawMore && (
-                      <Button variant="outline" onClick={drawCard}>
-                        Draw Card ({3 - gameState.drawCount} left)
-                      </Button>
-                    )}
-                    {mustPass && (
-                      <Button variant="outline" onClick={passTurn}>
-                        Pass Turn
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -621,7 +566,7 @@ export function CrazyEightsGame() {
                 <div className="space-y-4">
                   {/* AI Mode */}
                   <div>
-                    <h3 className="text-sm font-medium text-[var(--muted-foreground)] mb-2">vs AI</h3>
+                    <h3 className="text-sm font-medium text-[var(--muted-foreground)] mb-2">Play vs AI</h3>
                     <div className="grid grid-cols-3 gap-2">
                       {[2, 3, 4].map(num => (
                         <button
@@ -638,23 +583,16 @@ export function CrazyEightsGame() {
                     </div>
                   </div>
 
-                  {/* Local Mode */}
-                  <div>
-                    <h3 className="text-sm font-medium text-[var(--muted-foreground)] mb-2">Local Multiplayer</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[2, 3, 4].map(num => (
-                        <button
-                          key={num}
-                          className="p-3 bg-[var(--color-dark-3)]/50 hover:bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg transition-colors"
-                          onClick={() => startGame("local", num)}
-                        >
-                          <div className="text-lg font-medium">{num} Players</div>
-                          <div className="text-xs text-[var(--muted-foreground)]">
-                            Pass & Play
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+                  {/* Online Mode Link */}
+                  <div className="pt-4 border-t border-[var(--color-dark-3)]">
+                    <p className="text-sm text-[var(--muted-foreground)] text-center mb-3">
+                      Want to play with friends online?
+                    </p>
+                    <Link href="/games/cards" className="block">
+                      <Button variant="outline" className="w-full">
+                        Create Online Game
+                      </Button>
+                    </Link>
                   </div>
                 </div>
 

@@ -28,6 +28,11 @@ export type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "
 export type ReviewStatus = "pending" | "published" | "rejected";
 export type ReportStatus = "pending" | "reviewed" | "action_taken" | "dismissed";
 
+// Game Rooms Enums
+export type GameType = "crazy_eights" | "hearts";
+export type RoomStatus = "waiting" | "playing" | "finished";
+export type RoomVisibility = "private" | "public";
+
 export interface Database {
   public: {
     Tables: {
@@ -827,6 +832,56 @@ export interface Database {
           product_original_price?: number | null;
         };
       };
+      game_rooms: {
+        Row: {
+          id: string;
+          code: string;
+          game_type: GameType;
+          visibility: RoomVisibility;
+          host_id: string;
+          host_name: string;
+          status: RoomStatus;
+          max_players: number;
+          current_players: Json;
+          game_state: Json | null;
+          settings: Json;
+          created_at: string;
+          updated_at: string;
+          started_at: string | null;
+          finished_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          game_type: GameType;
+          visibility?: RoomVisibility;
+          host_id: string;
+          host_name: string;
+          status?: RoomStatus;
+          max_players?: number;
+          current_players?: Json;
+          game_state?: Json | null;
+          settings?: Json;
+          created_at?: string;
+          updated_at?: string;
+          started_at?: string | null;
+          finished_at?: string | null;
+        };
+        Update: {
+          code?: string;
+          game_type?: GameType;
+          visibility?: RoomVisibility;
+          host_id?: string;
+          host_name?: string;
+          status?: RoomStatus;
+          max_players?: number;
+          current_players?: Json;
+          game_state?: Json | null;
+          settings?: Json;
+          started_at?: string | null;
+          finished_at?: string | null;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -878,6 +933,9 @@ export interface Database {
       order_status: OrderStatus;
       review_status: ReviewStatus;
       report_status: ReportStatus;
+      game_type: GameType;
+      room_status: RoomStatus;
+      room_visibility: RoomVisibility;
     };
   };
 }

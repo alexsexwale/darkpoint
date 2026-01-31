@@ -59,26 +59,29 @@ export function PlayingCard({
   };
   
   return (
-    <motion.div
+    <div
       className={`relative select-none ${className}`}
       style={{
         width,
         height,
         ...style,
       }}
-      initial={false}
-      animate={{
-        rotateY: card.faceUp ? 0 : 180,
-        scale: selected ? 1.05 : isDragging ? 1.1 : 1,
-        y: selected ? -8 : 0,
-      }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      onClick={disabled ? undefined : onClick}
-      onDoubleClick={disabled ? undefined : onDoubleClick}
       draggable={draggable && !disabled && card.faceUp}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
+      <motion.div
+        className="w-full h-full"
+        initial={false}
+        animate={{
+          rotateY: card.faceUp ? 0 : 180,
+          scale: selected ? 1.05 : isDragging ? 1.1 : 1,
+          y: selected ? -8 : 0,
+        }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        onClick={disabled ? undefined : onClick}
+        onDoubleClick={disabled ? undefined : onDoubleClick}
+      >
       {/* Card container with 3D perspective */}
       <div
         className="absolute inset-0"
@@ -169,7 +172,8 @@ export function PlayingCard({
           </div>
         </div>
       </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
 
