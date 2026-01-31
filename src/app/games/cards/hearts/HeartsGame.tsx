@@ -548,8 +548,6 @@ export function HeartsGame() {
     return gameState.players.filter(p => p.score === minScore);
   };
 
-  // Current player for local multiplayer
-  const localCurrentPlayer = gameState.mode === "local" ? currentPlayer : null;
   const humanPlayer = gameState.players.find(p => p.type === "human");
 
   return (
@@ -608,11 +606,10 @@ export function HeartsGame() {
             </motion.div>
           ) : (
             <>
-              {/* Opponents */}
+              {/* AI Opponents */}
               <div className="flex justify-between items-start mb-4">
                 {gameState.players.map((player, idx) => {
-                  if (gameState.mode === "ai" && player.type === "human") return null;
-                  if (gameState.mode === "local" && idx === gameState.currentPlayerIndex && gameState.phase === "playing") return null;
+                  if (player.type === "human") return null;
                   
                   const isCurrentTurn = idx === gameState.currentPlayerIndex;
                   const position = idx === 0 ? "bottom" : idx === 1 ? "left" : idx === 2 ? "top" : "right";
@@ -749,34 +746,6 @@ export function HeartsGame() {
                 </div>
               )}
 
-              {/* Playing phase - Local multiplayer */}
-              {gameState.phase === "playing" && gameState.mode === "local" && localCurrentPlayer && (
-                <div className="border-t border-[var(--color-dark-3)] pt-4">
-                  <div className="text-sm text-center mb-2 text-[var(--color-main-1)]">
-                    {localCurrentPlayer.name}&apos;s Turn
-                  </div>
-                  <div className="flex justify-center flex-wrap gap-2">
-                    {localCurrentPlayer.hand.map((card) => {
-                      const canPlay = canPlayCard(card);
-                      return (
-                        <motion.div
-                          key={card.id}
-                          whileHover={canPlay ? { y: -8 } : {}}
-                          className={!canPlay ? "opacity-50" : "cursor-pointer"}
-                        >
-                          <PlayingCard
-                            card={card}
-                            onClick={() => {
-                              if (canPlay) playCard(card);
-                            }}
-                            disabled={!canPlay}
-                          />
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>

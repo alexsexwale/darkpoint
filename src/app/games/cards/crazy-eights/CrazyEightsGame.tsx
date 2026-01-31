@@ -217,10 +217,8 @@ export function CrazyEightsGame() {
 
       const nextPlayerIndex = (prev.currentPlayerIndex + prev.direction + prev.players.length) % prev.players.length;
       const nextPlayer = newPlayers[nextPlayerIndex];
-      const nextMessage = prev.mode === "ai" && nextPlayer.type === "ai"
+      const nextMessage = nextPlayer.type === "ai"
         ? `${nextPlayer.name}'s turn...`
-        : prev.mode === "local"
-        ? `${nextPlayer.name}'s turn!`
         : "Your turn!";
 
       return {
@@ -287,10 +285,8 @@ export function CrazyEightsGame() {
     setGameState(prev => {
       const nextPlayerIndex = (prev.currentPlayerIndex + prev.direction + prev.players.length) % prev.players.length;
       const nextPlayer = prev.players[nextPlayerIndex];
-      const nextMessage = prev.mode === "ai" && nextPlayer.type === "ai"
+      const nextMessage = nextPlayer.type === "ai"
         ? `${nextPlayer.name}'s turn...`
-        : prev.mode === "local"
-        ? `${nextPlayer.name}'s turn!`
         : "Your turn!";
 
       return {
@@ -375,12 +371,11 @@ export function CrazyEightsGame() {
             </motion.div>
           ) : (
             <>
-              {/* Opponent hands (AI mode) or other players (local mode) */}
+              {/* AI Opponent hands */}
               <div className="mb-6">
                 <div className="flex justify-center gap-8 flex-wrap">
                   {gameState.players.map((player, idx) => {
-                    if (gameState.mode === "ai" && player.type === "human") return null;
-                    if (gameState.mode === "local" && idx === gameState.currentPlayerIndex) return null;
+                    if (player.type === "human") return null;
                     
                     const isCurrentTurn = idx === gameState.currentPlayerIndex;
                     
