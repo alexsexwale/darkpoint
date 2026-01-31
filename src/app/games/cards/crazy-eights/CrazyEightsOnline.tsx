@@ -19,8 +19,8 @@ import {
 import {
   RoomPlayer,
   UseMultiplayerGameReturn,
-  findPlayableCrazyEights,
 } from "@/lib/cardGames/multiplayer";
+import { findPlayableCrazyEights } from "@/lib/cardGames/ai";
 
 interface OnlinePlayer {
   id: string;
