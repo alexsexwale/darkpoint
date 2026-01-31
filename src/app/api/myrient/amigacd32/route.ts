@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const response = await fetch(
-      "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation/",
+      "https://myrient.erista.me/files/Redump/Commodore%20-%20Amiga%20CD32/",
       { next: { revalidate: 3600 } }
     );
     const html = await response.text();
@@ -74,9 +74,13 @@ export async function GET() {
         else if (fileName.includes("(Italy)")) region = "Italy";
         else if (fileName.includes("(Brazil)")) region = "Brazil";
         else if (fileName.includes("(Australia)")) region = "Australia";
+        else if (fileName.includes("(UK)")) region = "UK";
+        else if (fileName.includes("(Poland)")) region = "Poland";
+        else if (fileName.includes("(Sweden)")) region = "Sweden";
+        else if (fileName.includes("(Czech)")) region = "Czech";
 
         const id = fileName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 32);
-        const base = "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation/";
+        const base = "https://myrient.erista.me/files/Redump/Commodore%20-%20Amiga%20CD32/";
         const fullUrl = new URL(hrefPath, base).toString();
 
         roms.push({
@@ -88,8 +92,8 @@ export async function GET() {
           region,
           downloadUrl: fullUrl,
           imageUrl: ["/images/placeholder-game.png"],
-          console: "PlayStation 1",
-          platform: "psx",
+          console: "Commodore Amiga CD32",
+          platform: "amigacd32",
         });
       }
     }
@@ -105,7 +109,7 @@ export async function GET() {
       roms,
     });
   } catch (error) {
-    console.error("Error fetching Myrient PlayStation ROMs:", error);
+    console.error("Error fetching Myrient Amiga CD32 ROMs:", error);
 
     return NextResponse.json(
       {
@@ -118,4 +122,3 @@ export async function GET() {
     );
   }
 }
-

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const response = await fetch(
-      "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation/",
+      "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation%203/",
       { next: { revalidate: 3600 } }
     );
     const html = await response.text();
@@ -76,7 +76,7 @@ export async function GET() {
         else if (fileName.includes("(Australia)")) region = "Australia";
 
         const id = fileName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 32);
-        const base = "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation/";
+        const base = "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation%203/";
         const fullUrl = new URL(hrefPath, base).toString();
 
         roms.push({
@@ -88,8 +88,8 @@ export async function GET() {
           region,
           downloadUrl: fullUrl,
           imageUrl: ["/images/placeholder-game.png"],
-          console: "PlayStation 1",
-          platform: "psx",
+          console: "PlayStation 3",
+          platform: "ps3",
         });
       }
     }
@@ -105,7 +105,7 @@ export async function GET() {
       roms,
     });
   } catch (error) {
-    console.error("Error fetching Myrient PlayStation ROMs:", error);
+    console.error("Error fetching Myrient PlayStation 3 ROMs:", error);
 
     return NextResponse.json(
       {
@@ -118,4 +118,3 @@ export async function GET() {
     );
   }
 }
-

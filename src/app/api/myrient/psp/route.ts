@@ -2,19 +2,18 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    // Fetch the Myrient PSP directory
     const response = await fetch(
       "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation%20Portable/",
-      { next: { revalidate: 3600 } } // Cache for 1 hour
+      { next: { revalidate: 3600 } }
     );
     const html = await response.text();
 
-    // Parse the HTML to extract ROM information
     const roms: {
       id: string;
       title: string;
       fileName: string;
       size: string;
+      sizeBytes: number;
       region: string;
       downloadUrl: string;
       imageUrl: string[];
@@ -22,59 +21,71 @@ export async function GET() {
       platform: string;
     }[] = [];
 
-    // Use regex to extract table rows with ZIP files
     const tableRowRegex = /<tr[^>]*>[\s\S]*?<\/tr>/g;
     const linkRegex = /<a[^>]*href="([^"]*\.zip)"[^>]*title="([^"]*)"[^>]*>([^<]*)<\/a>/g;
-    const sizeRegex = />(\d+\.?\d*\s*[KMGT]iB)<\/td>/g;
+    const sizeRegex = />(\d+\.?\d*)\s*([KMGT]iB)<\/td>/g;
 
     const rows = html.match(tableRowRegex) || [];
 
     for (const row of rows) {
       const linkMatch = linkRegex.exec(row);
-      linkRegex.lastIndex = 0; // Reset regex
+      linkRegex.lastIndex = 0;
 
       if (linkMatch) {
-        const hrefPath = linkMatch[1]; // URL-encoded relative path to the file
+        const hrefPath = linkMatch[1];
         const fileName = linkMatch[3].trim();
 
-        // Extract file size
         const sizeMatch = sizeRegex.exec(row);
-        sizeRegex.lastIndex = 0; // Reset regex
-        const fileSize = sizeMatch ? sizeMatch[1] : "Unknown";
+        sizeRegex.lastIndex = 0;
+        
+        let fileSize = "Unknown";
+        let sizeBytes = 0;
+        if (sizeMatch) {
+          const sizeNum = parseFloat(sizeMatch[1]);
+          const sizeUnit = sizeMatch[2];
+          fileSize = `${sizeNum} ${sizeUnit}`;
+          
+          const multipliers: Record<string, number> = {
+            "KiB": 1024,
+            "MiB": 1024 * 1024,
+            "GiB": 1024 * 1024 * 1024,
+            "TiB": 1024 * 1024 * 1024 * 1024,
+          };
+          sizeBytes = Math.round(sizeNum * (multipliers[sizeUnit] || 1));
+        }
 
-        // Skip parent directory and non-game files
         if (fileName.includes("..") || !fileName.endsWith(".zip")) {
           continue;
         }
 
-        // Clean up the name for display
         let cleanName = fileName.replace(".zip", "");
-        // Remove common regional tags for cleaner display
         cleanName = cleanName.replace(/\s*\([^)]*\)\s*/g, " ").trim();
-        cleanName = cleanName.replace(/\s+/g, " "); // Clean multiple spaces
+        cleanName = cleanName.replace(/\s+/g, " ");
 
-        // Determine region
         let region = "Unknown";
         if (fileName.includes("(Japan)")) region = "Japan";
         else if (fileName.includes("(USA)")) region = "USA";
         else if (fileName.includes("(Europe)")) region = "Europe";
         else if (fileName.includes("(World)")) region = "World";
+        else if (fileName.includes("(Korea)")) region = "Korea";
+        else if (fileName.includes("(Germany)")) region = "Germany";
+        else if (fileName.includes("(France)")) region = "France";
+        else if (fileName.includes("(Spain)")) region = "Spain";
+        else if (fileName.includes("(Italy)")) region = "Italy";
+        else if (fileName.includes("(Brazil)")) region = "Brazil";
+        else if (fileName.includes("(Australia)")) region = "Australia";
 
-        // Generate a simple ID
-        const id = fileName
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "")
-          .slice(0, 32);
-
+        const id = fileName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 32);
         const base = "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation%20Portable/";
         const fullUrl = new URL(hrefPath, base).toString();
 
         roms.push({
           id,
           title: cleanName,
-          fileName: fileName,
+          fileName,
           size: fileSize,
-          region: region,
+          sizeBytes,
+          region,
           downloadUrl: fullUrl,
           imageUrl: ["/images/placeholder-game.png"],
           console: "PlayStation Portable",
@@ -83,13 +94,15 @@ export async function GET() {
       }
     }
 
-    // Sort roms alphabetically by title
     roms.sort((a, b) => a.title.localeCompare(b.title));
+
+    const regions = [...new Set(roms.map(r => r.region))].sort();
 
     return NextResponse.json({
       success: true,
       count: roms.length,
-      roms: roms,
+      regions,
+      roms,
     });
   } catch (error) {
     console.error("Error fetching Myrient PSP ROMs:", error);
@@ -99,9 +112,9 @@ export async function GET() {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
         roms: [],
+        regions: [],
       },
       { status: 500 }
     );
   }
 }
-

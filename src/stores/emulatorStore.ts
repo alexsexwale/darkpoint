@@ -3,6 +3,7 @@ import { create } from "zustand";
 interface EmulatorState {
   core: string | null;
   romFile: File | null;
+  romFiles: File[]; // For multi-file ROMs (PS1 .cue + .bin)
   biosFile: File | null;
   gameName: string | null;
   isPlaying: boolean;
@@ -14,6 +15,7 @@ interface EmulatorActions {
   setPayload: (payload: {
     core: string;
     romFile: File;
+    romFiles?: File[];
     biosFile?: File | null;
     gameName?: string;
   }) => void;
@@ -26,6 +28,7 @@ interface EmulatorActions {
 const initialState: EmulatorState = {
   core: null,
   romFile: null,
+  romFiles: [],
   biosFile: null,
   gameName: null,
   isPlaying: false,
@@ -40,6 +43,7 @@ export const useEmulatorStore = create<EmulatorState & EmulatorActions>((set) =>
     set({
       core: payload.core || null,
       romFile: payload.romFile || null,
+      romFiles: payload.romFiles || [],
       biosFile: payload.biosFile || null,
       gameName: payload.gameName || null,
       error: null,

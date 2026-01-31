@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 import { Button } from "@/components/ui";
 import {
   initPS2Emulator,
@@ -11,10 +10,13 @@ import {
   clearPS2Stats,
   isPS2EmulatorLoaded,
   isCrossOriginIsolated,
+  stopPS2Emulator,
 } from "@/lib/ps2Emulator";
 import { useAudioStore } from "@/stores";
 
 type EmulatorStatus = "idle" | "initializing" | "ready" | "loading" | "running" | "error";
+
+type ZoomLevel = "fit" | "100" | "150" | "200" | "fullscreen";
 
 export function PS2EmulatorPage() {
   const [status, setStatus] = useState<EmulatorStatus>("idle");
@@ -23,7 +25,11 @@ export function PS2EmulatorPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("fit");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const fpsIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get audio store actions
@@ -56,6 +62,108 @@ export function PS2EmulatorPage() {
       document.body.style.overflow = "";
     };
   }, []);
+
+  // Warn user before leaving if game is running
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (status === "running") {
+        e.preventDefault();
+        e.returnValue = "Your game is still running. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [status]);
+
+  // Handle exit request
+  const handleExitRequest = () => {
+    if (status === "running") {
+      setShowExitConfirm(true);
+    } else {
+      handleConfirmExit();
+    }
+  };
+
+  // Confirm and exit
+  const handleConfirmExit = () => {
+    // Stop the emulator
+    stopPS2Emulator();
+    
+    // Clear FPS interval
+    if (fpsIntervalRef.current) {
+      clearInterval(fpsIntervalRef.current);
+      fpsIntervalRef.current = null;
+    }
+    
+    // Navigate away - use window.location for a full page reload to ensure cleanup
+    window.location.href = "/games";
+  };
+
+  // Cancel exit
+  const handleCancelExit = () => {
+    setShowExitConfirm(false);
+    // Re-focus canvas
+    setTimeout(() => {
+      const canvas = document.getElementById("outputCanvas") as HTMLCanvasElement;
+      if (canvas) canvas.focus();
+    }, 50);
+  };
+
+  // Handle fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  // Toggle fullscreen
+  const toggleFullscreen = async () => {
+    const container = canvasContainerRef.current;
+    if (!container) return;
+    
+    try {
+      if (!document.fullscreenElement) {
+        await container.requestFullscreen();
+        setZoomLevel("fullscreen");
+      } else {
+        await document.exitFullscreen();
+        setZoomLevel("fit");
+      }
+    } catch (err) {
+      console.error("Fullscreen error:", err);
+    }
+    
+    // Re-focus canvas after fullscreen toggle
+    setTimeout(() => {
+      const canvas = document.getElementById("outputCanvas") as HTMLCanvasElement;
+      if (canvas) canvas.focus();
+    }, 100);
+  };
+
+  // Get canvas scale based on zoom level
+  const getCanvasStyle = () => {
+    const baseWidth = 640;
+    const baseHeight = 480;
+    
+    switch (zoomLevel) {
+      case "100":
+        return { width: `${baseWidth}px`, height: `${baseHeight}px` };
+      case "150":
+        return { width: `${baseWidth * 1.5}px`, height: `${baseHeight * 1.5}px` };
+      case "200":
+        return { width: `${baseWidth * 2}px`, height: `${baseHeight * 2}px` };
+      case "fullscreen":
+        return { width: "100%", height: "100%", maxWidth: "100vw", maxHeight: "100vh" };
+      case "fit":
+      default:
+        return { width: "auto", height: "auto", maxWidth: "90vw", maxHeight: "80vh" };
+    }
+  };
 
   // Check cross-origin isolation and auto-refresh if needed
   useEffect(() => {
@@ -109,12 +217,46 @@ export function PS2EmulatorPage() {
     };
   }, [status]);
 
-  // Focus canvas when running
+  // Focus canvas when running and handle keyboard input
   useEffect(() => {
     if (status === "running") {
       const canvas = document.getElementById("outputCanvas") as HTMLCanvasElement;
       if (canvas) {
+        // Focus immediately
         canvas.focus();
+        
+        // Re-focus on any click within the game area
+        const handleClick = () => {
+          canvas.focus();
+        };
+        
+        // Prevent focus from being lost
+        const handleBlur = () => {
+          // Re-focus after a short delay to ensure it takes
+          setTimeout(() => {
+            if (status === "running") {
+              canvas.focus();
+            }
+          }, 10);
+        };
+        
+        // Prevent default behavior on certain keys to keep focus
+        const handleKeyDown = (e: KeyboardEvent) => {
+          // Prevent Tab from moving focus away from canvas
+          if (e.key === "Tab") {
+            e.preventDefault();
+          }
+        };
+        
+        canvas.addEventListener("blur", handleBlur);
+        document.addEventListener("click", handleClick);
+        document.addEventListener("keydown", handleKeyDown);
+        
+        return () => {
+          canvas.removeEventListener("blur", handleBlur);
+          document.removeEventListener("click", handleClick);
+          document.removeEventListener("keydown", handleKeyDown);
+        };
       }
     }
   }, [status]);
@@ -221,14 +363,12 @@ export function PS2EmulatorPage() {
             </div>
           </div>
         </div>
-        <Link href="/games">
-          <Button variant="outline" size="sm">
-            <svg className="w-4 h-4 inline-block align-middle mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span className="inline-block align-middle">Exit</span>
-          </Button>
-        </Link>
+        <Button variant="outline" size="sm" onClick={handleExitRequest}>
+          <svg className="w-4 h-4 inline-block align-middle mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          <span className="inline-block align-middle">Exit</span>
+        </Button>
       </div>
 
       {/* Main Content */}
@@ -249,19 +389,32 @@ export function PS2EmulatorPage() {
           />
         </div>
 
-        {/* Canvas for emulator output */}
-        <canvas
-          id="outputCanvas"
-          width="640"
-          height="480"
-          tabIndex={0}
-          className={`max-w-full max-h-full ${status !== "running" ? "hidden" : ""}`}
-          style={{
-            imageRendering: "pixelated",
-            aspectRatio: "4/3",
-            backgroundColor: "#000",
-          }}
-        />
+        {/* Canvas container for zoom/fullscreen */}
+        <div 
+          ref={canvasContainerRef}
+          className={`flex items-center justify-center ${status !== "running" ? "hidden" : ""} ${isFullscreen ? "bg-black" : ""}`}
+          style={isFullscreen ? { width: "100%", height: "100%" } : {}}
+        >
+          <canvas
+            id="outputCanvas"
+            width="640"
+            height="480"
+            tabIndex={0}
+            className="outline-none"
+            style={{
+              imageRendering: "pixelated",
+              aspectRatio: "4/3",
+              backgroundColor: "#000",
+              ...getCanvasStyle(),
+            }}
+            onClick={(e) => {
+              e.currentTarget.focus();
+            }}
+            onFocus={() => {
+              console.log("Canvas focused - keyboard input active");
+            }}
+          />
+        </div>
 
         {/* UI Overlay */}
         {status !== "running" && (
@@ -312,9 +465,9 @@ export function PS2EmulatorPage() {
                   <Button variant="primary" onClick={initializeEmulator}>
                     Try Again
                   </Button>
-                  <Link href="/games">
-                    <Button variant="outline">Back to Games</Button>
-                  </Link>
+                  <Button variant="outline" onClick={handleExitRequest}>
+                    Back to Games
+                  </Button>
                 </div>
               </div>
             )}
@@ -461,7 +614,7 @@ export function PS2EmulatorPage() {
         )}
 
         {/* Running - Controls Toggle */}
-        {status === "running" && (
+        {status === "running" && !isFullscreen && (
           <>
             <div className="absolute top-4 left-4 bg-[var(--color-dark-2)]/90 backdrop-blur border border-[var(--color-dark-4)] rounded-lg px-4 py-2 text-white text-sm">
               <div className="flex items-center gap-3">
@@ -470,18 +623,73 @@ export function PS2EmulatorPage() {
                 <span className="text-[var(--color-dark-4)]">|</span>
                 <span className="text-[var(--color-main-1)] font-medium">{fps} FPS</span>
               </div>
+              <p className="text-[10px] text-white/50 mt-1">Click game screen to enable keyboard</p>
             </div>
 
+            {/* Zoom Controls */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-[var(--color-dark-2)]/90 backdrop-blur border border-[var(--color-dark-4)] rounded-lg px-3 py-2 flex items-center gap-2">
+              <span className="text-xs text-white/60 mr-1">Zoom:</span>
+              {(["fit", "100", "150", "200"] as ZoomLevel[]).map((level) => (
+                <button
+                  key={level}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setZoomLevel(level);
+                    setTimeout(() => {
+                      const canvas = document.getElementById("outputCanvas") as HTMLCanvasElement;
+                      if (canvas) canvas.focus();
+                    }, 50);
+                  }}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className={`px-2 py-1 text-xs rounded transition-all ${
+                    zoomLevel === level 
+                      ? "bg-[var(--color-main-1)] text-white" 
+                      : "bg-[var(--color-dark-4)] text-white/70 hover:bg-[var(--color-dark-3)]"
+                  }`}
+                  tabIndex={-1}
+                >
+                  {level === "fit" ? "Fit" : `${level}%`}
+                </button>
+              ))}
+              <div className="w-px h-5 bg-[var(--color-dark-4)] mx-1" />
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleFullscreen();
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                className="px-2 py-1 text-xs rounded bg-[var(--color-dark-4)] text-white/70 hover:bg-[var(--color-main-1)] hover:text-white transition-all flex items-center gap-1"
+                tabIndex={-1}
+                title="Fullscreen (F11)"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                Full
+              </button>
+            </div>
+
+            {/* Controls toggle button */}
             <button
-              onClick={() => setShowControls(!showControls)}
+              onClick={(e) => {
+                e.preventDefault();
+                setShowControls(!showControls);
+                // Re-focus canvas after toggling controls
+                setTimeout(() => {
+                  const canvas = document.getElementById("outputCanvas") as HTMLCanvasElement;
+                  if (canvas) canvas.focus();
+                }, 50);
+              }}
+              onMouseDown={(e) => e.preventDefault()} // Prevent focus steal
               className="absolute top-4 right-4 w-12 h-12 rounded-lg bg-[var(--color-main-1)] hover:bg-[var(--color-main-1)]/80 text-white flex items-center justify-center shadow-lg transition-all z-50"
               title="Toggle Controls"
+              tabIndex={-1} // Don't include in tab order
             >
               🎮
             </button>
 
             <AnimatePresence>
-              {showControls && (
+              {showControls && !isFullscreen && (
                 <motion.div
                   initial={{ opacity: 0, x: 100 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -527,12 +735,92 @@ export function PS2EmulatorPage() {
             </AnimatePresence>
           </>
         )}
+
+        {/* Fullscreen overlay controls - shown when in fullscreen */}
+        {status === "running" && isFullscreen && (
+          <div className="absolute inset-0 pointer-events-none">
+            {/* Exit fullscreen hint at top */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-auto">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleFullscreen();
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+                className="bg-black/70 backdrop-blur text-white/80 px-4 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-black/90 transition-all opacity-30 hover:opacity-100"
+                tabIndex={-1}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Press ESC or click to exit fullscreen
+              </button>
+            </div>
+            
+            {/* FPS counter in fullscreen */}
+            <div className="absolute bottom-4 left-4 pointer-events-none">
+              <div className="bg-black/50 text-white/70 px-3 py-1 rounded text-xs">
+                {fps} FPS
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer - matches site footer style */}
       <div className="px-6 py-4 bg-[var(--color-dark-2)] border-t border-[var(--color-dark-4)] text-center">
         <p className="text-xs text-white/40">Powered by Play! PS2 Emulator • WebAssembly Edition</p>
       </div>
+
+      {/* Exit Confirmation Modal */}
+      <AnimatePresence>
+        {showExitConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={handleCancelExit}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-4)] rounded-xl p-8 max-w-md mx-4 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
+                  <span className="text-3xl">⚠️</span>
+                </div>
+                <h3 className="text-xl font-heading text-white mb-2 uppercase tracking-wider">
+                  Exit Game?
+                </h3>
+                <p className="text-white/60 text-sm mb-6">
+                  Your game is still running. Any unsaved progress will be lost.
+                  Are you sure you want to exit?
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelExit}
+                    className="min-w-[120px]"
+                  >
+                    Continue Playing
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleConfirmExit}
+                    className="min-w-[120px] !bg-red-500 hover:!bg-red-600"
+                  >
+                    Exit Game
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

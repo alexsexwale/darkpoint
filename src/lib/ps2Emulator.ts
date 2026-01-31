@@ -255,6 +255,40 @@ export function isCrossOriginIsolated(): boolean {
   return crossOriginIsolated && typeof SharedArrayBuffer !== "undefined";
 }
 
+// Stop and cleanup the emulator
+export function stopPS2Emulator(): void {
+  if (playModule) {
+    try {
+      // Clear the disc image device file reference
+      if (playModule.discImageDevice) {
+        playModule.discImageDevice.setFile(null as unknown as File);
+      }
+      
+      // Clear the canvas
+      const canvas = document.getElementById("outputCanvas") as HTMLCanvasElement;
+      if (canvas) {
+        const ctx = canvas.getContext("2d") || canvas.getContext("webgl") || canvas.getContext("webgl2");
+        if (ctx && "clearRect" in ctx) {
+          (ctx as CanvasRenderingContext2D).clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+    } catch (e) {
+      console.warn("Error during PS2 emulator cleanup:", e);
+    }
+  }
+  
+  // Reset module state - the only reliable way to fully stop is to reload
+  playModule = null;
+  initPromise = null;
+  isInitializing = false;
+  
+  // Clear the Module global
+  if (typeof window !== "undefined") {
+    delete (window as unknown as Record<string, unknown>).Module;
+    delete (window as unknown as Record<string, unknown>).Play;
+  }
+}
+
 // Expose boot function globally for external access
 if (typeof window !== "undefined") {
   (window as unknown as Record<string, unknown>).bootPs2File = async (file: File) => {

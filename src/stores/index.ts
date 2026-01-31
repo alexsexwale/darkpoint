@@ -4,7 +4,7 @@ export { useAudioStore, AUDIO_TRACKS } from "./audioStore";
 export { useWishlistStore } from "./wishlistStore";
 export { useGamificationStore } from "./gamificationStore";
 export { useEmulatorStore } from "./emulatorStore";
-export { useRomsStore } from "./romsStore";
+export { useRomsStore, PLATFORMS, SIZE_FILTERS, type Rom, type Platform, type PlatformInfo } from "./romsStore";
 export { useAuthStore } from "./authStore";
 export { useAccountStore } from "./accountStore";
 export { useRewardsStore, getCurrentVIPPrize, VIP_WEEKLY_PRIZES, type VIPWeeklyPrize, type VIPPrizeState } from "./rewardsStore";

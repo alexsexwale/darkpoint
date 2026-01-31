@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const response = await fetch(
-      "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation/",
+      "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/",
       { next: { revalidate: 3600 } }
     );
     const html = await response.text();
@@ -45,6 +45,7 @@ export async function GET() {
           const sizeUnit = sizeMatch[2];
           fileSize = `${sizeNum} ${sizeUnit}`;
           
+          // Convert to bytes for filtering
           const multipliers: Record<string, number> = {
             "KiB": 1024,
             "MiB": 1024 * 1024,
@@ -76,7 +77,7 @@ export async function GET() {
         else if (fileName.includes("(Australia)")) region = "Australia";
 
         const id = fileName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 32);
-        const base = "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation/";
+        const base = "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/";
         const fullUrl = new URL(hrefPath, base).toString();
 
         roms.push({
@@ -88,14 +89,15 @@ export async function GET() {
           region,
           downloadUrl: fullUrl,
           imageUrl: ["/images/placeholder-game.png"],
-          console: "PlayStation 1",
-          platform: "psx",
+          console: "Sega Dreamcast",
+          platform: "dreamcast",
         });
       }
     }
 
     roms.sort((a, b) => a.title.localeCompare(b.title));
 
+    // Get unique regions for filtering
     const regions = [...new Set(roms.map(r => r.region))].sort();
 
     return NextResponse.json({
@@ -105,7 +107,7 @@ export async function GET() {
       roms,
     });
   } catch (error) {
-    console.error("Error fetching Myrient PlayStation ROMs:", error);
+    console.error("Error fetching Myrient Dreamcast ROMs:", error);
 
     return NextResponse.json(
       {
@@ -118,4 +120,3 @@ export async function GET() {
     );
   }
 }
-
