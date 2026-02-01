@@ -9,6 +9,15 @@ export const CARD_WIDTH = 70;
 export const CARD_HEIGHT = 100;
 export const CARD_RADIUS = 6;
 
+type CardSize = "xs" | "sm" | "md" | "lg";
+
+const SIZE_SCALES: Record<CardSize, number> = {
+  xs: 0.5,
+  sm: 0.7,
+  md: 1,
+  lg: 1.3,
+};
+
 interface PlayingCardProps {
   card: Card;
   onClick?: () => void;
@@ -19,6 +28,7 @@ interface PlayingCardProps {
   selected?: boolean;
   disabled?: boolean;
   small?: boolean;
+  size?: CardSize;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -36,12 +46,14 @@ export function PlayingCard({
   selected = false,
   disabled = false,
   small = false,
+  size,
   className = "",
   style,
 }: PlayingCardProps) {
   const [isDragging, setIsDragging] = useState(false);
   
-  const scale = small ? 0.7 : 1;
+  // Size prop takes precedence, then small prop, then default to md
+  const scale = size ? SIZE_SCALES[size] : (small ? 0.7 : 1);
   const width = CARD_WIDTH * scale;
   const height = CARD_HEIGHT * scale;
   

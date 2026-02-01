@@ -625,7 +625,7 @@ export function BlackjackGame() {
                         exit={{ opacity: 0, scale: 0.8 }}
                         transition={{ delay: i * 0.1 }}
                       >
-                        <PlayingCard card={card} size="md" />
+                        <PlayingCard card={card} />
                       </motion.div>
                     ))}
                   </AnimatePresence>
@@ -708,7 +708,7 @@ export function BlackjackGame() {
                             exit={{ opacity: 0, scale: 0.8 }}
                             transition={{ delay: i * 0.1 }}
                           >
-                            <PlayingCard card={card} size="md" />
+                            <PlayingCard card={card} />
                           </motion.div>
                         ))}
                       </AnimatePresence>
