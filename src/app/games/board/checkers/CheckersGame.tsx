@@ -785,20 +785,31 @@ export function CheckersGame() {
                   {gameState.status === "lost" && "The AI got the better of you this time. Try again!"}
                   {gameState.status === "draw" && "Neither player could make progress. Good game!"}
                 </p>
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1" 
-                    onClick={() => setGameState(prev => ({ ...prev, status: "idle" }))}
+                <p className="text-sm text-[var(--muted-foreground)] mb-4">What would you like to do?</p>
+                <div className="flex flex-col gap-3">
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={() => {
+                      setGameState(prev => ({ ...prev, status: "idle" }));
+                      setShowSetupModal(true);
+                    }}
                   >
-                    Menu
+                    Change Difficulty
                   </Button>
-                  <Button 
-                    variant="primary" 
-                    className="flex-1" 
+                  <Button
+                    variant="outline"
+                    className="w-full"
                     onClick={() => startGame(gameState.difficulty)}
                   >
                     Play Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setGameState(prev => ({ ...prev, status: "idle" }))}
+                  >
+                    Main Menu
                   </Button>
                 </div>
               </motion.div>

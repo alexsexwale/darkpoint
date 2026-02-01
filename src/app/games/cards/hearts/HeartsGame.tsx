@@ -944,12 +944,31 @@ export function HeartsGame() {
                     ))}
                 </div>
 
-                <div className="flex gap-3 justify-center">
-                  <Button variant="outline" onClick={() => setGameState(createInitialState())}>
-                    Back to Menu
+                <p className="text-sm text-[var(--muted-foreground)] mb-4">What would you like to do?</p>
+                <div className="flex flex-col gap-3">
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={() => {
+                      setGameState(prev => ({ ...prev, phase: "idle" }));
+                      setShowSetupModal(true);
+                    }}
+                  >
+                    Change Difficulty
                   </Button>
-                  <Button variant="primary" onClick={() => startGame(gameState.mode)}>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => startGame(gameState.mode)}
+                  >
                     Play Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setGameState(createInitialState())}
+                  >
+                    Main Menu
                   </Button>
                 </div>
               </motion.div>

@@ -678,12 +678,31 @@ export function GoFishGame() {
                       </div>
                     ))}
                 </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1" onClick={() => setGameState(createInitialState())}>
-                    Menu
+                <p className="text-sm text-[var(--muted-foreground)] mb-4">What would you like to do?</p>
+                <div className="flex flex-col gap-3">
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={() => {
+                      setGameState(prev => ({ ...prev, status: "idle" }));
+                      setShowSetupModal(true);
+                    }}
+                  >
+                    Change Settings
                   </Button>
-                  <Button variant="primary" className="flex-1" onClick={() => startGame(gameState.players.length)}>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => startGame(gameState.players.length)}
+                  >
                     Play Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setGameState(createInitialState())}
+                  >
+                    Main Menu
                   </Button>
                 </div>
               </motion.div>

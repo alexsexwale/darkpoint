@@ -796,20 +796,15 @@ export function BlackjackGame() {
               )}
 
               {/* Result Actions */}
-              {gameState.phase === "result" && (
+              {gameState.phase === "result" && gameState.chips >= MIN_BET && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="flex justify-center gap-3"
                 >
-                  <Button variant="primary" onClick={newRound} disabled={gameState.chips < MIN_BET}>
-                    {gameState.chips >= MIN_BET ? "Play Again" : "Game Over"}
+                  <Button variant="primary" onClick={newRound}>
+                    Play Again
                   </Button>
-                  {gameState.chips < MIN_BET && (
-                    <Button variant="outline" onClick={() => startGame(gameState.difficulty)}>
-                      New Game ($1000)
-                    </Button>
-                  )}
                 </motion.div>
               )}
             </div>
@@ -865,6 +860,63 @@ export function BlackjackGame() {
               <Button variant="outline" className="w-full" onClick={() => setShowSetupModal(false)}>
                 Cancel
               </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Game Over Modal (out of chips) */}
+      <AnimatePresence>
+        {gameState.phase === "result" && gameState.chips < MIN_BET && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-8 max-w-md w-full text-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <motion.div
+                className="text-6xl mb-4"
+                animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 0.5, repeat: 3 }}
+              >
+                😔
+              </motion.div>
+              <h2 className="text-2xl font-heading mb-2">Game Over!</h2>
+              <p className="text-[var(--muted-foreground)] mb-6">You&apos;re out of chips.</p>
+              <p className="text-sm text-[var(--muted-foreground)] mb-4">What would you like to do?</p>
+              <div className="flex flex-col gap-3">
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => {
+                    setGameState(prev => ({ ...prev, phase: "idle" }));
+                    setShowSetupModal(true);
+                  }}
+                >
+                  Change Difficulty
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => startGame(gameState.difficulty)}
+                >
+                  Play Again
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setGameState(prev => ({ ...prev, phase: "idle" }))}
+                >
+                  Main Menu
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}

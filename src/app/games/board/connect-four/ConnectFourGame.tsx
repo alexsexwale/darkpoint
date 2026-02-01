@@ -607,20 +607,31 @@ export function ConnectFourGame() {
                   {gameState.status === "lost" && "The AI connected four. Try again!"}
                   {gameState.status === "draw" && "The board is full with no winner!"}
                 </p>
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setGameState(prev => ({ ...prev, status: "idle" }))}
-                  >
-                    Menu
-                  </Button>
+                <p className="text-sm text-[var(--muted-foreground)] mb-4">What would you like to do?</p>
+                <div className="flex flex-col gap-3">
                   <Button
                     variant="primary"
-                    className="flex-1"
+                    className="w-full"
+                    onClick={() => {
+                      setGameState(prev => ({ ...prev, status: "idle" }));
+                      setShowSetupModal(true);
+                    }}
+                  >
+                    Change Difficulty
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
                     onClick={() => startGame(gameState.difficulty)}
                   >
                     Play Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setGameState(prev => ({ ...prev, status: "idle" }))}
+                  >
+                    Main Menu
                   </Button>
                 </div>
               </motion.div>
