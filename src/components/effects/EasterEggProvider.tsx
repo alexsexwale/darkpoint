@@ -202,7 +202,7 @@ export function EasterEggProvider({ children }: EasterEggProviderProps) {
           addXP(75, "bonus", "Hidden Arcade Discovery!");
           saveDiscoveredEgg(type);
         }
-        router.push("/arcade");
+        router.push("/vip/arcade");
         break;
 
       case "vip_portal":

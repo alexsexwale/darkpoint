@@ -17,7 +17,7 @@ export function Footer() {
     setSecretClicks(newCount);
     if (newCount >= 7) {
       setSecretClicks(0);
-      router.push("/arcade");
+      router.push("/vip/arcade");
     }
   };
 

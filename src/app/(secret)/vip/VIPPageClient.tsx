@@ -8,6 +8,7 @@ import { Button } from "@/components/ui";
 import { BadgeCollection, type BadgeType } from "@/components/gamification";
 import { ParticleEmitter } from "@/components/effects";
 import { useConfettiBurst } from "@/components/effects/ParticleEmitter";
+import { useEasterEgg } from "@/components/effects";
 import { useGamificationStore, useAuthStore, useRewardsStore, getCurrentVIPPrize, type VIPWeeklyPrize } from "@/stores";
 import { useBadgeSound } from "@/hooks";
 import { getHighestVIPTier, VIP_TIERS, type VIPTier } from "@/types/vip";
@@ -127,6 +128,7 @@ const VIP_PERKS: VIPPerk[] = [
 
 export function VIPPageClient() {
   const router = useRouter();
+  const { triggerEasterEgg } = useEasterEgg();
   const { isAuthenticated, isInitialized: authInitialized } = useAuthStore();
   const { userBadges, hasAnyBadge, userProfile, isInitialized: gamificationInitialized } = useGamificationStore();
   const { 
@@ -753,9 +755,10 @@ export function VIPPageClient() {
                 </p>
               </div>
               
-              <Link 
-                href="/arcade"
-                className="flex items-start gap-3 p-3 bg-white/5 rounded-lg group cursor-pointer hover:bg-purple-500/20 hover:border-purple-500/30 border border-transparent transition-all"
+              <button
+                type="button"
+                onClick={() => triggerEasterEgg("hidden_arcade")}
+                className="flex items-start gap-3 p-3 bg-white/5 rounded-lg group cursor-pointer hover:bg-purple-500/20 hover:border-purple-500/30 border border-transparent transition-all w-full text-left"
               >
                 <span className="text-amber-400">💡</span>
                 <div className="flex-1">
@@ -767,7 +770,7 @@ export function VIPPageClient() {
                     → Click to play! 🕹️
                   </span>
                 </div>
-              </Link>
+              </button>
             </div>
 
             <div className="mt-6 pt-6 border-t border-white/10 text-center">
