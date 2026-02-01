@@ -7,7 +7,6 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://darkpoint.c
 export const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Store", href: "/store" },
-  { label: "News", href: "/news" },
   { label: "Cart", href: "/cart" },
   { label: "Account", href: "/account" },
 ] as const;

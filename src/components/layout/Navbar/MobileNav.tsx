@@ -71,12 +71,6 @@ const baseNavItems: NavItemWithVIP[] = [
       { id: "vip-lounge", label: "VIP Lounge", href: "/vip", icon: "👑", vipOnly: true },
     ],
   },
-  { 
-    id: "news",
-    label: "News", 
-    href: "/news", 
-    icon: "📰" 
-  },
 ];
 
 const accountItems: NavItem[] = [

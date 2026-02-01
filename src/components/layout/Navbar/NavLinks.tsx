@@ -51,7 +51,6 @@ const baseNavLinks: NavLink[] = [
       { label: "✨ VIP Lounge", href: "/vip", vipOnly: true },
     ],
   },
-  { label: "News", href: "/news" },
 ];
 
 interface NavLinksProps {
