@@ -159,7 +159,7 @@ export function Footer() {
             <h3 className="font-heading text-sm uppercase tracking-wider text-white mb-4">Connect</h3>
             <ul className="space-y-2">
               <li>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
+                <a href="https://x.com/darkpointza" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
                   Twitter / X
                 </a>
               </li>
