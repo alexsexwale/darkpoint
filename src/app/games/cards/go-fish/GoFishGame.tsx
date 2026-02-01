@@ -28,6 +28,13 @@ interface GoFishPlayer extends Player {
   books: number[][]; // Arrays of 4 cards with same rank
 }
 
+interface TurnLogEntry {
+  asker: string;
+  target: string;
+  rank: string;
+  result: string;
+}
+
 interface GoFishState {
   players: GoFishPlayer[];
   deck: Card[];
@@ -35,6 +42,13 @@ interface GoFishState {
   status: GameStatus;
   message: string;
   lastAction: string;
+  turnLog: TurnLogEntry[];
+}
+
+/** When AI asked human for cards and human had none – human must click "Go Fish" to draw */
+interface PendingHumanGoFish {
+  askerIndex: number;
+  askedRank: number;
 }
 
 const createInitialState = (): GoFishState => ({
@@ -44,6 +58,7 @@ const createInitialState = (): GoFishState => ({
   status: "idle",
   message: "",
   lastAction: "",
+  turnLog: [],
 });
 
 // AI helper: choose which rank to ask for
@@ -84,6 +99,7 @@ export function GoFishGame() {
   const [selectedTarget, setSelectedTarget] = useState<number | null>(null);
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showRankPicker, setShowRankPicker] = useState(false);
+  const [pendingHumanGoFish, setPendingHumanGoFish] = useState<PendingHumanGoFish | null>(null);
   const aiThinkingRef = useRef(false);
 
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
@@ -182,7 +198,8 @@ export function GoFishGame() {
       !currentPlayer ||
       currentPlayer.type !== "ai" ||
       aiThinkingRef.current ||
-      currentPlayer.hand.length === 0
+      currentPlayer.hand.length === 0 ||
+      pendingHumanGoFish !== null // waiting for human to click "Go Fish"
     ) {
       return;
     }
@@ -200,17 +217,19 @@ export function GoFishGame() {
 
       const rank = aiChooseRank(currentPlayer.hand);
       const target = gameState.players[targetIndex];
-      
+      const rankLabel = RANK_DISPLAY[rank as Rank];
+
       setGameState(prev => ({
         ...prev,
-        message: `${currentPlayer.name} asks ${target.name} for ${RANK_DISPLAY[rank as Rank]}s...`,
+        message: `${currentPlayer.name} asks ${target.name} for ${rankLabel}s...`,
+        turnLog: [...prev.turnLog.slice(-19), { asker: currentPlayer.name, target: target.name, rank: rankLabel, result: "..." }],
       }));
 
       await delay(1500);
 
       // Check if target has the rank
       const matchingCards = target.hand.filter(c => c.rank === rank);
-      
+
       if (matchingCards.length > 0) {
         // Got cards!
         setGameState(prev => {
@@ -223,60 +242,78 @@ export function GoFishGame() {
             }
             return p;
           });
-
+          const result = `${currentPlayer.name} got ${matchingCards.length} ${rankLabel}${matchingCards.length > 1 ? "s" : ""} from ${target.name}`;
           return {
             ...prev,
             players: newPlayers,
-            lastAction: `${currentPlayer.name} got ${matchingCards.length} ${RANK_DISPLAY[rank as Rank]}${matchingCards.length > 1 ? 's' : ''} from ${target.name}!`,
+            lastAction: result + "!",
+            turnLog: prev.turnLog.length
+              ? [...prev.turnLog.slice(0, -1), { ...prev.turnLog[prev.turnLog.length - 1], result }]
+              : prev.turnLog,
           };
         });
 
         await delay(1000);
         checkForBooks(gameState.currentPlayerIndex);
-        
+
         // AI gets another turn
         aiThinkingRef.current = false;
       } else {
-        // Go Fish!
+        // Go Fish! – person who was asked draws (in standard rules)
         setGameState(prev => ({
           ...prev,
           lastAction: `${target.name} says "Go Fish!"`,
+          turnLog: prev.turnLog.length
+            ? [...prev.turnLog.slice(0, -1), { ...prev.turnLog[prev.turnLog.length - 1], result: "Go Fish!" }]
+            : prev.turnLog,
         }));
 
         await delay(1000);
 
+        // When AI asked the human and human has no cards: wait for human to click "Go Fish"
+        if (target.type === "human") {
+          setPendingHumanGoFish({ askerIndex: gameState.currentPlayerIndex, askedRank: rank });
+          aiThinkingRef.current = false;
+          return;
+        }
+
+        // When AI asked another AI: that AI (target) draws
         if (gameState.deck.length > 0) {
           const { drawn, remaining } = drawCards(gameState.deck, 1);
           const drawnCard = drawn[0];
 
           setGameState(prev => {
             const newPlayers = prev.players.map((p, i) =>
-              i === gameState.currentPlayerIndex ? { ...p, hand: [...p.hand, drawnCard] } : p
+              i === targetIndex ? { ...p, hand: [...p.hand, drawnCard] } : p
             );
-
             const gotAskedRank = drawnCard.rank === rank;
-
+            const result = gotAskedRank
+              ? `${target.name} drew a ${rankLabel}!`
+              : `${target.name} drew a card.`;
             return {
               ...prev,
               players: newPlayers,
               deck: remaining,
-              lastAction: gotAskedRank 
-                ? `${currentPlayer.name} drew a ${RANK_DISPLAY[rank as Rank]}!`
-                : `${currentPlayer.name} drew a card.`,
+              lastAction: result,
             };
           });
 
           await delay(500);
-          checkForBooks(gameState.currentPlayerIndex);
+          checkForBooks(targetIndex);
 
-          // If drew the asked rank, go again
+          // If target drew the asked rank, target gets another turn
           if (drawn[0].rank === rank) {
+            setGameState(prev => ({
+              ...prev,
+              currentPlayerIndex: targetIndex,
+              message: "",
+            }));
             aiThinkingRef.current = false;
             return;
           }
         }
 
-        // Next player's turn
+        // Next player's turn (after asker)
         setGameState(prev => ({
           ...prev,
           currentPlayerIndex: (prev.currentPlayerIndex + 1) % prev.players.length,
@@ -288,7 +325,7 @@ export function GoFishGame() {
     };
 
     playAITurn();
-  }, [gameState.currentPlayerIndex, gameState.status, currentPlayer, checkForBooks]);
+  }, [gameState.currentPlayerIndex, gameState.status, currentPlayer, checkForBooks, gameState.players, gameState.deck, pendingHumanGoFish]);
 
   // Start game
   const startGame = useCallback((numPlayers: number) => {
@@ -316,8 +353,10 @@ export function GoFishGame() {
       status: "playing",
       message: "Your turn! Select a rank and ask an opponent.",
       lastAction: "",
+      turnLog: [],
     });
     setShowSetupModal(false);
+    setPendingHumanGoFish(null);
   }, []);
 
   // Human asks for a rank
@@ -326,10 +365,12 @@ export function GoFishGame() {
 
     const target = gameState.players[selectedTarget];
     const matchingCards = target.hand.filter(c => c.rank === selectedRank);
+    const rankLabel = RANK_DISPLAY[selectedRank as Rank];
 
     setGameState(prev => ({
       ...prev,
-      message: `You ask ${target.name} for ${RANK_DISPLAY[selectedRank as Rank]}s...`,
+      message: `You ask ${target.name} for ${rankLabel}s...`,
+      turnLog: [...prev.turnLog, { asker: "You", target: target.name, rank: rankLabel, result: "..." }],
     }));
 
     await delay(1000);
@@ -346,12 +387,15 @@ export function GoFishGame() {
           }
           return p;
         });
-
+        const result = `You got ${matchingCards.length} ${rankLabel}${matchingCards.length > 1 ? "s" : ""}!`;
         return {
           ...prev,
           players: newPlayers,
-          lastAction: `You got ${matchingCards.length} ${RANK_DISPLAY[selectedRank as Rank]}${matchingCards.length > 1 ? 's' : ''}!`,
+          lastAction: result,
           message: "You get another turn!",
+          turnLog: prev.turnLog.length
+            ? [...prev.turnLog.slice(0, -1), { ...prev.turnLog[prev.turnLog.length - 1], result }]
+            : prev.turnLog,
         };
       });
 
@@ -361,6 +405,9 @@ export function GoFishGame() {
       setGameState(prev => ({
         ...prev,
         lastAction: `${target.name} says "Go Fish!"`,
+        turnLog: prev.turnLog.length
+          ? [...prev.turnLog.slice(0, -1), { ...prev.turnLog[prev.turnLog.length - 1], result: "Go Fish!" }]
+          : prev.turnLog,
       }));
 
       await delay(1000);
@@ -382,8 +429,8 @@ export function GoFishGame() {
             deck: remaining,
             lastAction: `You drew a ${RANK_DISPLAY[drawnCard.rank]}!`,
             message: gotAskedRank ? "You drew what you asked for! Go again!" : "",
-            currentPlayerIndex: gotAskedRank 
-              ? prev.currentPlayerIndex 
+            currentPlayerIndex: gotAskedRank
+              ? prev.currentPlayerIndex
               : (prev.currentPlayerIndex + 1) % prev.players.length,
           };
         });
@@ -402,6 +449,38 @@ export function GoFishGame() {
     setSelectedTarget(null);
     setShowRankPicker(false);
   }, [selectedRank, selectedTarget, gameState, checkForBooks]);
+
+  // Human clicks "Go Fish" when an AI asked them and they had no cards
+  const handleHumanGoFish = useCallback(() => {
+    if (!pendingHumanGoFish || gameState.deck.length === 0) return;
+
+    const humanIndex = gameState.players.findIndex(p => p.type === "human");
+    if (humanIndex === -1) return;
+
+    const { drawn, remaining } = drawCards(gameState.deck, 1);
+    const drawnCard = drawn[0];
+    const rankLabel = RANK_DISPLAY[pendingHumanGoFish.askedRank as Rank];
+
+    setGameState(prev => {
+      const newPlayers = prev.players.map((p, i) =>
+        i === humanIndex ? { ...p, hand: [...p.hand, drawnCard] } : p
+      );
+      const result = drawnCard.rank === pendingHumanGoFish.askedRank
+        ? `You drew a ${rankLabel}!`
+        : "You drew a card.";
+      return {
+        ...prev,
+        players: newPlayers,
+        deck: remaining,
+        lastAction: result,
+        message: "",
+        currentPlayerIndex: (pendingHumanGoFish.askerIndex + 1) % prev.players.length,
+      };
+    });
+
+    setPendingHumanGoFish(null);
+    checkForBooks(humanIndex);
+  }, [pendingHumanGoFish, gameState.deck, gameState.players, checkForBooks]);
 
   // Handle hand empty
   useEffect(() => {
@@ -484,6 +563,28 @@ export function GoFishGame() {
                 })}
               </div>
 
+              {/* Turn log – what each player asked for */}
+              {gameState.turnLog.length > 0 && (
+                <div className="mb-4 p-3 bg-[var(--color-dark-3)]/30 rounded-lg border border-[var(--color-dark-4)] max-h-32 overflow-y-auto">
+                  <div className="text-xs font-medium text-[var(--muted-foreground)] mb-2">Turn history</div>
+                  <ul className="text-sm space-y-1">
+                    {gameState.turnLog.map((entry, i) => (
+                      <li key={i} className="flex flex-wrap gap-x-1 gap-y-0.5 items-baseline">
+                        <span className="text-white/90">{entry.asker}</span>
+                        <span className="text-[var(--muted-foreground)]">asked</span>
+                        <span className="text-white/90">{entry.target}</span>
+                        <span className="text-[var(--muted-foreground)]">for</span>
+                        <span className="font-medium text-[var(--color-main-1)]">{entry.rank}s</span>
+                        <span className="text-[var(--muted-foreground)]">→</span>
+                        <span className={entry.result === "Go Fish!" ? "text-amber-400" : "text-green-400/90"}>
+                          {entry.result}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Center - Deck and Messages */}
               <div className="flex justify-center items-center gap-8 mb-6">
                 <div className="text-center">
@@ -530,8 +631,26 @@ export function GoFishGame() {
                     ))}
                   </div>
 
-                  {/* Action buttons */}
-                  {isHumanTurn && humanPlayer.hand.length > 0 && (
+                  {/* Go Fish button – when an AI asked you for cards and you had none */}
+                  {pendingHumanGoFish && (
+                    <div className="flex flex-col items-center gap-3 mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                      <p className="text-sm text-amber-200 text-center">
+                        You don&apos;t have any {RANK_DISPLAY[pendingHumanGoFish.askedRank as Rank]}s. Draw a card!
+                      </p>
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        onClick={handleHumanGoFish}
+                        disabled={gameState.deck.length === 0}
+                        className="text-lg px-8"
+                      >
+                        🐟 Go Fish
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Action buttons – only when it's your turn and no pending Go Fish */}
+                  {isHumanTurn && humanPlayer.hand.length > 0 && !pendingHumanGoFish && (
                     <div className="flex justify-center gap-3">
                       {selectedTarget !== null ? (
                         <Button variant="primary" onClick={() => setShowRankPicker(true)}>

@@ -638,7 +638,7 @@ export function CrazyEightsGame() {
                     variant="primary"
                     className="w-full"
                     onClick={() => {
-                      setGameState(prev => ({ ...prev, status: "idle", winner: undefined }));
+                      setGameState(prev => ({ ...prev, status: "idle", winner: null }));
                       setShowSetupModal(true);
                     }}
                   >
