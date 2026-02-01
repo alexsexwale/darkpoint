@@ -159,24 +159,24 @@ export function Footer() {
             <h3 className="font-heading text-sm uppercase tracking-wider text-white mb-4">Connect</h3>
             <ul className="space-y-2">
               <li>
+                <a href="https://facebook.com/darkpointza" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
+                  Facebook
+                </a>
+              </li>
+              <li>
+                <a href="https://www.tiktok.com/@darkpointza" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
+                  TikTok
+                </a>
+              </li>
+              <li>
                 <a href="https://x.com/darkpointza" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
                   Twitter / X
                 </a>
               </li>
               <li>
-                <a href="https://discord.gg" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
-                  Discord
-                </a>
-              </li>
-              <li>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
+                <a href="https://instagram.com/darkpointza" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
                   Instagram
                 </a>
-              </li>
-              <li>
-                <Link href="/newsletter" className="text-white/50 hover:text-[var(--color-main-1)] transition-colors text-sm cursor-pointer">
-                  Newsletter
-                </Link>
               </li>
             </ul>
           </div>
