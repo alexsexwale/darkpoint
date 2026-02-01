@@ -146,20 +146,23 @@ export function TicTacToeGame() {
   });
 
   const [showSetupModal, setShowSetupModal] = useState(false);
+  const [humanGoesFirst, setHumanGoesFirst] = useState(true); // Alternate after each game
   const aiThinkingRef = useRef(false);
 
-  // Start game
+  // Start game - alternate who goes first each time
   const startGame = useCallback((difficulty: Difficulty) => {
+    const firstPlayer: Player = humanGoesFirst ? "X" : "O";
+    setHumanGoesFirst(prev => !prev); // Flip for next game
     setGameState({
       board: createEmptyBoard(),
-      currentPlayer: "X",
+      currentPlayer: firstPlayer,
       status: "playing",
       difficulty,
       winningLine: [],
       moveHistory: [],
     });
     setShowSetupModal(false);
-  }, []);
+  }, [humanGoesFirst]);
 
   // Handle cell click
   const handleCellClick = useCallback((index: number) => {
@@ -338,6 +341,11 @@ export function TicTacToeGame() {
               {/* Info */}
               <div className="mt-6 text-center text-sm text-[var(--muted-foreground)]">
                 <p>You are X, AI is O</p>
+                {gameState.moveHistory.length === 0 && (
+                  <p className="mt-1 text-xs opacity-80">
+                    {gameState.currentPlayer === "X" ? "You go first this game" : "AI goes first this game"}
+                  </p>
+                )}
               </div>
             </>
           )}
