@@ -33,13 +33,13 @@ const GAME_CATEGORIES: GameCategory[] = [
   {
     id: "casino",
     name: "Casino Games",
-    description: "Test your luck and skill! Play Blackjack and Texas Hold'em Poker against AI opponents.",
+    description: "Test your luck and skill! Play Blackjack, Poker, Roulette, Slots, and more against AI opponents.",
     icon: "🎰",
     path: "/games/casino",
     color: "from-emerald-500 to-emerald-700",
     gradient: "from-emerald-500/20 to-emerald-700/20",
-    features: ["Blackjack", "Texas Hold'em", "Virtual Chips", "4 AI Levels"],
-    gameCount: "2 Games",
+    features: ["Blackjack", "Poker", "Roulette", "Slots", "+2 more"],
+    gameCount: "6 Games",
     highlight: "NEW",
   },
   {
@@ -282,7 +282,7 @@ export function GamesPageClient() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { value: "30+", label: "Retro Consoles", icon: "🎮" },
-              { value: "14+", label: "Classic Games", icon: "🎯" },
+              { value: "18+", label: "Classic Games", icon: "🎯" },
               { value: "4", label: "AI Difficulty Levels", icon: "🤖" },
               { value: "Free", label: "To Play", icon: "✨" },
             ].map((stat, index) => (
