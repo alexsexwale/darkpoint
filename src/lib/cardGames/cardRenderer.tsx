@@ -20,7 +20,7 @@ const SIZE_SCALES: Record<CardSize, number> = {
 
 interface PlayingCardProps {
   card: Card;
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent) => void;
   onDoubleClick?: () => void;
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
@@ -91,7 +91,7 @@ export function PlayingCard({
           y: selected ? -8 : 0,
         }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        onClick={disabled ? undefined : onClick}
+        onClick={disabled ? undefined : (e) => onClick?.(e)}
         onDoubleClick={disabled ? undefined : onDoubleClick}
       >
       {/* Card container with 3D perspective */}

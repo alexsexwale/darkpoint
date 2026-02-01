@@ -43,6 +43,14 @@ interface DragData {
   cardIndex?: number;
 }
 
+// Selection state for mobile tap-to-move
+interface SelectionData {
+  cards: Card[];
+  source: "waste" | "foundation" | "tableau";
+  sourceIndex?: number;
+  cardIndex?: number;
+}
+
 // Initial empty state
 const createInitialState = (): SolitaireState => ({
   stock: [],
@@ -66,6 +74,25 @@ export function SolitaireGame() {
   const [dragData, setDragData] = useState<DragData | null>(null);
   const [showWinModal, setShowWinModal] = useState(false);
   const [autoCompleting, setAutoCompleting] = useState(false);
+  const [selection, setSelection] = useState<SelectionData | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile device (portrait, landscape phone, or touch device)
+  useEffect(() => {
+    const checkMobile = () => {
+      const narrow = window.matchMedia("(max-width: 768px)").matches;
+      const landscapePhone = window.matchMedia("(max-height: 500px)").matches;
+      const touchDevice = "ontouchstart" in window;
+      setIsMobile(narrow || landscapePhone || touchDevice);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    window.addEventListener("orientationchange", checkMobile);
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      window.removeEventListener("orientationchange", checkMobile);
+    };
+  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -345,7 +372,7 @@ export function SolitaireGame() {
     }
   }, [gameState.tableaus, moveToFoundation]);
 
-  // Drag handlers
+  // Drag handlers (desktop)
   const handleDragStart = (
     cards: Card[],
     source: "waste" | "foundation" | "tableau",
@@ -382,6 +409,68 @@ export function SolitaireGame() {
     setDragData(null);
   };
 
+  // Mobile tap-to-select handlers
+  const handleCardSelect = (
+    cards: Card[],
+    source: "waste" | "foundation" | "tableau",
+    sourceIndex?: number,
+    cardIndex?: number
+  ) => {
+    if (!isMobile) return;
+    
+    // If tapping the same card, deselect
+    if (selection && selection.cards[0]?.id === cards[0]?.id) {
+      setSelection(null);
+      return;
+    }
+    
+    setSelection({ cards, source, sourceIndex, cardIndex });
+  };
+
+  const handleTableauTap = (targetIndex: number) => {
+    if (!isMobile || !selection) return;
+    
+    const moved = moveToTableau(
+      selection.cards,
+      targetIndex,
+      selection.source,
+      selection.sourceIndex,
+      selection.cardIndex
+    );
+    
+    if (moved) {
+      setSelection(null);
+    }
+  };
+
+  const handleFoundationTap = (suit: Suit) => {
+    if (!isMobile || !selection || selection.cards.length !== 1) return;
+    
+    const card = selection.cards[0];
+    if (card.suit !== suit) return;
+    
+    let moved = false;
+    if (selection.source === "waste") {
+      moved = moveToFoundation(card, true);
+    } else if (selection.source === "tableau" && selection.sourceIndex !== undefined && selection.cardIndex !== undefined) {
+      moved = moveToFoundation(card, false, selection.sourceIndex, selection.cardIndex);
+    }
+    
+    if (moved) {
+      setSelection(null);
+    }
+  };
+
+  // Clear selection when tapping empty area
+  const clearSelection = () => {
+    if (selection) setSelection(null);
+  };
+
+  // Check if a card is selected
+  const isCardSelected = (card: Card) => {
+    return selection?.cards.some(c => c.id === card.id) || false;
+  };
+
   // Check if all face-down cards are revealed (for auto-complete hint)
   const canAutoComplete = gameState.status === "playing" && 
     gameState.tableaus.every(t => t.every(c => c.faceUp)) &&
@@ -391,66 +480,84 @@ export function SolitaireGame() {
     <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8">
       <div className="container max-w-5xl">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/games/cards"
-              className="text-[var(--muted-foreground)] hover:text-white transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-heading">Solitaire</h1>
-              <p className="text-sm text-[var(--muted-foreground)]">Klondike</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Stats */}
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-[var(--muted-foreground)]">Time:</span>
-                <span className="font-mono">{formatTime(elapsedTime)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[var(--muted-foreground)]">Moves:</span>
-                <span className="font-mono">{gameState.moves}</span>
+        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/games/cards"
+                className="text-[var(--muted-foreground)] hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-heading">Solitaire</h1>
+                <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">Klondike</p>
               </div>
             </div>
 
-            {/* Controls */}
+            {/* Controls - Always visible */}
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={undo}
                 disabled={history.length === 0 || gameState.status !== "playing"}
+                className="text-xs sm:text-sm px-2 sm:px-3"
               >
                 Undo
               </Button>
-              <Button variant="primary" size="sm" onClick={dealNewGame}>
+              <Button variant="primary" size="sm" onClick={dealNewGame} className="text-xs sm:text-sm px-2 sm:px-3">
                 New Game
               </Button>
             </div>
           </div>
+
+          {/* Stats Row */}
+          {gameState.status === "playing" && (
+            <div className="flex items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <span className="text-[var(--muted-foreground)]">Time:</span>
+                <span className="font-mono">{formatTime(elapsedTime)}</span>
+              </div>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <span className="text-[var(--muted-foreground)]">Moves:</span>
+                <span className="font-mono">{gameState.moves}</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Game Board */}
-        <div className="bg-[var(--color-dark-2)]/50 backdrop-blur border border-[var(--color-dark-3)] rounded-xl p-6">
+        {/* Mobile Selection Hint */}
+        {isMobile && selection && (
+          <div className="bg-[var(--color-main-1)]/20 border border-[var(--color-main-1)] rounded-lg p-3 mb-4 text-center">
+            <p className="text-sm text-[var(--color-main-1)]">
+              Card selected! Tap a destination to move, or tap the card again to deselect.
+            </p>
+          </div>
+        )}
+
+        {/* Game Board - z-10 so cards stay above fixed side elements in landscape */}
+        <div 
+          className="relative z-10 bg-[var(--color-dark-2)]/50 backdrop-blur border border-[var(--color-dark-3)] rounded-xl p-3 sm:p-6 touch-manipulation"
+          onClick={clearSelection}
+          style={{ touchAction: "manipulation" }}
+        >
           {gameState.status === "idle" ? (
             // Start screen
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center py-16"
+              className="text-center py-8 sm:py-16"
             >
-              <div className="text-6xl mb-6">🃏</div>
-              <h2 className="text-2xl font-heading mb-4">Ready to Play?</h2>
-              <p className="text-[var(--muted-foreground)] mb-6 max-w-md mx-auto">
-                Click the button below to deal a new game of Solitaire. 
-                Stack cards from King to Ace in alternating colors!
+              <div className="text-5xl sm:text-6xl mb-4 sm:mb-6">🃏</div>
+              <h2 className="text-xl sm:text-2xl font-heading mb-3 sm:mb-4">Ready to Play?</h2>
+              <p className="text-[var(--muted-foreground)] mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base px-4">
+                {isMobile 
+                  ? "Tap cards to select them, then tap a destination to move. Double-tap to send cards to the foundation automatically!"
+                  : "Drag cards to move them, or double-click to send them to the foundation automatically. Stack cards from King to Ace in alternating colors!"
+                }
               </p>
               <Button variant="primary" size="lg" onClick={dealNewGame}>
                 Deal Cards
@@ -459,114 +566,190 @@ export function SolitaireGame() {
           ) : (
             <>
               {/* Top row: Stock, Waste, and Foundations */}
-              <div className="flex justify-between mb-8">
+              <div className="flex justify-between items-start mb-4 sm:mb-8">
                 {/* Stock and Waste */}
-                <div className="flex gap-4">
-                  <DeckPile
-                    cardsRemaining={gameState.stock.length}
-                    onClick={drawFromStock}
-                  />
+                <div className="flex gap-1 sm:gap-4 shrink-0">
+                  <div style={{ width: CARD_WIDTH * (isMobile ? 0.55 : 1), height: CARD_HEIGHT * (isMobile ? 0.55 : 1) }}>
+                    <div className="transform scale-[0.55] sm:scale-100 origin-top-left">
+                      <DeckPile
+                        cardsRemaining={gameState.stock.length}
+                        onClick={drawFromStock}
+                      />
+                    </div>
+                  </div>
                   <div 
-                    style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
+                    style={{ width: CARD_WIDTH * (isMobile ? 0.55 : 1), height: CARD_HEIGHT * (isMobile ? 0.55 : 1) }}
                     className="relative"
                   >
                     {gameState.waste.length > 0 ? (
-                      <PlayingCard
-                        card={gameState.waste[0]}
-                        draggable
-                        onDragStart={() => handleDragStart([gameState.waste[0]], "waste")}
-                        onDoubleClick={() => handleCardDoubleClick(gameState.waste[0], "waste")}
-                      />
+                      <div className="transform scale-[0.55] sm:scale-100 origin-top-left">
+                        <PlayingCard
+                          card={gameState.waste[0]}
+                          draggable={!isMobile}
+                          onDragStart={() => handleDragStart([gameState.waste[0]], "waste")}
+                          onDoubleClick={() => !isMobile && handleCardDoubleClick(gameState.waste[0], "waste")}
+                          onClick={(e) => {
+                            e?.stopPropagation?.();
+                            if (isMobile) {
+                              if (selection?.source === "waste") {
+                                // Try to auto-move to foundation on second tap
+                                moveToFoundation(gameState.waste[0], true);
+                                setSelection(null);
+                              } else {
+                                handleCardSelect([gameState.waste[0]], "waste");
+                              }
+                            }
+                          }}
+                          selected={isCardSelected(gameState.waste[0])}
+                        />
+                      </div>
                     ) : (
-                      <CardSlot />
+                      <div className="transform scale-[0.55] sm:scale-100 origin-top-left">
+                        <CardSlot />
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* Foundations */}
-                <div className="flex gap-3">
+                <div className="flex gap-0.5 sm:gap-3 shrink-0">
                   {SUITS.map(suit => (
                     <div
                       key={suit}
+                      style={{ width: CARD_WIDTH * (isMobile ? 0.55 : 1), height: CARD_HEIGHT * (isMobile ? 0.55 : 1) }}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => handleFoundationDrop(suit)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFoundationTap(suit);
+                      }}
                     >
-                      {gameState.foundations[suit].length > 0 ? (
-                        <PlayingCard
-                          card={gameState.foundations[suit][gameState.foundations[suit].length - 1]}
-                          draggable
-                          onDragStart={() => {
-                            const topCard = gameState.foundations[suit][gameState.foundations[suit].length - 1];
-                            handleDragStart([topCard], "foundation");
-                          }}
-                        />
-                      ) : (
-                        <CardSlot suit={suit} />
-                      )}
+                      <div className="transform scale-[0.55] sm:scale-100 origin-top-left">
+                        {gameState.foundations[suit].length > 0 ? (
+                          <PlayingCard
+                            card={gameState.foundations[suit][gameState.foundations[suit].length - 1]}
+                            draggable={!isMobile}
+                            onDragStart={() => {
+                              const topCard = gameState.foundations[suit][gameState.foundations[suit].length - 1];
+                              handleDragStart([topCard], "foundation");
+                            }}
+                          />
+                        ) : (
+                          <CardSlot suit={suit} />
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Tableaus */}
-              <div className="flex justify-center gap-4">
-                {gameState.tableaus.map((tableau, tableauIndex) => (
-                  <div
-                    key={tableauIndex}
-                    className="relative"
-                    style={{
-                      width: CARD_WIDTH,
-                      minHeight: CARD_HEIGHT + 200,
-                    }}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop(tableauIndex)}
-                  >
-                    {tableau.length === 0 ? (
-                      <CardSlot label="K" />
-                    ) : (
-                      tableau.map((card, cardIndex) => {
-                        const canDrag = card.faceUp;
-                        const offset = card.faceUp ? 25 : 12;
-                        
-                        return (
-                          <motion.div
-                            key={card.id}
-                            className="absolute"
-                            initial={{ y: -50, opacity: 0 }}
-                            animate={{ y: cardIndex * offset, opacity: 1 }}
-                            transition={{ delay: cardIndex * 0.02 }}
-                            style={{ zIndex: cardIndex }}
-                          >
-                            <PlayingCard
-                              card={card}
-                              draggable={canDrag}
-                              onDragStart={() => {
-                                if (canDrag) {
-                                  const cardsToMove = tableau.slice(cardIndex);
-                                  handleDragStart(cardsToMove, "tableau", tableauIndex, cardIndex);
-                                }
-                              }}
-                              onDoubleClick={() => handleCardDoubleClick(card, "tableau", tableauIndex, cardIndex)}
-                              onClick={() => {
-                                // Flip face-down card
-                                if (!card.faceUp && cardIndex === tableau.length - 1) {
-                                  setGameState(prev => ({
-                                    ...prev,
-                                    tableaus: prev.tableaus.map((t, i) => 
-                                      i === tableauIndex
-                                        ? t.map((c, ci) => ci === cardIndex ? flipCard(c, true) : c)
-                                        : t
-                                    ),
-                                  }));
-                                }
-                              }}
-                            />
-                          </motion.div>
-                        );
-                      })
-                    )}
-                  </div>
-                ))}
+              <div className="flex justify-center gap-0.5 sm:gap-4">
+                {gameState.tableaus.map((tableau, tableauIndex) => {
+                  const cardScale = isMobile ? 0.55 : 1;
+                  const scaledWidth = CARD_WIDTH * cardScale;
+                  const scaledHeight = CARD_HEIGHT * cardScale;
+                  
+                  return (
+                    <div
+                      key={tableauIndex}
+                      className="relative"
+                      style={{
+                        width: scaledWidth,
+                        minHeight: scaledHeight + (isMobile ? 100 : 200),
+                      }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => handleDrop(tableauIndex)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (tableau.length === 0 && selection) {
+                          handleTableauTap(tableauIndex);
+                        }
+                      }}
+                    >
+                      {tableau.length === 0 ? (
+                        <div className="transform scale-[0.55] sm:scale-100 origin-top-left">
+                          <CardSlot label="K" />
+                        </div>
+                      ) : (
+                        tableau.map((card, cardIndex) => {
+                          const canDrag = card.faceUp && !isMobile;
+                          const offset = (card.faceUp ? 20 : 10) * cardScale;
+                          
+                          return (
+                            <motion.div
+                              key={card.id}
+                              className="absolute"
+                              initial={{ y: -50, opacity: 0 }}
+                              animate={{ y: cardIndex * offset, opacity: 1 }}
+                              transition={{ delay: cardIndex * 0.02 }}
+                              style={{ zIndex: cardIndex }}
+                            >
+                              <div className="transform scale-[0.55] sm:scale-100 origin-top-left">
+                                <PlayingCard
+                                  card={card}
+                                  draggable={canDrag}
+                                  selected={isCardSelected(card)}
+                                  onDragStart={() => {
+                                    if (canDrag) {
+                                      const cardsToMove = tableau.slice(cardIndex);
+                                      handleDragStart(cardsToMove, "tableau", tableauIndex, cardIndex);
+                                    }
+                                  }}
+                                  onDoubleClick={() => !isMobile && handleCardDoubleClick(card, "tableau", tableauIndex, cardIndex)}
+                                  onClick={() => {
+                                    // Flip face-down card
+                                    if (!card.faceUp && cardIndex === tableau.length - 1) {
+                                      setGameState(prev => ({
+                                        ...prev,
+                                        tableaus: prev.tableaus.map((t, i) => 
+                                          i === tableauIndex
+                                            ? t.map((c, ci) => ci === cardIndex ? flipCard(c, true) : c)
+                                            : t
+                                        ),
+                                      }));
+                                      return;
+                                    }
+                                    
+                                    // Mobile tap handling
+                                    if (isMobile && card.faceUp) {
+                                      // If we have a selection and tap a different card, try to move there
+                                      if (selection && !isCardSelected(card)) {
+                                        // Try to move selected cards to this tableau
+                                        const moved = moveToTableau(
+                                          selection.cards,
+                                          tableauIndex,
+                                          selection.source,
+                                          selection.sourceIndex,
+                                          selection.cardIndex
+                                        );
+                                        if (moved) {
+                                          setSelection(null);
+                                          return;
+                                        }
+                                      }
+                                      
+                                      // If tapping same card twice, try to move to foundation
+                                      if (selection?.cards[0]?.id === card.id && cardIndex === tableau.length - 1) {
+                                        const movedToFoundation = moveToFoundation(card, false, tableauIndex, cardIndex);
+                                        setSelection(null);
+                                        if (movedToFoundation) return;
+                                      }
+                                      
+                                      // Select this card and all cards below it
+                                      const cardsToSelect = tableau.slice(cardIndex);
+                                      handleCardSelect(cardsToSelect, "tableau", tableauIndex, cardIndex);
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </motion.div>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Auto-complete button */}

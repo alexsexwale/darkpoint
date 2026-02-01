@@ -44,11 +44,18 @@ const baseNavItems: NavItemWithVIP[] = [
       { id: "audio", label: "Audio", href: "/store?category=audio", icon: "🎧" },
     ],
   },
-  { 
+  {
     id: "games",
-    label: "Games", 
-    href: "/games", 
-    icon: "🕹️" 
+    label: "Games",
+    href: "/games",
+    icon: "🕹️",
+    children: [
+      { id: "game-zone", label: "Game Zone", href: "/games", icon: "🎮" },
+      { id: "retro-arcade", label: "Retro Arcade", href: "/arcade", icon: "👾" },
+      { id: "casino-games", label: "Casino Games", href: "/games/casino", icon: "🎰" },
+      { id: "board-games", label: "Board Games", href: "/games/board", icon: "♟️" },
+      { id: "card-games", label: "Card Games", href: "/games/cards", icon: "🃏" },
+    ],
   },
   {
     id: "rewards",

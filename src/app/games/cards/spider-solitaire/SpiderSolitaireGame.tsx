@@ -47,6 +47,12 @@ interface DragData {
   cardIndex: number;
 }
 
+interface SelectionData {
+  tableauIndex: number;
+  cardIndex: number;
+  cards: Card[];
+}
+
 const createInitialState = (): SpiderState => ({
   tableaus: Array(10).fill([]).map(() => []),
   stock: [],
@@ -65,6 +71,25 @@ export function SpiderSolitaireGame() {
   const [dragData, setDragData] = useState<DragData | null>(null);
   const [showWinModal, setShowWinModal] = useState(false);
   const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  const [selection, setSelection] = useState<SelectionData | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      // Portrait phone (narrow), landscape phone (short height), or any touch device
+      const narrow = window.matchMedia("(max-width: 768px)").matches;
+      const landscapePhone = window.matchMedia("(max-height: 500px)").matches;
+      const touchDevice = "ontouchstart" in window;
+      setIsMobile(narrow || landscapePhone || touchDevice);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    window.addEventListener("orientationchange", checkMobile);
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      window.removeEventListener("orientationchange", checkMobile);
+    };
+  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -279,6 +304,30 @@ export function SpiderSolitaireGame() {
     setDragData(null);
   };
 
+  // Mobile tap-to-select handlers
+  const handleCardSelect = (tableauIndex: number, cardIndex: number) => {
+    if (!isMobile) return;
+    const cards = getMovableCardsFromIndex(gameState.tableaus[tableauIndex], cardIndex);
+    if (!cards) return;
+    if (selection?.tableauIndex === tableauIndex && selection?.cardIndex === cardIndex) {
+      setSelection(null);
+      return;
+    }
+    setSelection({ tableauIndex, cardIndex, cards });
+  };
+
+  const handleTableauTap = (targetIndex: number) => {
+    if (!isMobile || !selection) return;
+    const moved = moveCards(selection.tableauIndex, selection.cardIndex, targetIndex);
+    if (moved) setSelection(null);
+  };
+
+  const isCardSelected = (tableauIndex: number, cardIndex: number) => {
+    return selection?.tableauIndex === tableauIndex && selection?.cardIndex === cardIndex;
+  };
+
+  const clearSelection = () => setSelection(null);
+
   // Can deal from stock?
   const canDeal = gameState.stock.length > 0 && !gameState.tableaus.some(t => t.length === 0);
 
@@ -286,78 +335,74 @@ export function SpiderSolitaireGame() {
     <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8">
       <div className="container max-w-6xl">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/games/cards"
-              className="text-[var(--muted-foreground)] hover:text-white transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-heading">Spider Solitaire</h1>
-              {gameState.status !== "idle" && (
-                <p className="text-sm text-[var(--muted-foreground)]">
-                  {DIFFICULTY_CONFIG[gameState.difficulty].label}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Stats */}
-            {gameState.status !== "idle" && (
-              <div className="flex items-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--muted-foreground)]">Time:</span>
-                  <span className="font-mono">{formatTime(elapsedTime)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--muted-foreground)]">Score:</span>
-                  <span className="font-mono">{gameState.score}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--muted-foreground)]">Completed:</span>
-                  <span className="font-mono">{gameState.completed}/8</span>
-                </div>
+        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/games/cards"
+                className="text-[var(--muted-foreground)] hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-heading">Spider Solitaire</h1>
+                {gameState.status !== "idle" && (
+                  <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">
+                    {DIFFICULTY_CONFIG[gameState.difficulty].label}
+                  </p>
+                )}
               </div>
-            )}
-
-            {/* Controls */}
+            </div>
             <div className="flex items-center gap-2">
               {gameState.status === "playing" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={undo}
-                  disabled={history.length === 0}
-                >
+                <Button variant="outline" size="sm" onClick={undo} disabled={history.length === 0} className="text-xs sm:text-sm px-2 sm:px-3">
                   Undo
                 </Button>
               )}
-              <Button variant="primary" size="sm" onClick={() => setShowDifficultyModal(true)}>
+              <Button variant="primary" size="sm" onClick={() => setShowDifficultyModal(true)} className="text-xs sm:text-sm px-2 sm:px-3">
                 New Game
               </Button>
             </div>
           </div>
+          {gameState.status !== "idle" && (
+            <div className="flex items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm">
+              <span><span className="text-[var(--muted-foreground)]">Time:</span> {formatTime(elapsedTime)}</span>
+              <span><span className="text-[var(--muted-foreground)]">Score:</span> {gameState.score}</span>
+              <span><span className="text-[var(--muted-foreground)]">Completed:</span> {gameState.completed}/8</span>
+            </div>
+          )}
         </div>
 
-        {/* Game Board */}
-        <div className="bg-[var(--color-dark-2)]/50 backdrop-blur border border-[var(--color-dark-3)] rounded-xl p-4 overflow-x-auto">
+        {/* Mobile selection hint */}
+        {isMobile && selection && gameState.status === "playing" && (
+          <div className="bg-[var(--color-main-1)]/20 border border-[var(--color-main-1)] rounded-lg p-3 mb-4 text-center">
+            <p className="text-sm text-[var(--color-main-1)]">
+              Card selected! Tap a column to move, or tap the card again to deselect.
+            </p>
+          </div>
+        )}
+
+        {/* Game Board - z-10 so cards stay above fixed side elements in landscape */}
+        <div
+          className="relative z-10 bg-[var(--color-dark-2)]/50 backdrop-blur border border-[var(--color-dark-3)] rounded-xl p-3 sm:p-4 touch-manipulation"
+          onClick={clearSelection}
+          style={{ touchAction: "manipulation" }}
+        >
           {gameState.status === "idle" ? (
             // Start screen
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center py-16"
+              className="text-center py-8 sm:py-16"
             >
-              <div className="text-6xl mb-6">🕷️</div>
-              <h2 className="text-2xl font-heading mb-4">Spider Solitaire</h2>
-              <p className="text-[var(--muted-foreground)] mb-6 max-w-md mx-auto">
-                Build sequences from King to Ace in the same suit.
-                Complete 8 sequences to win!
+              <div className="text-5xl sm:text-6xl mb-4 sm:mb-6">🕷️</div>
+              <h2 className="text-xl sm:text-2xl font-heading mb-3 sm:mb-4">Spider Solitaire</h2>
+              <p className="text-[var(--muted-foreground)] mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base px-4">
+                {isMobile
+                  ? "Tap a card to select it, then tap a column to move. Build sequences King to Ace in the same suit!"
+                  : "Build sequences from King to Ace in the same suit. Complete 8 sequences to win!"}
               </p>
               <Button variant="primary" size="lg" onClick={() => setShowDifficultyModal(true)}>
                 Choose Difficulty
@@ -366,21 +411,23 @@ export function SpiderSolitaireGame() {
           ) : (
             <>
               {/* Top row: Stock and Completed piles indicator */}
-              <div className="flex justify-between items-center mb-4 px-2">
-                <DeckPile
-                  cardsRemaining={gameState.stock.length}
-                  onClick={dealFromStock}
-                  disabled={!canDeal}
-                />
-                
-                {/* Completed sequences indicator */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-[var(--muted-foreground)]">Completed:</span>
-                  <div className="flex gap-1">
+              <div className="flex justify-between items-center mb-3 sm:mb-4 px-1">
+                <div style={{ width: CARD_WIDTH * (isMobile ? 0.5 : 0.85), height: CARD_HEIGHT * (isMobile ? 0.5 : 0.85) }}>
+                  <div className="transform scale-[0.5] sm:scale-[0.85] origin-top-left">
+                    <DeckPile
+                      cardsRemaining={gameState.stock.length}
+                      onClick={dealFromStock}
+                      disabled={!canDeal}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <span className="text-xs sm:text-sm text-[var(--muted-foreground)]">Completed:</span>
+                  <div className="flex gap-0.5 sm:gap-1">
                     {Array(8).fill(0).map((_, i) => (
                       <div
                         key={i}
-                        className={`w-4 h-6 rounded-sm border ${
+                        className={`w-3 h-4 sm:w-4 sm:h-6 rounded-sm border ${
                           i < gameState.completed
                             ? "bg-green-500/30 border-green-500"
                             : "bg-[var(--color-dark-3)]/30 border-[var(--color-dark-4)]"
@@ -391,65 +438,87 @@ export function SpiderSolitaireGame() {
                 </div>
               </div>
 
-              {/* Tableaus */}
-              <div className="flex gap-2 justify-center min-w-max">
-                {gameState.tableaus.map((tableau, tableauIndex) => (
-                  <div
-                    key={tableauIndex}
-                    className="relative"
-                    style={{
-                      width: CARD_WIDTH * 0.85,
-                      minHeight: CARD_HEIGHT + 300,
-                    }}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop(tableauIndex)}
-                  >
-                    {tableau.length === 0 ? (
-                      <CardSlot />
-                    ) : (
-                      tableau.map((card, cardIndex) => {
-                        const movableCards = card.faceUp ? getMovableCardsFromIndex(tableau, cardIndex) : null;
-                        const canDrag = movableCards !== null;
-                        const offset = card.faceUp ? 22 : 8;
-                        
-                        return (
-                          <motion.div
-                            key={card.id}
-                            className="absolute"
-                            initial={{ y: -30, opacity: 0 }}
-                            animate={{ y: cardIndex * offset, opacity: 1 }}
-                            transition={{ delay: cardIndex * 0.01 }}
-                            style={{ zIndex: cardIndex }}
-                          >
-                            <PlayingCard
-                              card={card}
-                              small
-                              draggable={canDrag}
-                              onDragStart={() => {
-                                if (canDrag) {
-                                  handleDragStart(tableauIndex, cardIndex);
-                                }
-                              }}
-                              onClick={() => {
-                                // Flip face-down card if it's the top card
-                                if (!card.faceUp && cardIndex === tableau.length - 1) {
-                                  setGameState(prev => ({
-                                    ...prev,
-                                    tableaus: prev.tableaus.map((t, i) => 
-                                      i === tableauIndex
-                                        ? t.map((c, ci) => ci === cardIndex ? flipCard(c, true) : c)
-                                        : t
-                                    ),
-                                  }));
-                                }
-                              }}
-                            />
-                          </motion.div>
-                        );
-                      })
-                    )}
-                  </div>
-                ))}
+              {/* Tableaus - scale to fit 10 columns on mobile; touch-manipulation for responsive taps in landscape */}
+              <div
+                className="flex gap-0.5 sm:gap-2 justify-center w-full relative z-10"
+                style={isMobile ? { maxWidth: "100vw", overflow: "hidden", touchAction: "manipulation" } : undefined}
+              >
+                {gameState.tableaus.map((tableau, tableauIndex) => {
+                  const cardScale = isMobile ? 0.5 : 0.85;
+                  const colWidth = CARD_WIDTH * cardScale;
+                  return (
+                    <div
+                      key={tableauIndex}
+                      className="relative shrink-0"
+                      style={{
+                        width: colWidth,
+                        minHeight: (isMobile ? CARD_HEIGHT * 0.5 : CARD_HEIGHT) + (isMobile ? 180 : 300),
+                      }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => handleDrop(tableauIndex)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (tableau.length === 0 && selection) {
+                          handleTableauTap(tableauIndex);
+                        }
+                      }}
+                    >
+                      {tableau.length === 0 ? (
+                        <div className="transform scale-[0.5] sm:scale-[0.85] origin-top-left">
+                          <CardSlot />
+                        </div>
+                      ) : (
+                        tableau.map((card, cardIndex) => {
+                          const movableCards = card.faceUp ? getMovableCardsFromIndex(tableau, cardIndex) : null;
+                          const canDrag = !isMobile && movableCards !== null;
+                          const cardOffset = card.faceUp ? (isMobile ? 18 : 22) : (isMobile ? 6 : 8);
+                          return (
+                            <motion.div
+                              key={card.id}
+                              className="absolute cursor-pointer touch-manipulation"
+                              initial={{ y: -30, opacity: 0 }}
+                              animate={{ y: cardIndex * cardOffset, opacity: 1 }}
+                              transition={{ delay: cardIndex * 0.01 }}
+                              style={{ zIndex: cardIndex, touchAction: "manipulation" }}
+                            >
+                              <div className="transform scale-[0.5] sm:scale-[0.85] origin-top-left pointer-events-auto">
+                                <PlayingCard
+                                  card={card}
+                                  small
+                                  draggable={canDrag}
+                                  selected={isCardSelected(tableauIndex, cardIndex)}
+                                  onDragStart={() => {
+                                    if (canDrag) handleDragStart(tableauIndex, cardIndex);
+                                  }}
+                                  onClick={() => {
+                                    if (!card.faceUp && cardIndex === tableau.length - 1) {
+                                      setGameState(prev => ({
+                                        ...prev,
+                                        tableaus: prev.tableaus.map((t, i) =>
+                                          i === tableauIndex
+                                            ? t.map((c, ci) => (ci === cardIndex ? flipCard(c, true) : c))
+                                            : t
+                                        ),
+                                      }));
+                                      return;
+                                    }
+                                    if (isMobile && card.faceUp) {
+                                      if (selection && (selection.tableauIndex !== tableauIndex || selection.cardIndex !== cardIndex)) {
+                                        handleTableauTap(tableauIndex);
+                                      } else {
+                                        handleCardSelect(tableauIndex, cardIndex);
+                                      }
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </motion.div>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Hint if can't deal */}
@@ -457,7 +526,7 @@ export function SpiderSolitaireGame() {
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-center text-sm text-yellow-400 mt-4"
+                  className="text-center text-xs sm:text-sm text-yellow-400 mt-3 sm:mt-4"
                 >
                   Fill all empty columns before dealing more cards
                 </motion.p>
