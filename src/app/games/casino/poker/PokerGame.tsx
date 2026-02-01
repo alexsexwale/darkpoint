@@ -496,7 +496,7 @@ export function PokerGame() {
       // Advance to next phase
       let newDeck = [...state.deck];
       let newCommunity = [...state.communityCards];
-      let newPhase = state.phase;
+      let newPhase: GamePhase = state.phase;
 
       const newPlayers = state.players.map(p => ({
         ...p,
