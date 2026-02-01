@@ -5,15 +5,17 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/stores";
 import { useRewardsStore } from "@/stores/rewardsStore";
-import { useShippingThreshold } from "@/hooks";
+import { useShippingThreshold, useProducts } from "@/hooks";
 import { Button, FreeDeliveryIndicator } from "@/components/ui";
 import { RewardSelector } from "@/components/cart/RewardSelector";
+import { ProductCarousel } from "@/components/store";
 import { formatPrice, getVariantDisplayName } from "@/lib/utils";
 
 export function CartContent() {
   const { items, removeItem, updateQuantity, subtotal, clearCart } = useCartStore();
   const { appliedReward, appliedVIPPrize, getDiscountAmount, getShippingDiscount } = useRewardsStore();
   const { threshold: freeShippingThreshold, isVIP, calculateFee, tierInfo } = useShippingThreshold();
+  const { products: suggestedProducts } = useProducts({ featured: true, limit: 4 });
 
   const total = subtotal();
   const baseShippingCost = calculateFee(total);
@@ -28,29 +30,39 @@ export function CartContent() {
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-20 bg-[var(--color-dark-2)]">
-        <svg
-          className="w-24 h-24 mx-auto text-[var(--color-dark-4)] mb-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-          />
-        </svg>
-        <h2 className="text-2xl mb-4">Your cart is empty</h2>
-        <p className="text-[var(--muted-foreground)] mb-8">
-          Looks like you haven&apos;t added any items to your cart yet.
-        </p>
-        <Link href="/store">
-          <Button variant="primary" size="lg">
-            Continue Shopping
-          </Button>
-        </Link>
+      <div className="py-12 bg-[var(--color-dark-2)]">
+        <div className="text-center mb-10">
+          <svg
+            className="w-24 h-24 mx-auto text-[var(--color-dark-4)] mb-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+            />
+          </svg>
+          <h2 className="text-2xl mb-4">Your cart is empty</h2>
+          <p className="text-[var(--muted-foreground)] mb-6">
+            Looks like you haven&apos;t added any items to your cart yet.
+          </p>
+        </div>
+        {suggestedProducts.length > 0 && (
+          <div className="container mb-10">
+            <p className="text-center text-[var(--muted-foreground)] text-sm mb-4">You might like these</p>
+            <ProductCarousel products={suggestedProducts} />
+          </div>
+        )}
+        <div className="text-center">
+          <Link href="/store">
+            <Button variant="primary" size="lg">
+              Continue Shopping
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }

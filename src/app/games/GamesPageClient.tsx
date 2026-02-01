@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { ProductCarousel } from "@/components/store";
+import { useProducts } from "@/hooks";
 
 interface GameCategory {
   id: string;
@@ -69,6 +71,9 @@ const GAME_CATEGORIES: GameCategory[] = [
 
 export function GamesPageClient() {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const { products: gamingProducts } = useProducts({ category: "gaming", limit: 10 });
+  const { products: featuredProducts } = useProducts({ featured: true, limit: 10 });
+  const stripProducts = gamingProducts.length >= 3 ? gamingProducts : featuredProducts;
 
   return (
     <div className="min-h-screen">
@@ -400,6 +405,22 @@ export function GamesPageClient() {
           </motion.div>
         </div>
       </section>
+
+      {/* Level up your setup - product strip */}
+      {stripProducts.length > 0 && (
+        <section className="py-12 pb-24 bg-[var(--color-dark-2)]">
+          <div className="container">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-heading mb-2">Level up your setup</h2>
+              <p className="text-[var(--muted-foreground)] text-sm mb-4">Gear up to play—controllers, headsets, and more</p>
+              <Link href="/store?category=gaming" className="text-[var(--color-main-1)] hover:underline text-sm font-medium">
+                Shop gaming gear →
+              </Link>
+            </div>
+            <ProductCarousel products={stripProducts} startOneBack />
+          </div>
+        </section>
+      )}
     </div>
   );
 }

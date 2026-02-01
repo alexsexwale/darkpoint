@@ -7,6 +7,8 @@ import { motion } from "framer-motion";
 import Confetti from "react-confetti";
 import { formatPrice } from "@/lib/utils";
 import { useGamificationStore, useAuthStore, useRewardsStore } from "@/stores";
+import { useProducts } from "@/hooks";
+import { ProductCarousel } from "@/components/store";
 import { supabase } from "@/lib/supabase";
 
 interface OrderData {
@@ -39,6 +41,7 @@ export function PaymentSuccessClient() {
   const { checkAchievements, fetchUserProfile } = useGamificationStore();
   const { user, session } = useAuthStore();
   const { fetchRewards } = useRewardsStore();
+  const { products: newArrivals } = useProducts({ sortBy: "newest", limit: 4 });
 
   // Process purchase rewards
   const processRewards = useCallback(async (orderId: string, userId: string) => {
@@ -335,6 +338,24 @@ export function PaymentSuccessClient() {
               </button>
             </Link>
           </motion.div>
+
+          {/* New arrivals strip */}
+          {newArrivals.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.3 }}
+              className="mt-10 pt-10 border-t border-[var(--color-dark-4)]"
+            >
+              <p className="text-center text-[var(--muted-foreground)] text-sm mb-4">New arrivals you might like</p>
+              <ProductCarousel products={newArrivals} />
+              <div className="text-center mt-4">
+                <Link href="/store" className="text-[var(--color-main-1)] hover:underline text-sm font-medium">
+                  Browse the store →
+                </Link>
+              </div>
+            </motion.div>
+          )}
 
           {/* Support Link */}
           <motion.p

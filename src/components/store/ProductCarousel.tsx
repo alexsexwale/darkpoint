@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { ProductCard } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -10,15 +10,19 @@ interface ProductCarouselProps {
   products: Product[];
   autoplay?: boolean;
   autoplayDelay?: number;
+  /** Start one position "back" (last snap) so the first product is partially off-screen, suggesting more content to the left */
+  startOneBack?: boolean;
 }
 
 export function ProductCarousel({ 
   products, 
   autoplay = false,
-  autoplayDelay = 4000 
+  autoplayDelay = 4000,
+  startOneBack = false,
 }: ProductCarouselProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+  const startOneBackApplied = useRef(false);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
@@ -62,6 +66,27 @@ export function ProductCarousel({
     };
   }, [emblaApi, onSelect]);
 
+  // Re-initialize when products change, after layout so Embla measures correct slide sizes
+  useEffect(() => {
+    if (!emblaApi || products.length === 0) return;
+    startOneBackApplied.current = false;
+    const raf = requestAnimationFrame(() => {
+      emblaApi.reInit();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [emblaApi, products.length]);
+
+  // Start one position "back" (last snap) so first product is partially off-screen
+  useEffect(() => {
+    if (!startOneBack || !emblaApi || scrollSnaps.length <= 1 || startOneBackApplied.current) return;
+    const lastIndex = scrollSnaps.length - 1;
+    const raf = requestAnimationFrame(() => {
+      emblaApi.scrollTo(lastIndex);
+      startOneBackApplied.current = true;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [startOneBack, emblaApi, scrollSnaps.length]);
+
   // Autoplay
   useEffect(() => {
     if (!autoplay || !emblaApi) return;
@@ -77,18 +102,19 @@ export function ProductCarousel({
     return null;
   }
 
+  // Remount when slide count changes so Embla initializes with correct measurements
   return (
-    <div className="relative">
-      {/* Carousel */}
-      <div className="overflow-hidden" ref={emblaRef}>
-        <div 
+    <div key={`carousel-${products.length}`} className="relative w-full min-w-0">
+      {/* Viewport: overflow hidden + bounded width so slides overflow and scroll works */}
+      <div className="overflow-hidden w-full min-w-0" ref={emblaRef}>
+        <div
           className="flex touch-pan-y"
           style={{ backfaceVisibility: "hidden" }}
         >
           {products.map((product) => (
             <div
               key={product.id}
-              className="shrink-0 grow-0 basis-[80%] sm:basis-[48%] md:basis-[33.333%] lg:basis-[25%] min-w-0 px-2"
+              className="shrink-0 grow-0 min-w-0 basis-[80%] sm:basis-[48%] md:basis-[33.333%] lg:basis-[25%] px-2"
             >
               <ProductCard product={product} singleImage />
             </div>
@@ -100,6 +126,7 @@ export function ProductCarousel({
       {products.length > 1 && (
         <>
           <button
+            type="button"
             onClick={scrollPrev}
             className="absolute left-1 top-[35%] -translate-y-1/2 z-20 w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center bg-black/80 border border-[var(--color-main-1)] text-white rounded-sm transition-all duration-200 hover:bg-[var(--color-main-1)]"
             aria-label="Previous products"
@@ -109,6 +136,7 @@ export function ProductCarousel({
             </svg>
           </button>
           <button
+            type="button"
             onClick={scrollNext}
             className="absolute right-1 top-[35%] -translate-y-1/2 z-20 w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center bg-black/80 border border-[var(--color-main-1)] text-white rounded-sm transition-all duration-200 hover:bg-[var(--color-main-1)]"
             aria-label="Next products"

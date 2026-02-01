@@ -302,18 +302,17 @@ export function HomePageClient({
             <span className="text-[var(--color-main-1)]">{SITE_NAME}</span>
           </h1>
           <p className="text-xl text-[var(--muted-foreground)] max-w-2xl mx-auto mb-8">
-            Your ultimate destination for gaming gear, tech gadgets, hardware, and
-            exclusive merchandise. Level up your setup with premium products.
+            Premium gaming gear and tech, shipped across South Africa. Shop the store—then play free games and earn rewards.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/store">
               <Button variant="primary" size="lg">
-                Shop Now
+                Shop the Store
               </Button>
             </Link>
-            <Link href="/store?category=gaming">
+            <Link href="/games">
               <Button variant="outline" size="lg">
-                Gaming Gear
+                Play Free Games
               </Button>
             </Link>
           </div>
@@ -368,13 +367,40 @@ export function HomePageClient({
         </div>
       </section>
 
-      {/* Why Choose Us */}
+      {/* More Than a Store */}
       <section className="py-16">
+        <div className="container max-w-3xl text-center">
+          <h2 className="text-2xl md:text-3xl font-heading mb-4">More Than a Store</h2>
+          <p className="text-[var(--muted-foreground)] mb-8">
+            We&apos;re your gaming and tech store—and we give you free games and rewards so you keep coming back. Play retro arcade, board games, and more; earn XP and discounts on your next order.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link href="/store?category=gaming">
+              <Button variant="primary" size="lg">
+                Shop gaming gear
+              </Button>
+            </Link>
+            <Link href="/games">
+              <Button variant="outline" size="lg">
+                Play free games
+              </Button>
+            </Link>
+            <Link href="/rewards">
+              <Button variant="outline" size="lg">
+                Earn rewards
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Shop With Us */}
+      <section className="py-16 bg-[var(--color-dark-2)]">
         <div className="container">
           <div className="text-center mb-12">
-            <h2 className="text-3xl mb-4">Why Gamers Choose Us</h2>
+            <h2 className="text-3xl mb-4">Why Shop With Us</h2>
             <p className="text-[var(--muted-foreground)]">
-              We understand what makes a great gaming experience
+              We understand what makes a great gaming experience. Support the site by shopping—games stay free.
             </p>
           </div>
           <WhyChooseUsCarousel />

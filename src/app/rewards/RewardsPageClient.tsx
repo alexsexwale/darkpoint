@@ -5,6 +5,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
 import { DailyRewardCalendar, DailyQuestList, StreakIndicator, LevelBadge, XPBar, XPMultiplierIndicator } from "@/components/gamification";
+import { ProductCarousel } from "@/components/store";
+import { useProducts } from "@/hooks";
 import { useGamificationStore, useAuthStore, useUIStore } from "@/stores";
 
 // Animated background particles for the hero section
@@ -206,6 +208,7 @@ export function RewardsPageClient() {
   } = useGamificationStore();
   
   const { isAuthenticated, isInitialized } = useAuthStore();
+  const { products: storeProducts } = useProducts({ featured: true, limit: 4 });
 
   // Initialize daily quests on mount
   useEffect(() => {
@@ -638,6 +641,26 @@ export function RewardsPageClient() {
               </div>
             </motion.div>
           </div>
+
+          {/* Use your rewards in the store */}
+          {storeProducts.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="mt-16 pt-12 border-t border-[var(--color-dark-3)]"
+            >
+              <p className="text-center text-white/70 text-lg mb-6">
+                Use your rewards in the store
+              </p>
+              <ProductCarousel products={storeProducts} />
+              <div className="text-center mt-4">
+                <Link href="/store" className="text-[var(--color-main-1)] hover:underline text-sm font-medium">
+                  Shop the store →
+                </Link>
+              </div>
+            </motion.div>
+          )}
         </div>
       </section>
     </div>

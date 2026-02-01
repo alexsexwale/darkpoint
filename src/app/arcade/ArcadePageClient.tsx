@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui";
+import { ProductCarousel } from "@/components/store";
+import { useProducts } from "@/hooks";
 
 const EMULATOR_URL = "https://demo.emulatorjs.org/";
 
@@ -79,6 +81,9 @@ export function ArcadePageClient() {
   const [isEmulatorOpen, setIsEmulatorOpen] = useState(false);
   const [showConsoles, setShowConsoles] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { products: gamingProducts } = useProducts({ category: "gaming", limit: 10 });
+  const { products: featuredProducts } = useProducts({ featured: true, limit: 10 });
+  const stripProducts = gamingProducts.length >= 3 ? gamingProducts : featuredProducts;
 
   // Handle escape key to close emulator
   useEffect(() => {
@@ -346,6 +351,22 @@ export function ArcadePageClient() {
           </div>
         </div>
       </section>
+
+      {/* Get the gear - product strip */}
+      {stripProducts.length > 0 && (
+        <section className="py-12 bg-[var(--color-dark-2)]/50">
+          <div className="container">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-heading mb-2">Get the gear. Play anywhere.</h2>
+              <p className="text-[var(--muted-foreground)] text-sm mb-4">Controllers and headsets for the best experience</p>
+              <Link href="/store?category=gaming" className="text-[var(--color-main-1)] hover:underline text-sm font-medium">
+                Shop gaming gear →
+              </Link>
+            </div>
+            <ProductCarousel products={stripProducts} startOneBack />
+          </div>
+        </section>
+      )}
 
       {/* Quick Tips */}
       <section className="py-12">

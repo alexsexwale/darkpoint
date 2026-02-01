@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useProduct } from "@/hooks";
-import { ProductGallery, ProductTabs, VariantSelectors } from "@/components/store";
+import { useProduct, useProducts } from "@/hooks";
+import { ProductGallery, ProductTabs, VariantSelectors, ProductCarousel } from "@/components/store";
 import { Rating, ProductDetailSkeleton } from "@/components/ui";
 import { AddToCartButton } from "./AddToCartButton";
 import { AddToWishlistButton } from "./AddToWishlistButton";
@@ -46,6 +46,14 @@ function extractProductId(slug: string): string {
 export function ProductPageClient({ slug }: ProductPageClientProps) {
   const productId = extractProductId(slug);
   const { product, loading, error } = useProduct(productId);
+  const { products: categoryProducts } = useProducts({
+    category: product?.category ?? "gaming",
+    limit: 6,
+  });
+  const relatedProducts = useMemo(
+    () => categoryProducts.filter((p) => p.id !== product?.id).slice(0, 6),
+    [categoryProducts, product?.id]
+  );
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const { updateQuestProgress, initDailyQuests, logActivity } = useGamificationStore();
@@ -323,18 +331,32 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
           <ProductTabs product={product} />
 
           <div className="nk-gap-5" />
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <h2 className="text-3xl mb-4">You Might Also Like</h2>
             <p className="text-[var(--muted-foreground)]">Explore more products in this category</p>
           </div>
-          <div className="text-center">
-            <Link
-              href={`/store?category=${product.category}`}
-              className="inline-block px-6 py-3 border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
-            >
-              View {product.category.charAt(0).toUpperCase() + product.category.slice(1)} Products
-            </Link>
-          </div>
+          {relatedProducts.length > 0 ? (
+            <>
+              <ProductCarousel products={relatedProducts} />
+              <div className="text-center mt-6">
+                <Link
+                  href={`/store?category=${product.category}`}
+                  className="inline-block px-6 py-3 border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
+                >
+                  View {product.category.charAt(0).toUpperCase() + product.category.slice(1)} Products
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div className="text-center">
+              <Link
+                href={`/store?category=${product.category}`}
+                className="inline-block px-6 py-3 border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
+              >
+                View {product.category.charAt(0).toUpperCase() + product.category.slice(1)} Products
+              </Link>
+            </div>
+          )}
           <div className="nk-gap-4" />
         </div>
       </div>
@@ -432,15 +454,33 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
         </div>
 
         {/* Related */}
-        <div className="px-4 py-8 text-center">
-          <h2 className="text-xl mb-2">You Might Also Like</h2>
-          <p className="text-sm text-[var(--muted-foreground)] mb-4">Explore more products</p>
-          <Link
-            href={`/store?category=${product.category}`}
-            className="inline-block px-4 py-2 text-sm border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
-          >
-            View More
-          </Link>
+        <div className="px-4 py-8">
+          <div className="text-center mb-4">
+            <h2 className="text-xl mb-2">You Might Also Like</h2>
+            <p className="text-sm text-[var(--muted-foreground)]">Explore more products in this category</p>
+          </div>
+          {relatedProducts.length > 0 ? (
+            <>
+              <ProductCarousel products={relatedProducts} />
+              <div className="text-center mt-4">
+                <Link
+                  href={`/store?category=${product.category}`}
+                  className="inline-block px-4 py-2 text-sm border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
+                >
+                  View {product.category.charAt(0).toUpperCase() + product.category.slice(1)} Products
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div className="text-center">
+              <Link
+                href={`/store?category=${product.category}`}
+                className="inline-block px-4 py-2 text-sm border border-[var(--color-main-1)] text-[var(--color-main-1)] hover:bg-[var(--color-main-1)] hover:text-white transition-colors"
+              >
+                View More
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
