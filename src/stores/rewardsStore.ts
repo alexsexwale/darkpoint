@@ -350,6 +350,8 @@ export const useRewardsStore = create<RewardsStore>()(
             isLoading: false, 
             isInitialized: true 
           });
+          // Load VIP prize status so it's available on cart/checkout without visiting VIP page
+          get().fetchVIPPrizeStatus();
         } catch (error) {
           console.error("Error fetching rewards:", error);
           set({ isLoading: false, isInitialized: true });
