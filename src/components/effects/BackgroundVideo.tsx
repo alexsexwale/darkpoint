@@ -150,20 +150,20 @@ export function BackgroundVideo({
     return (
       <div
         className={cn(
-          "fixed inset-0 z-[-1] overflow-hidden",
+          "fixed inset-0 z-[-1] overflow-hidden pointer-events-none",
           className
         )}
         style={{ opacity }}
       >
         {posterImage && !isLoaded && (
           <div
-            className="absolute inset-0 bg-cover bg-center"
+            className="absolute inset-0 bg-cover bg-center pointer-events-none"
             style={{ backgroundImage: `url(${posterImage})` }}
           />
         )}
         <video
           ref={videoRef}
-          className="absolute w-full h-full object-cover"
+          className="absolute w-full h-full object-cover pointer-events-none"
           autoPlay
           muted={muted}
           loop={loop}
@@ -175,7 +175,7 @@ export function BackgroundVideo({
           <source src={src.replace('.mp4', '.webm')} type="video/webm" />
           <source src={src} type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0 bg-black/30 pointer-events-none" />
       </div>
     );
   }
@@ -185,7 +185,7 @@ export function BackgroundVideo({
     return (
       <div
         className={cn(
-          "fixed inset-0 z-[-1] bg-cover bg-center",
+          "fixed inset-0 z-[-1] bg-cover bg-center pointer-events-none",
           className
         )}
         style={{
@@ -193,7 +193,7 @@ export function BackgroundVideo({
           opacity,
         }}
       >
-        <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0 bg-black/30 pointer-events-none" />
       </div>
     );
   }

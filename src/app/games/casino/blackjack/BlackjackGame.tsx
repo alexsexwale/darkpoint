@@ -556,30 +556,27 @@ export function BlackjackGame() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-950 to-[var(--color-dark-1)]">
       {/* Header */}
-      <div className="container py-4">
+      <div className="container pt-8 pb-4">
         <div className="flex items-center justify-between">
-          <Link
-            href="/games/casino"
-            className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-white transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Casino
-          </Link>
-          
           <div className="flex items-center gap-4">
+            <Link href="/games/casino" className="text-[var(--muted-foreground)] hover:text-white transition-colors">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <h1 className="text-2xl font-heading">Blackjack</h1>
+          </div>
+          
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowRulesModal(true)}
               className="text-sm text-[var(--muted-foreground)] hover:text-white transition-colors"
             >
               How to Play
             </button>
-            {gameState.phase !== "idle" && (
-              <Button variant="outline" size="sm" onClick={() => setShowSetupModal(true)}>
-                New Game
-              </Button>
-            )}
+            <Button variant="primary" size="sm" onClick={() => setShowSetupModal(true)}>
+              New Game
+            </Button>
           </div>
         </div>
       </div>

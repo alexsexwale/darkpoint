@@ -260,6 +260,52 @@ const createInitialState = (): GameState => ({
   lastRaiseIndex: -1,
 });
 
+// Player Card Component for AI players
+function PlayerCard({ player, isActive }: { player: PokerPlayer; isActive: boolean }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`bg-[var(--color-dark-2)]/90 rounded-lg p-2 border transition-all ${
+        isActive
+          ? "border-yellow-500 shadow-lg shadow-yellow-500/20"
+          : player.hasFolded
+          ? "border-red-500/30 opacity-50"
+          : "border-[var(--color-dark-3)]"
+      }`}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className="font-medium text-xs flex items-center gap-1 truncate">
+          {player.isDealer && <span title="Dealer">🔘</span>}
+          {player.name}
+        </span>
+        <span className="text-xs text-yellow-400 font-bold">${player.chips}</span>
+      </div>
+      
+      <div className="flex gap-1 justify-center mb-1">
+        {player.hand.map((card, ci) => (
+          <PlayingCard key={ci} card={card} size="xs" />
+        ))}
+      </div>
+
+      <div className="text-center text-[10px] leading-tight">
+        {player.currentBet > 0 && (
+          <div className="text-[var(--muted-foreground)]">Bet: ${player.currentBet}</div>
+        )}
+        {player.lastAction && !player.hasFolded && (
+          <div className="text-yellow-400 capitalize">{player.lastAction}</div>
+        )}
+        {player.hasFolded && (
+          <div className="text-red-400">Folded</div>
+        )}
+        {player.isAllIn && !player.hasFolded && (
+          <div className="text-yellow-400 font-bold">ALL-IN</div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 export function PokerGame() {
   const [gameState, setGameState] = useState<GameState>(createInitialState());
   const [showSetupModal, setShowSetupModal] = useState(false);
@@ -268,12 +314,9 @@ export function PokerGame() {
   const [showRaiseSlider, setShowRaiseSlider] = useState(false);
   const aiThinkingRef = useRef(false);
   const showdownProcessedRef = useRef(false);
-  const lastProcessedPlayerIndex = useRef(-1);
 
   const humanPlayer = gameState.players.find(p => p.isHuman);
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-  const isHumanTurn = currentPlayer?.isHuman && !currentPlayer?.hasFolded && !currentPlayer?.isAllIn;
-  const activePlayers = gameState.players.filter(p => !p.hasFolded && p.chips > 0);
 
   // Start new game
   const startGame = useCallback((difficulty: Difficulty, playerCount: number) => {
@@ -384,86 +427,266 @@ export function PokerGame() {
     }));
   };
 
-  // Player actions
-  const handleFold = useCallback(() => {
-    if (!isHumanTurn) return;
+  // Determine if it's the human's turn (computed, not state)
+  const isHumanTurn = (() => {
+    if (gameState.phase === "idle" || gameState.phase === "roundEnd" || gameState.phase === "showdown") {
+      return false;
+    }
+    const player = gameState.players[gameState.currentPlayerIndex];
+    if (!player) return false;
+    const canAct = !player.hasFolded && !player.isAllIn;
+    const needsToAct = canAct && !player.hasActed;
+    return player.isHuman && needsToAct;
+  })();
 
+  // Process game state and move to next player/phase if needed
+  const processGameState = useCallback((state: GameState): GameState => {
+    if (state.phase === "idle" || state.phase === "roundEnd" || state.phase === "showdown") {
+      return state;
+    }
+
+    const player = state.players[state.currentPlayerIndex];
+    if (!player) return state;
+
+    // Current player has acted - check game state
+    const activePlayers = state.players.filter(p => !p.hasFolded);
+    const playersWhoCanAct = state.players.filter(p => !p.hasFolded && !p.isAllIn);
+
+    // Only one player left - they win
+    if (activePlayers.length === 1) {
+      const winner = activePlayers[0];
+      return {
+        ...state,
+        phase: "roundEnd",
+        winners: [{ playerId: winner.id, amount: state.pot, handName: "Everyone folded" }],
+        message: `${winner.name} wins $${state.pot}!`,
+      };
+    }
+
+    // If no one can act (everyone all-in or folded), go to showdown
+    if (playersWhoCanAct.length === 0) {
+      // Deal remaining community cards and go to showdown
+      let newDeck = [...state.deck];
+      let newCommunity = [...state.communityCards];
+      
+      // Deal remaining cards
+      while (newCommunity.length < 5) {
+        newCommunity.push({ ...newDeck.pop()!, faceUp: true });
+      }
+      
+      return {
+        ...state,
+        deck: newDeck,
+        communityCards: newCommunity,
+        phase: "showdown",
+        message: "Showdown!",
+      };
+    }
+
+    // If current player needs to act, don't process further
+    const canAct = !player.hasFolded && !player.isAllIn;
+    const needsToAct = canAct && !player.hasActed;
+    if (needsToAct) return state;
+
+    // Check if betting round is complete
+    const allActed = playersWhoCanAct.every(p => p.hasActed);
+    const allMatched = playersWhoCanAct.every(p => p.currentBet === state.currentBet || p.isAllIn);
+
+    if (allActed && allMatched) {
+      // Advance to next phase
+      let newDeck = [...state.deck];
+      let newCommunity = [...state.communityCards];
+      let newPhase = state.phase;
+
+      const newPlayers = state.players.map(p => ({
+        ...p,
+        currentBet: 0,
+        hasActed: p.hasFolded || p.isAllIn,
+      }));
+
+      switch (state.phase) {
+        case "preflop":
+          newCommunity = [
+            { ...newDeck.pop()!, faceUp: true },
+            { ...newDeck.pop()!, faceUp: true },
+            { ...newDeck.pop()!, faceUp: true },
+          ];
+          newPhase = "flop";
+          break;
+        case "flop":
+          newCommunity = [...state.communityCards, { ...newDeck.pop()!, faceUp: true }];
+          newPhase = "turn";
+          break;
+        case "turn":
+          newCommunity = [...state.communityCards, { ...newDeck.pop()!, faceUp: true }];
+          newPhase = "river";
+          break;
+        case "river":
+          newPhase = "showdown";
+          break;
+      }
+
+      let firstActor = (state.dealerIndex + 1) % state.players.length;
+      let loopCount = 0;
+      while (loopCount < state.players.length) {
+        if (!newPlayers[firstActor].hasFolded && !newPlayers[firstActor].isAllIn) break;
+        firstActor = (firstActor + 1) % state.players.length;
+        loopCount++;
+      }
+
+      return {
+        ...state,
+        deck: newDeck,
+        communityCards: newCommunity,
+        players: newPlayers,
+        phase: newPhase,
+        currentBet: 0,
+        currentPlayerIndex: firstActor,
+        message: newPhase === "showdown" ? "Showdown!" : `${newPlayers[firstActor].isHuman ? "Your turn" : newPlayers[firstActor].name + "'s turn"}`,
+      };
+    }
+
+    // Find next player who can act
+    let nextIndex = (state.currentPlayerIndex + 1) % state.players.length;
+    let loopCount = 0;
+    while (loopCount < state.players.length) {
+      if (!state.players[nextIndex].hasFolded && !state.players[nextIndex].isAllIn) break;
+      nextIndex = (nextIndex + 1) % state.players.length;
+      loopCount++;
+    }
+
+    if (nextIndex !== state.currentPlayerIndex) {
+      const nextPlayer = state.players[nextIndex];
+      return {
+        ...state,
+        currentPlayerIndex: nextIndex,
+        message: nextPlayer.isHuman ? "Your turn" : `${nextPlayer.name}'s turn`,
+      };
+    }
+
+    return state;
+  }, []);
+
+  // Player actions
+  const handleFold = () => {
+    if (!isHumanTurn) return;
+    
     setGameState(prev => {
       const players = [...prev.players];
-      players[prev.currentPlayerIndex] = {
-        ...players[prev.currentPlayerIndex],
+      const playerIndex = prev.currentPlayerIndex;
+      const player = players[playerIndex];
+      
+      if (!player || !player.isHuman || player.hasActed) {
+        return prev;
+      }
+      
+      players[playerIndex] = {
+        ...player,
         hasFolded: true,
         hasActed: true,
         lastAction: "fold",
       };
-      return {
+      
+      const newState = {
         ...prev,
         players,
         message: "You folded",
       };
+      
+      return processGameState(newState);
     });
-  }, [isHumanTurn]);
+  };
 
-  const handleCheck = useCallback(() => {
+  const handleCheck = () => {
     if (!isHumanTurn) return;
-    if (gameState.currentBet > (currentPlayer?.currentBet || 0)) return;
-
+    
     setGameState(prev => {
       const players = [...prev.players];
-      players[prev.currentPlayerIndex] = {
-        ...players[prev.currentPlayerIndex],
+      const playerIndex = prev.currentPlayerIndex;
+      const player = players[playerIndex];
+      
+      if (!player || !player.isHuman || player.hasActed) {
+        return prev;
+      }
+      
+      if (prev.currentBet > player.currentBet) {
+        return prev;
+      }
+
+      players[playerIndex] = {
+        ...player,
         hasActed: true,
         lastAction: "check",
       };
-      return {
+      
+      const newState = {
         ...prev,
         players,
         message: "You checked",
       };
+      
+      return processGameState(newState);
     });
-  }, [isHumanTurn, gameState.currentBet, currentPlayer]);
+  };
 
-  const handleCall = useCallback(() => {
-    if (!isHumanTurn || !currentPlayer) return;
-
-    const callAmount = Math.min(gameState.currentBet - currentPlayer.currentBet, currentPlayer.chips);
-    const isAllIn = callAmount >= currentPlayer.chips;
-
+  const handleCall = () => {
+    if (!isHumanTurn) return;
+    
     setGameState(prev => {
       const players = [...prev.players];
-      players[prev.currentPlayerIndex] = {
-        ...players[prev.currentPlayerIndex],
-        chips: players[prev.currentPlayerIndex].chips - callAmount,
-        currentBet: players[prev.currentPlayerIndex].currentBet + callAmount,
-        totalBet: players[prev.currentPlayerIndex].totalBet + callAmount,
+      const playerIndex = prev.currentPlayerIndex;
+      const player = players[playerIndex];
+      
+      if (!player || !player.isHuman || player.hasActed) {
+        return prev;
+      }
+
+      const callAmount = Math.min(prev.currentBet - player.currentBet, player.chips);
+      const isAllIn = callAmount >= player.chips;
+
+      players[playerIndex] = {
+        ...player,
+        chips: player.chips - callAmount,
+        currentBet: player.currentBet + callAmount,
+        totalBet: player.totalBet + callAmount,
         hasActed: true,
         isAllIn,
         lastAction: isAllIn ? "allin" : "call",
       };
-      return {
+      
+      const newState = {
         ...prev,
         players,
         pot: prev.pot + callAmount,
         message: isAllIn ? "You're all in!" : "You called",
       };
+      
+      return processGameState(newState);
     });
-  }, [isHumanTurn, currentPlayer, gameState.currentBet]);
+  };
 
-  const handleRaise = useCallback((amount: number) => {
-    if (!isHumanTurn || !currentPlayer) return;
-
-    const totalBet = gameState.currentBet + amount;
-    const toCall = totalBet - currentPlayer.currentBet;
-    const actualAmount = Math.min(toCall, currentPlayer.chips);
-    const isAllIn = actualAmount >= currentPlayer.chips;
-
+  const handleRaise = (amount: number) => {
+    if (!isHumanTurn) return;
+    
     setGameState(prev => {
       const players = [...prev.players];
-      players[prev.currentPlayerIndex] = {
-        ...players[prev.currentPlayerIndex],
-        chips: players[prev.currentPlayerIndex].chips - actualAmount,
-        currentBet: players[prev.currentPlayerIndex].currentBet + actualAmount,
-        totalBet: players[prev.currentPlayerIndex].totalBet + actualAmount,
+      const playerIndex = prev.currentPlayerIndex;
+      const player = players[playerIndex];
+      
+      if (!player || !player.isHuman || player.hasActed) {
+        return prev;
+      }
+
+      const totalBet = prev.currentBet + amount;
+      const toCall = totalBet - player.currentBet;
+      const actualAmount = Math.min(toCall, player.chips);
+      const isAllIn = actualAmount >= player.chips;
+
+      players[playerIndex] = {
+        ...player,
+        chips: player.chips - actualAmount,
+        currentBet: player.currentBet + actualAmount,
+        totalBet: player.totalBet + actualAmount,
         hasActed: true,
         isAllIn,
         lastAction: isAllIn ? "allin" : "raise",
@@ -471,37 +694,46 @@ export function PokerGame() {
 
       // Reset hasActed for others when raising
       players.forEach((p, i) => {
-        if (i !== prev.currentPlayerIndex && !p.hasFolded && !p.isAllIn) {
+        if (i !== playerIndex && !p.hasFolded && !p.isAllIn) {
           players[i] = { ...players[i], hasActed: false };
         }
       });
 
-      return {
+      const newState = {
         ...prev,
         players,
         pot: prev.pot + actualAmount,
-        currentBet: isAllIn ? players[prev.currentPlayerIndex].currentBet : totalBet,
+        currentBet: isAllIn ? players[playerIndex].currentBet : totalBet,
         minRaise: amount,
-        lastRaiseIndex: prev.currentPlayerIndex,
+        lastRaiseIndex: playerIndex,
         message: isAllIn ? "You're all in!" : `You raised to $${totalBet}`,
       };
+      
+      return processGameState(newState);
     });
     setShowRaiseSlider(false);
-  }, [isHumanTurn, currentPlayer, gameState.currentBet]);
+  };
 
-  const handleAllIn = useCallback(() => {
-    if (!isHumanTurn || !currentPlayer) return;
-
-    const amount = currentPlayer.chips;
-    const newBet = currentPlayer.currentBet + amount;
-
+  const handleAllIn = () => {
+    if (!isHumanTurn) return;
+    
     setGameState(prev => {
       const players = [...prev.players];
-      players[prev.currentPlayerIndex] = {
-        ...players[prev.currentPlayerIndex],
+      const playerIndex = prev.currentPlayerIndex;
+      const player = players[playerIndex];
+      
+      if (!player || !player.isHuman || player.hasActed) {
+        return prev;
+      }
+
+      const amount = player.chips;
+      const newBet = player.currentBet + amount;
+
+      players[playerIndex] = {
+        ...player,
         chips: 0,
         currentBet: newBet,
-        totalBet: players[prev.currentPlayerIndex].totalBet + amount,
+        totalBet: player.totalBet + amount,
         hasActed: true,
         isAllIn: true,
         lastAction: "allin",
@@ -510,27 +742,43 @@ export function PokerGame() {
       const isRaise = newBet > prev.currentBet;
       if (isRaise) {
         players.forEach((p, i) => {
-          if (i !== prev.currentPlayerIndex && !p.hasFolded && !p.isAllIn) {
+          if (i !== playerIndex && !p.hasFolded && !p.isAllIn) {
             players[i] = { ...players[i], hasActed: false };
           }
         });
       }
 
-      return {
+      const newState = {
         ...prev,
         players,
         pot: prev.pot + amount,
         currentBet: Math.max(prev.currentBet, newBet),
-        lastRaiseIndex: isRaise ? prev.currentPlayerIndex : prev.lastRaiseIndex,
+        lastRaiseIndex: isRaise ? playerIndex : prev.lastRaiseIndex,
         message: "You're all in!",
       };
+      
+      return processGameState(newState);
     });
-  }, [isHumanTurn, currentPlayer]);
+  };
+
+  // Check if everyone is all-in and advance to showdown
+  useEffect(() => {
+    if (gameState.phase === "idle" || gameState.phase === "roundEnd" || gameState.phase === "showdown") return;
+    
+    const activePlayers = gameState.players.filter(p => !p.hasFolded);
+    const playersWhoCanAct = gameState.players.filter(p => !p.hasFolded && !p.isAllIn);
+    
+    // If multiple active players but no one can act (all are all-in), go to showdown
+    if (activePlayers.length > 1 && playersWhoCanAct.length === 0) {
+      setGameState(prev => processGameState(prev));
+    }
+  }, [gameState.phase, gameState.players, processGameState]);
 
   // AI turn logic
   useEffect(() => {
     if (gameState.phase === "idle" || gameState.phase === "roundEnd" || gameState.phase === "showdown") return;
     if (!currentPlayer || currentPlayer.isHuman || currentPlayer.hasFolded || currentPlayer.isAllIn) return;
+    if (!currentPlayer.hand || currentPlayer.hand.length < 2) return; // Wait for cards to be dealt
     if (aiThinkingRef.current) return;
 
     const playAI = async () => {
@@ -611,20 +859,22 @@ export function PokerGame() {
         const newPot = players.reduce((sum, p) => sum + p.totalBet, 0);
         const newCurrentBet = Math.max(...players.map(p => p.currentBet));
 
-        return {
+        const newState = {
           ...prev,
           players,
           pot: newPot,
           currentBet: newCurrentBet,
           message: `${player.name} ${decision.action === "allin" ? "goes all-in" : decision.action}s${decision.action === "raise" ? ` to $${decision.amount}` : ""}`,
         };
+        
+        return processGameState(newState);
       });
 
       aiThinkingRef.current = false;
     };
 
     playAI();
-  }, [gameState.currentPlayerIndex, gameState.phase, currentPlayer, gameState.communityCards, gameState.currentBet, gameState.pot, gameState.difficulty]);
+  }, [gameState.currentPlayerIndex, gameState.phase, currentPlayer, gameState.communityCards, gameState.currentBet, gameState.pot, gameState.difficulty, processGameState]);
 
   // AI Decision Making
   const makeAIDecision = (
@@ -637,6 +887,11 @@ export function PokerGame() {
   ): { action: PlayerAction; amount?: number } => {
     const toCall = currentBet - player.currentBet;
     const canCheck = toCall === 0;
+
+    // Safety check - if player has no cards, just check or fold
+    if (!player.hand || player.hand.length < 2) {
+      return canCheck ? { action: "check" } : { action: "fold" };
+    }
 
     // Calculate hand strength
     let handStrength = 0;
@@ -747,127 +1002,6 @@ export function PokerGame() {
       return { action: "call" };
     }
     return { action: "fold" };
-  };
-
-  // Move to next player or phase
-  useEffect(() => {
-    if (gameState.phase === "idle" || gameState.phase === "roundEnd" || gameState.phase === "showdown") {
-      lastProcessedPlayerIndex.current = -1;
-      return;
-    }
-    if (!currentPlayer) return;
-    if (currentPlayer.isHuman && !currentPlayer.hasActed && !currentPlayer.hasFolded && !currentPlayer.isAllIn) return;
-    if (!currentPlayer.hasActed && !currentPlayer.hasFolded && !currentPlayer.isAllIn) return;
-    
-    // Prevent processing the same player index twice
-    if (lastProcessedPlayerIndex.current === gameState.currentPlayerIndex && currentPlayer.hasActed) {
-      // Only proceed if we need to advance
-    } else if (lastProcessedPlayerIndex.current === gameState.currentPlayerIndex) {
-      return;
-    }
-
-    // Count active players
-    const activePlayers = gameState.players.filter(p => !p.hasFolded);
-    const playersWhoCanAct = gameState.players.filter(p => !p.hasFolded && !p.isAllIn);
-
-    // Check if only one player left
-    if (activePlayers.length === 1) {
-      // Award pot to winner
-      const winner = activePlayers[0];
-      lastProcessedPlayerIndex.current = -1;
-      setGameState(prev => ({
-        ...prev,
-        phase: "roundEnd",
-        winners: [{ playerId: winner.id, amount: prev.pot, handName: "Everyone folded" }],
-        message: `${winner.name} wins $${prev.pot}!`,
-      }));
-      return;
-    }
-
-    // Check if betting round is complete
-    const allActed = playersWhoCanAct.every(p => p.hasActed);
-    const allMatched = playersWhoCanAct.every(p => p.currentBet === gameState.currentBet || p.isAllIn);
-
-    if (allActed && allMatched) {
-      // Move to next phase
-      lastProcessedPlayerIndex.current = -1;
-      advancePhase();
-      return;
-    }
-
-    // Move to next player
-    let nextIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-    while (gameState.players[nextIndex].hasFolded || gameState.players[nextIndex].isAllIn) {
-      nextIndex = (nextIndex + 1) % gameState.players.length;
-      if (nextIndex === gameState.currentPlayerIndex) break;
-    }
-
-    if (nextIndex !== gameState.currentPlayerIndex) {
-      lastProcessedPlayerIndex.current = gameState.currentPlayerIndex;
-      setGameState(prev => ({
-        ...prev,
-        currentPlayerIndex: nextIndex,
-      }));
-    }
-  }, [gameState.players, gameState.currentPlayerIndex, gameState.phase, gameState.currentBet, currentPlayer]);
-
-  // Advance to next phase
-  const advancePhase = () => {
-    setGameState(prev => {
-      let newDeck = [...prev.deck];
-      let newCommunity = [...prev.communityCards];
-      let newPhase = prev.phase;
-      
-      // Reset player bets for new round
-      const newPlayers = prev.players.map(p => ({
-        ...p,
-        currentBet: 0,
-        hasActed: p.hasFolded || p.isAllIn,
-      }));
-
-      // Deal community cards
-      switch (prev.phase) {
-        case "preflop":
-          // Deal flop (3 cards)
-          newCommunity = [
-            { ...newDeck.pop()!, faceUp: true },
-            { ...newDeck.pop()!, faceUp: true },
-            { ...newDeck.pop()!, faceUp: true },
-          ];
-          newPhase = "flop";
-          break;
-        case "flop":
-          // Deal turn (1 card)
-          newCommunity = [...prev.communityCards, { ...newDeck.pop()!, faceUp: true }];
-          newPhase = "turn";
-          break;
-        case "turn":
-          // Deal river (1 card)
-          newCommunity = [...prev.communityCards, { ...newDeck.pop()!, faceUp: true }];
-          newPhase = "river";
-          break;
-        case "river":
-          // Go to showdown
-          newPhase = "showdown";
-          break;
-      }
-
-      // Find first player after dealer who can act
-      let firstActor = (prev.dealerIndex + 1) % prev.players.length;
-      while (newPlayers[firstActor].hasFolded || newPlayers[firstActor].isAllIn) {
-        firstActor = (firstActor + 1) % prev.players.length;
-      }
-
-      return {
-        ...prev,
-        deck: newDeck,
-        communityCards: newCommunity,
-        players: newPlayers,
-        phase: newPhase,
-        currentBet: 0,
-        currentPlayerIndex: firstActor,
-      };
-    });
   };
 
   // Handle showdown
@@ -1029,305 +1163,350 @@ export function PokerGame() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-950 to-[var(--color-dark-1)]">
+    <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-b from-red-950 to-[var(--color-dark-1)]">
       {/* Header */}
-      <div className="container py-4">
-        <div className="flex items-center justify-between">
-          <Link
-            href="/games/casino"
-            className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-white transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Casino
-          </Link>
+      <div className="flex-shrink-0 px-8 md:px-16 py-2">
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
+          <div className="flex items-center gap-3">
+            <Link href="/games/casino" className="text-[var(--muted-foreground)] hover:text-white transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <h1 className="text-xl font-heading">Texas Hold&apos;em</h1>
+          </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowRulesModal(true)}
-              className="text-sm text-[var(--muted-foreground)] hover:text-white transition-colors"
+              className="text-xs text-[var(--muted-foreground)] hover:text-white transition-colors"
             >
               Hand Rankings
             </button>
-            {gameState.phase !== "idle" && (
-              <Button variant="outline" size="sm" onClick={() => setShowSetupModal(true)}>
-                New Game
-              </Button>
-            )}
+            <Button variant="primary" size="sm" onClick={() => setShowSetupModal(true)}>
+              New Game
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Game Table */}
-      <div className="container py-4">
-        <div className="max-w-5xl mx-auto">
-          {gameState.phase === "idle" ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-20"
-            >
-              <div className="text-6xl mb-6">🎰</div>
-              <h1 className="text-4xl font-heading mb-4 text-white">Texas Hold&apos;em</h1>
-              <p className="text-[var(--muted-foreground)] mb-8 max-w-md mx-auto">
-                {gameState.message || "The world's most popular poker game. Bluff, bet, and outplay AI opponents!"}
-              </p>
-              <Button variant="primary" size="lg" onClick={() => setShowSetupModal(true)}>
-                Start Game
-              </Button>
-            </motion.div>
-          ) : (
-            <div className="space-y-6">
-              {/* Pot Display */}
-              <div className="flex justify-center">
-                <div className="bg-black/40 backdrop-blur rounded-full px-6 py-2 flex items-center gap-3">
-                  <span className="text-lg">💰</span>
-                  <span className="text-xl font-bold text-yellow-400">Pot: ${gameState.pot}</span>
+      <div className="flex-1 flex flex-col min-h-0 px-8 md:px-16 pb-2">
+        {gameState.phase === "idle" ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1 flex flex-col items-center justify-center text-center"
+          >
+            <div className="text-6xl mb-6">🎰</div>
+            <h1 className="text-4xl font-heading mb-4 text-white">Texas Hold&apos;em</h1>
+            <p className="text-[var(--muted-foreground)] mb-8 max-w-md mx-auto">
+              {gameState.message || "The world's most popular poker game. Bluff, bet, and outplay AI opponents!"}
+            </p>
+            <Button variant="primary" size="lg" onClick={() => setShowSetupModal(true)}>
+              Start Game
+            </Button>
+          </motion.div>
+        ) : (
+          <div className="flex-1 flex gap-3 min-h-0 max-w-6xl mx-auto w-full">
+            {/* Left Side - AI Players */}
+            <div className="w-40 flex flex-col gap-2 justify-center flex-shrink-0">
+              {gameState.players.filter(p => !p.isHuman).slice(0, Math.ceil((gameState.players.length - 1) / 2)).map((player) => (
+                <PlayerCard key={player.id} player={player} isActive={player.id === currentPlayer?.id && !player.hasFolded} />
+              ))}
+            </div>
+
+            {/* Center - Table */}
+            <div className="flex-1 flex flex-col min-h-0">
+              {/* Table Center - Pot, Cards, Message */}
+              <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+                {/* Pot Display */}
+                <div className="mb-2">
+                  <div className="bg-black/40 backdrop-blur rounded-full px-3 py-1 flex items-center gap-2">
+                    <span className="text-xs">💰</span>
+                    <span className="text-base font-bold text-yellow-400">Pot: ${gameState.pot}</span>
+                  </div>
+                </div>
+
+                {/* Community Cards */}
+                <div className="flex justify-center gap-1.5 mb-2">
+                  {gameState.communityCards.length > 0 ? (
+                    <AnimatePresence mode="popLayout">
+                      {gameState.communityCards.map((card, i) => (
+                        <motion.div
+                          key={card.id}
+                          initial={{ opacity: 0, y: -20, rotateY: 180 }}
+                          animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                          transition={{ delay: i * 0.1 }}
+                        >
+                          <PlayingCard card={card} size="sm" />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  ) : (
+                    <div className="flex gap-1.5">
+                      {[0, 1, 2, 3, 4].map(i => (
+                        <div key={i} className="w-[45px] h-[63px] border border-dashed border-white/20 rounded-lg" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Message / Winner Display */}
+                <div className="pointer-events-none mt-1">
+                  {gameState.phase === "roundEnd" && gameState.winners.length > 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-4 py-2 text-center"
+                    >
+                      {gameState.winners.map((w, i) => {
+                        const winner = gameState.players.find(p => p.id === w.playerId);
+                        return (
+                          <div key={i} className="text-yellow-400 text-sm">
+                            <span className="font-bold">{winner?.name}</span> wins ${w.amount} with {w.handName}!
+                          </div>
+                        );
+                      })}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key={gameState.message}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-black/40 backdrop-blur rounded-lg px-4 py-2"
+                    >
+                      <span className="text-sm font-medium text-white">{gameState.message}</span>
+                    </motion.div>
+                  )}
                 </div>
               </div>
 
-              {/* Community Cards */}
-              <div className="flex justify-center gap-2 min-h-[100px] items-center">
-                {gameState.communityCards.length > 0 ? (
-                  <AnimatePresence mode="popLayout">
-                    {gameState.communityCards.map((card, i) => (
-                      <motion.div
-                        key={card.id}
-                        initial={{ opacity: 0, y: -30, rotateY: 180 }}
-                        animate={{ opacity: 1, y: 0, rotateY: 0 }}
-                        transition={{ delay: i * 0.15 }}
-                      >
-                        <PlayingCard card={card} size="sm" />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                ) : (
-                  <div className="flex gap-2">
-                    {[0, 1, 2, 3, 4].map(i => (
-                      <div key={i} className="w-[60px] h-[84px] border border-dashed border-white/20 rounded-lg" />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Message */}
-              <div className="text-center">
-                <motion.div
-                  key={gameState.message}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="inline-block bg-black/40 backdrop-blur rounded-lg px-4 py-2"
-                >
-                  <span className="text-sm font-medium text-white">{gameState.message}</span>
-                </motion.div>
-              </div>
-
-              {/* AI Players */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {gameState.players.filter(p => !p.isHuman).map((player, i) => (
-                  <motion.div
-                    key={player.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.1 }}
-                    className={`bg-[var(--color-dark-2)]/80 rounded-lg p-3 border ${
-                      player.id === currentPlayer?.id && !player.hasFolded
-                        ? "border-yellow-500"
-                        : player.hasFolded
-                        ? "border-red-500/30 opacity-50"
-                        : "border-[var(--color-dark-3)]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm flex items-center gap-1">
-                        {player.isDealer && <span title="Dealer">🔘</span>}
-                        {player.name}
-                      </span>
-                      <span className="text-xs text-yellow-400">${player.chips}</span>
-                    </div>
-                    
-                    <div className="flex gap-1 justify-center mb-2 min-h-[56px]">
-                      {player.hand.map((card, ci) => (
-                        <PlayingCard key={ci} card={card} size="xs" />
-                      ))}
-                    </div>
-
-                    {player.currentBet > 0 && (
-                      <div className="text-center text-xs text-[var(--muted-foreground)]">
-                        Bet: ${player.currentBet}
-                      </div>
-                    )}
-                    {player.lastAction && (
-                      <div className="text-center text-xs text-yellow-400 capitalize">
-                        {player.lastAction}
-                      </div>
-                    )}
-                    {player.hasFolded && (
-                      <div className="text-center text-xs text-red-400">Folded</div>
-                    )}
-                    {player.isAllIn && !player.hasFolded && (
-                      <div className="text-center text-xs text-yellow-400">All-In</div>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Winners Display */}
-              {gameState.phase === "roundEnd" && gameState.winners.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 text-center"
-                >
-                  {gameState.winners.map((w, i) => {
-                    const winner = gameState.players.find(p => p.id === w.playerId);
-                    return (
-                      <div key={i} className="text-yellow-400">
-                        <span className="font-bold">{winner?.name}</span> wins ${w.amount} with {w.handName}!
-                      </div>
-                    );
-                  })}
-                </motion.div>
-              )}
-
-              {/* Human Player */}
+              {/* Human Player Section */}
               {humanPlayer && (
-                <div className="bg-[var(--color-dark-2)]/80 rounded-xl p-4 border border-[var(--color-dark-3)]">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="font-heading text-lg">Your Hand</span>
-                      {humanPlayer.isDealer && <span title="Dealer">🔘</span>}
-                      {humanPlayer.currentBet > 0 && (
-                        <span className="text-sm text-[var(--muted-foreground)]">
-                          Current bet: ${humanPlayer.currentBet}
-                        </span>
-                      )}
+                <div className="flex-shrink-0">
+                  <div className="bg-[var(--color-dark-2)]/80 rounded-lg p-2 border border-[var(--color-dark-3)]">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-heading">Your Hand</span>
+                        {humanPlayer.isDealer && <span title="Dealer" className="text-sm">🔘</span>}
+                        {humanPlayer.currentBet > 0 && (
+                          <span className="text-xs text-[var(--muted-foreground)]">
+                            Bet: ${humanPlayer.currentBet}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-yellow-400 font-bold">${humanPlayer.chips}</div>
                     </div>
-                    <div className="text-yellow-400 font-bold">${humanPlayer.chips}</div>
-                  </div>
 
-                  <div className="flex justify-center gap-2 mb-4">
-                    {humanPlayer.hand.map((card, i) => (
-                      <motion.div
-                        key={card.id}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                      >
-                        <PlayingCard card={{ ...card, faceUp: true }} size="md" />
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {/* Hand strength indicator */}
-                  {gameState.communityCards.length >= 3 && humanPlayer.hand.length === 2 && (
-                    <div className="text-center text-sm text-[var(--muted-foreground)] mb-4">
-                      {getBestHand(humanPlayer.hand, gameState.communityCards).name}
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  {isHumanTurn && gameState.phase !== "roundEnd" && gameState.phase !== "showdown" && (
-                    <div className="flex flex-wrap justify-center gap-2">
-                      <Button variant="outline" onClick={handleFold}>
-                        Fold
-                      </Button>
-                      
-                      {gameState.currentBet === humanPlayer.currentBet && (
-                        <Button variant="outline" onClick={handleCheck}>
-                          Check
-                        </Button>
-                      )}
-                      
-                      {gameState.currentBet > humanPlayer.currentBet && (
-                        <Button variant="primary" onClick={handleCall}>
-                          Call ${Math.min(gameState.currentBet - humanPlayer.currentBet, humanPlayer.chips)}
-                        </Button>
-                      )}
-                      
-                      {humanPlayer.chips > gameState.currentBet - humanPlayer.currentBet && (
-                        <>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setRaiseAmount(gameState.currentBet + gameState.minRaise);
-                              setShowRaiseSlider(true);
-                            }}
+                    {/* Cards and Actions Row */}
+                    <div className="flex items-center justify-center gap-6">
+                      {/* Your Cards */}
+                      <div className="flex gap-2">
+                        {humanPlayer.hand.map((card, i) => (
+                          <motion.div
+                            key={card.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.1 }}
                           >
-                            Raise
+                            <PlayingCard card={{ ...card, faceUp: true }} size="sm" />
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {/* Hand Strength */}
+                      {gameState.communityCards.length >= 3 && humanPlayer.hand.length === 2 && (
+                        <div className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">
+                          {getBestHand(humanPlayer.hand, gameState.communityCards).name}
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      {isHumanTurn && (
+                        <div className="flex gap-2 relative z-10">
+                          <Button variant="outline" size="sm" onClick={() => handleFold()}>
+                            Fold
                           </Button>
-                          <Button variant="outline" onClick={handleAllIn}>
-                            All-In (${humanPlayer.chips})
+                          
+                          {gameState.currentBet === humanPlayer.currentBet && (
+                            <Button variant="outline" size="sm" onClick={() => handleCheck()}>
+                              Check
+                            </Button>
+                          )}
+                          
+                          {gameState.currentBet > humanPlayer.currentBet && (
+                            <Button variant="primary" size="sm" onClick={() => handleCall()}>
+                              Call ${Math.min(gameState.currentBet - humanPlayer.currentBet, humanPlayer.chips)}
+                            </Button>
+                          )}
+                          
+                          {humanPlayer.chips > gameState.currentBet - humanPlayer.currentBet && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setRaiseAmount(gameState.currentBet + gameState.minRaise);
+                                  setShowRaiseSlider(true);
+                                }}
+                              >
+                                Raise
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => handleAllIn()}>
+                                All-In
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Round End Actions */}
+                      {gameState.phase === "roundEnd" && (
+                        <div className="relative z-10">
+                          <Button variant="primary" size="sm" onClick={startNewRound}>
+                            {humanPlayer.chips > 0 ? "Next Hand" : "Game Over"}
                           </Button>
-                        </>
+                        </div>
                       )}
                     </div>
-                  )}
-
-                  {/* Round End Actions */}
-                  {gameState.phase === "roundEnd" && (
-                    <div className="flex justify-center">
-                      <Button variant="primary" onClick={startNewRound}>
-                        {humanPlayer.chips > 0 ? "Next Hand" : "Game Over"}
-                      </Button>
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>
-          )}
-        </div>
+
+            {/* Right Side - AI Players */}
+            <div className="w-40 flex flex-col gap-2 justify-center flex-shrink-0">
+              {gameState.players.filter(p => !p.isHuman).slice(Math.ceil((gameState.players.length - 1) / 2)).map((player) => (
+                <PlayerCard key={player.id} player={player} isActive={player.id === currentPlayer?.id && !player.hasFolded} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Raise Modal */}
       <AnimatePresence>
-        {showRaiseSlider && humanPlayer && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowRaiseSlider(false)}
-          >
+        {showRaiseSlider && humanPlayer && (() => {
+          const minRaise = gameState.currentBet + gameState.minRaise;
+          const maxRaise = humanPlayer.chips + humanPlayer.currentBet;
+          
+          const handleInputChange = (value: string) => {
+            // Remove any non-numeric characters
+            const numericValue = value.replace(/[^0-9]/g, '');
+            if (numericValue === '') {
+              setRaiseAmount(minRaise);
+              return;
+            }
+            const parsed = parseInt(numericValue, 10);
+            // Clamp between min and max
+            const clamped = Math.max(minRaise, Math.min(maxRaise, parsed));
+            setRaiseAmount(clamped);
+          };
+          
+          return (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-6 max-w-sm w-full"
-              onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowRaiseSlider(false)}
             >
-              <h3 className="text-xl font-heading mb-4 text-center">Raise Amount</h3>
-              
-              <div className="text-center mb-4">
-                <span className="text-3xl font-bold text-yellow-400">${raiseAmount}</span>
-              </div>
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-6 max-w-sm w-full"
+                onClick={e => e.stopPropagation()}
+              >
+                <h3 className="text-xl font-heading mb-4 text-center">Raise Amount</h3>
+                
+                {/* Number Input */}
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <span className="text-2xl text-yellow-400">$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={raiseAmount}
+                    onChange={e => handleInputChange(e.target.value)}
+                    className="w-32 text-center text-3xl font-bold text-yellow-400 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-500/50"
+                  />
+                </div>
 
-              <input
-                type="range"
-                min={gameState.currentBet + gameState.minRaise}
-                max={humanPlayer.chips + humanPlayer.currentBet}
-                value={raiseAmount}
-                onChange={e => setRaiseAmount(parseInt(e.target.value))}
-                className="w-full mb-4"
-              />
+                {/* Styled Range Slider */}
+                <div className="relative mb-2">
+                  <input
+                    type="range"
+                    min={minRaise}
+                    max={maxRaise}
+                    value={raiseAmount}
+                    onChange={e => setRaiseAmount(parseInt(e.target.value))}
+                    className="w-full h-2 appearance-none cursor-pointer bg-[var(--color-dark-4)] rounded-full
+                      [&::-webkit-slider-thumb]:appearance-none
+                      [&::-webkit-slider-thumb]:w-5
+                      [&::-webkit-slider-thumb]:h-5
+                      [&::-webkit-slider-thumb]:rounded-full
+                      [&::-webkit-slider-thumb]:bg-yellow-500
+                      [&::-webkit-slider-thumb]:border-2
+                      [&::-webkit-slider-thumb]:border-yellow-400
+                      [&::-webkit-slider-thumb]:cursor-pointer
+                      [&::-webkit-slider-thumb]:shadow-lg
+                      [&::-webkit-slider-thumb]:transition-transform
+                      [&::-webkit-slider-thumb]:hover:scale-110
+                      [&::-moz-range-thumb]:w-5
+                      [&::-moz-range-thumb]:h-5
+                      [&::-moz-range-thumb]:rounded-full
+                      [&::-moz-range-thumb]:bg-yellow-500
+                      [&::-moz-range-thumb]:border-2
+                      [&::-moz-range-thumb]:border-yellow-400
+                      [&::-moz-range-thumb]:cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to right, rgb(234 179 8) 0%, rgb(234 179 8) ${((raiseAmount - minRaise) / (maxRaise - minRaise)) * 100}%, var(--color-dark-4) ${((raiseAmount - minRaise) / (maxRaise - minRaise)) * 100}%, var(--color-dark-4) 100%)`
+                    }}
+                  />
+                </div>
 
-              <div className="flex justify-between text-xs text-[var(--muted-foreground)] mb-6">
-                <span>Min: ${gameState.currentBet + gameState.minRaise}</span>
-                <span>Max: ${humanPlayer.chips + humanPlayer.currentBet}</span>
-              </div>
+                <div className="flex justify-between text-xs text-[var(--muted-foreground)] mb-6">
+                  <span>Min: ${minRaise}</span>
+                  <span>Max: ${maxRaise}</span>
+                </div>
 
-              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setShowRaiseSlider(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" className="flex-1" onClick={() => handleRaise(raiseAmount - gameState.currentBet)}>
-                  Raise to ${raiseAmount}
-                </Button>
-              </div>
+                {/* Quick Bet Buttons */}
+                <div className="grid grid-cols-4 gap-2 mb-6">
+                  {[
+                    { label: 'Min', value: minRaise },
+                    { label: '2x', value: Math.min(gameState.currentBet * 2, maxRaise) },
+                    { label: '3x', value: Math.min(gameState.currentBet * 3, maxRaise) },
+                    { label: 'Max', value: maxRaise },
+                  ].map(btn => (
+                    <button
+                      key={btn.label}
+                      onClick={() => setRaiseAmount(btn.value)}
+                      className={`py-2 px-3 text-xs font-medium rounded-lg border transition-colors ${
+                        raiseAmount === btn.value
+                          ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                          : 'bg-[var(--color-dark-3)] border-[var(--color-dark-4)] text-[var(--muted-foreground)] hover:border-[var(--color-dark-5)] hover:text-white'
+                      }`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowRaiseSlider(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" className="flex-1" onClick={() => handleRaise(raiseAmount - gameState.currentBet)}>
+                    Raise to ${raiseAmount}
+                  </Button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       {/* Setup Modal */}

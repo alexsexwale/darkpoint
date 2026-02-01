@@ -25,6 +25,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
+        type="button"
         className={cn(
           "nk-btn",
           `nk-btn-${variant}`,
@@ -35,8 +36,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || isLoading}
         {...props}
       >
-        <span className="nk-btn-inner" />
-        <span className="nk-btn-content">
+        <span className="nk-btn-inner pointer-events-none" />
+        <span className="nk-btn-content pointer-events-none">
           {isLoading ? (
             <>
               <svg
