@@ -226,9 +226,6 @@ export function GamesPageClient() {
                         <h3 className="text-2xl font-heading group-hover:text-white transition-colors">
                           {category.name}
                         </h3>
-                        <span className="text-xs text-[var(--muted-foreground)] bg-[var(--color-dark-3)]/50 px-2 py-1 rounded-full">
-                          {category.gameCount}
-                        </span>
                       </div>
 
                       {/* Description */}
