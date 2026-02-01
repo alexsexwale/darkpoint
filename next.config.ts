@@ -43,7 +43,7 @@ const nextConfig: NextConfig = {
     return [
       {
         // Apply COOP/COEP headers to PS2 emulator page (required for SharedArrayBuffer)
-        source: '/games/ps2',
+        source: '/arcade/ps2',
         headers: [
           {
             key: 'Cross-Origin-Embedder-Policy',
