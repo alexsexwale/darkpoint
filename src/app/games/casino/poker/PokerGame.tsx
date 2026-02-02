@@ -327,11 +327,14 @@ export function PokerGame() {
   const humanPlayer = gameState.players.find(p => p.isHuman);
 
   // Delay Game Over modal by 1.5s after losing so the result can be seen.
-  // Don't show when human went all-in and WON this hand (they have 0 chips until Next Hand applies winnings).
+  // Only show when the hand has ENDED (roundEnd), human has 0 chips, and they did NOT win — never when they're just all-in during the hand.
   useEffect(() => {
-    const humanWonThisHand = gameState.phase === "roundEnd" && gameState.winners.some(w => w.playerId === humanPlayer?.id);
-    const busted = humanPlayer && humanPlayer.chips === 0 && gameState.phase !== "idle" && !humanWonThisHand;
-    if (busted) {
+    const handEndedHumanLost =
+      humanPlayer &&
+      humanPlayer.chips === 0 &&
+      gameState.phase === "roundEnd" &&
+      !gameState.winners.some(w => w.playerId === humanPlayer.id);
+    if (handEndedHumanLost) {
       const t = setTimeout(() => setShowGameOverModal(true), GAME_OVER_MODAL_DELAY_MS);
       return () => {
         clearTimeout(t);
@@ -1560,9 +1563,9 @@ export function PokerGame() {
         })()}
       </AnimatePresence>
 
-      {/* Game Over Modal (out of chips) - shown after 1.5s delay; not when human won this hand (all-in) */}
+      {/* Game Over Modal (out of chips) - only when hand ended and human lost with 0 chips, after 1.5s delay */}
       <AnimatePresence>
-        {showGameOverModal && humanPlayer && humanPlayer.chips === 0 && gameState.phase !== "idle" && !gameState.winners.some(w => w.playerId === humanPlayer.id) && (
+        {showGameOverModal && humanPlayer && humanPlayer.chips === 0 && gameState.phase === "roundEnd" && !gameState.winners.some(w => w.playerId === humanPlayer.id) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
