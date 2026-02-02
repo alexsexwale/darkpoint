@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Confetti from "react-confetti";
 import { Button } from "@/components/ui";
 import {
   Card,
@@ -319,12 +320,28 @@ export function PokerGame() {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showGameOverModal, setShowGameOverModal] = useState(false);
+  const [showWinConfetti, setShowWinConfetti] = useState(false);
+  const [confettiSize, setConfettiSize] = useState({ width: 0, height: 0 });
   const [raiseAmount, setRaiseAmount] = useState(0);
   const [showRaiseSlider, setShowRaiseSlider] = useState(false);
   const aiThinkingRef = useRef(false);
   const showdownProcessedRef = useRef(false);
 
   const humanPlayer = gameState.players.find(p => p.isHuman);
+
+  // Show confetti when the human wins the game (only player with chips left)
+  useEffect(() => {
+    if (gameState.phase === "idle" && gameState.message === "Congratulations! You win!") {
+      setConfettiSize({ width: typeof window !== "undefined" ? window.innerWidth : 0, height: typeof window !== "undefined" ? window.innerHeight : 0 });
+      setShowWinConfetti(true);
+    }
+  }, [gameState.phase, gameState.message]);
+
+  useEffect(() => {
+    if (!showWinConfetti) return;
+    const t = setTimeout(() => setShowWinConfetti(false), 5000);
+    return () => clearTimeout(t);
+  }, [showWinConfetti]);
 
   // Delay Game Over modal by 1.5s after losing so the result can be seen.
   // Only show when the hand has ENDED (roundEnd), human has 0 chips, and they did NOT win — never when they're just all-in during the hand.
@@ -1203,7 +1220,19 @@ export function PokerGame() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-b from-red-950 to-[var(--color-dark-1)]">
+    <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-b from-red-950 to-[var(--color-dark-1)] relative">
+      {/* Confetti when human wins the game */}
+      {showWinConfetti && confettiSize.width > 0 && confettiSize.height > 0 && (
+        <Confetti
+          width={confettiSize.width}
+          height={confettiSize.height}
+          recycle={false}
+          numberOfPieces={200}
+          colors={["#e87b35", "#22c55e", "#fbbf24", "#a855f7", "#ec4899"]}
+          style={{ position: "fixed", pointerEvents: "none" }}
+        />
+      )}
+
       {/* Header - mobile friendly padding and sizing */}
       <div className="flex-shrink-0 px-4 sm:px-6 md:px-16 py-2">
         <div className="flex items-center justify-between max-w-6xl mx-auto gap-2 min-w-0">
@@ -1447,18 +1476,20 @@ export function PokerGame() {
         {showRaiseSlider && humanPlayer && (() => {
           const minRaise = gameState.currentBet + gameState.minRaise;
           const maxRaise = humanPlayer.chips + humanPlayer.currentBet;
+          // Clamp only when submitting; allow typing any non-negative integer in the input
+          const clampedRaise = Math.max(minRaise, Math.min(maxRaise, raiseAmount));
           
           const handleInputChange = (value: string) => {
-            // Remove any non-numeric characters
+            // Allow only digits (no decimals, no negative)
             const numericValue = value.replace(/[^0-9]/g, '');
             if (numericValue === '') {
               setRaiseAmount(minRaise);
               return;
             }
             const parsed = parseInt(numericValue, 10);
-            // Clamp between min and max
-            const clamped = Math.max(minRaise, Math.min(maxRaise, parsed));
-            setRaiseAmount(clamped);
+            if (Number.isNaN(parsed)) return;
+            // Allow any non-negative integer while typing; clamp happens on Raise click
+            setRaiseAmount(parsed);
           };
           
           return (
@@ -1491,13 +1522,13 @@ export function PokerGame() {
                   />
                 </div>
 
-                {/* Styled Range Slider */}
+                {/* Styled Range Slider - uses clamped value so thumb stays in range */}
                 <div className="relative mb-2">
                   <input
                     type="range"
                     min={minRaise}
                     max={maxRaise}
-                    value={raiseAmount}
+                    value={clampedRaise}
                     onChange={e => setRaiseAmount(parseInt(e.target.value))}
                     className="w-full h-2 appearance-none cursor-pointer bg-[var(--color-dark-4)] rounded-full
                       [&::-webkit-slider-thumb]:appearance-none
@@ -1519,7 +1550,7 @@ export function PokerGame() {
                       [&::-moz-range-thumb]:border-yellow-400
                       [&::-moz-range-thumb]:cursor-pointer"
                     style={{
-                      background: `linear-gradient(to right, rgb(234 179 8) 0%, rgb(234 179 8) ${((raiseAmount - minRaise) / (maxRaise - minRaise)) * 100}%, var(--color-dark-4) ${((raiseAmount - minRaise) / (maxRaise - minRaise)) * 100}%, var(--color-dark-4) 100%)`
+                      background: `linear-gradient(to right, rgb(234 179 8) 0%, rgb(234 179 8) ${((clampedRaise - minRaise) / (maxRaise - minRaise)) * 100}%, var(--color-dark-4) ${((clampedRaise - minRaise) / (maxRaise - minRaise)) * 100}%, var(--color-dark-4) 100%)`
                     }}
                   />
                 </div>
@@ -1555,8 +1586,8 @@ export function PokerGame() {
                   <Button variant="outline" className="flex-1" onClick={() => setShowRaiseSlider(false)}>
                     Cancel
                   </Button>
-                  <Button variant="primary" className="flex-1" onClick={() => handleRaise(raiseAmount - gameState.currentBet)}>
-                    Raise to ${raiseAmount}
+                  <Button variant="primary" className="flex-1" onClick={() => handleRaise(clampedRaise - gameState.currentBet)}>
+                    Raise to ${clampedRaise}
                   </Button>
                 </div>
               </motion.div>
