@@ -260,13 +260,13 @@ const createInitialState = (): GameState => ({
   lastRaiseIndex: -1,
 });
 
-// Player Card Component for AI players
+// Player Card Component for AI players - compact on mobile
 function PlayerCard({ player, isActive }: { player: PokerPlayer; isActive: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`bg-[var(--color-dark-2)]/90 rounded-lg p-2 border transition-all ${
+      className={`bg-[var(--color-dark-2)]/90 rounded-lg p-1.5 sm:p-2 border transition-all min-w-0 ${
         isActive
           ? "border-yellow-500 shadow-lg shadow-yellow-500/20"
           : player.hasFolded
@@ -1204,79 +1204,80 @@ export function PokerGame() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-b from-red-950 to-[var(--color-dark-1)]">
-      {/* Header */}
-      <div className="flex-shrink-0 px-8 md:px-16 py-2">
-        <div className="flex items-center justify-between max-w-6xl mx-auto">
-          <div className="flex items-center gap-3">
-            <Link href="/games/casino" className="text-[var(--muted-foreground)] hover:text-white transition-colors">
+      {/* Header - mobile friendly padding and sizing */}
+      <div className="flex-shrink-0 px-4 sm:px-6 md:px-16 py-2">
+        <div className="flex items-center justify-between max-w-6xl mx-auto gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Link href="/games/casino" className="flex-shrink-0 text-[var(--muted-foreground)] hover:text-white transition-colors" aria-label="Back to casino">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
-            <h1 className="text-xl font-heading">Texas Hold&apos;em</h1>
+            <h1 className="text-lg sm:text-xl font-heading truncate">Texas Hold&apos;em</h1>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <button
               onClick={() => setShowRulesModal(true)}
-              className="text-xs text-[var(--muted-foreground)] hover:text-white transition-colors"
+              className="text-xs text-[var(--muted-foreground)] hover:text-white transition-colors whitespace-nowrap"
             >
-              Hand Rankings
+              <span className="hidden sm:inline">Hand Rankings</span>
+              <span className="sm:hidden" aria-label="Hand Rankings">Rankings</span>
             </button>
-            <Button variant="primary" size="sm" onClick={() => setShowSetupModal(true)}>
+            <Button variant="primary" size="sm" onClick={() => setShowSetupModal(true)} className="min-h-[44px] sm:min-h-0">
               New Game
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Game Table */}
-      <div className="flex-1 flex flex-col min-h-0 px-8 md:px-16 pb-2 relative">
+      {/* Game Table - mobile friendly padding and overflow */}
+      <div className="flex-1 flex flex-col min-h-0 px-4 sm:px-6 md:px-16 pb-2 relative min-w-0 overflow-hidden">
         {gameState.phase === "idle" ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center text-center w-full max-w-lg px-4"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center text-center w-full max-w-lg px-4 sm:px-6"
           >
-            <div className="text-6xl mb-6">🎰</div>
-            <h1 className="text-4xl font-heading mb-4 text-white">Texas Hold&apos;em</h1>
-            <p className="text-[var(--muted-foreground)] mb-8 max-w-md mx-auto">
+            <div className="text-5xl sm:text-6xl mb-4 sm:mb-6">🎰</div>
+            <h1 className="text-3xl sm:text-4xl font-heading mb-3 sm:mb-4 text-white">Texas Hold&apos;em</h1>
+            <p className="text-sm sm:text-base text-[var(--muted-foreground)] mb-6 sm:mb-8 max-w-md mx-auto px-2">
               {gameState.message || "The world's most popular poker game. Bluff, bet, and outplay AI opponents!"}
             </p>
-            <Button variant="primary" size="lg" onClick={() => setShowSetupModal(true)}>
+            <Button variant="primary" size="lg" onClick={() => setShowSetupModal(true)} className="min-h-[48px] w-full sm:w-auto">
               Start Game
             </Button>
           </motion.div>
         ) : (
-          <div className="flex-1 flex gap-4 min-h-0 max-w-6xl mx-auto w-full items-start pt-4">
-            {/* Left Side - AI Players - slightly down from top */}
-            <div className="w-40 flex flex-col gap-3 justify-start flex-shrink-0 mt-16">
+          <div className="flex-1 flex gap-2 sm:gap-4 min-h-0 max-w-6xl mx-auto w-full items-start pt-2 sm:pt-4 min-w-0 overflow-x-auto overflow-y-hidden">
+            {/* Left Side - AI Players - narrower on mobile */}
+            <div className="w-20 sm:w-28 md:w-40 flex flex-col gap-2 sm:gap-3 justify-start flex-shrink-0 mt-8 sm:mt-16">
               {gameState.players.filter(p => !p.isHuman).slice(0, Math.ceil((gameState.players.length - 1) / 2)).map((player) => (
                 <PlayerCard key={player.id} player={player} isActive={player.id === currentPlayer?.id && !player.hasFolded} />
               ))}
             </div>
 
-            {/* Center - Table: stretch to full height so content stays vertically centered (unchanged from before) */}
-            <div className="flex-1 flex flex-col min-h-0 justify-center self-stretch">
-              {/* Table Center - Pot, Cards, Message - generous spacing, centered, slightly higher */}
-              <div className="flex flex-col items-center flex-shrink-0 py-6 px-4 -mt-20">
-                {/* Blind amounts - visible throughout the game (this block only renders when not idle) */}
-                <div className="mb-3 text-sm text-[var(--muted-foreground)]">
+            {/* Center - Table: stretch to full height, min-width 0 so it shrinks on mobile */}
+            <div className="flex-1 flex flex-col min-h-0 justify-center self-stretch min-w-0">
+              {/* Table Center - Pot, Cards, Message - mobile friendly spacing and text wrap */}
+              <div className="flex flex-col items-center flex-shrink-0 py-4 sm:py-6 px-2 sm:px-4 -mt-12 sm:-mt-20">
+                {/* Blind amounts - no truncation on mobile */}
+                <div className="mb-2 sm:mb-3 text-xs sm:text-sm text-[var(--muted-foreground)] text-center whitespace-nowrap">
                   <span className="text-amber-400/90 font-medium">Blinds:</span>{" "}
                   <span>SB ${gameState.smallBlind}</span>
-                  <span className="mx-1.5 text-white/50">/</span>
+                  <span className="mx-1 sm:mx-1.5 text-white/50">/</span>
                   <span>BB ${gameState.bigBlind}</span>
                 </div>
                 {/* Pot Display */}
-                <div className="mb-5">
-                  <div className="bg-black/40 backdrop-blur rounded-full px-3 py-1 flex items-center gap-2">
+                <div className="mb-3 sm:mb-5">
+                  <div className="bg-black/40 backdrop-blur rounded-full px-2.5 sm:px-3 py-1 flex items-center gap-1.5 sm:gap-2">
                     <span className="text-xs">💰</span>
-                    <span className="text-base font-bold text-yellow-400">Pot: ${gameState.pot}</span>
+                    <span className="text-sm sm:text-base font-bold text-yellow-400">Pot: ${gameState.pot}</span>
                   </div>
                 </div>
 
-                {/* Community Cards - isolated stacking so they don't cover text below */}
-                <div className="flex justify-center gap-1.5 mb-5 relative z-0">
+                {/* Community Cards - smaller gap on mobile so 5 cards fit */}
+                <div className="flex justify-center gap-1 sm:gap-1.5 mb-3 sm:mb-5 relative z-0 flex-wrap">
                   {gameState.communityCards.length > 0 ? (
                     <AnimatePresence mode="popLayout">
                       {gameState.communityCards.map((card, i) => (
@@ -1292,26 +1293,26 @@ export function PokerGame() {
                       ))}
                     </AnimatePresence>
                   ) : (
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-1 sm:gap-1.5">
                       {[0, 1, 2, 3, 4].map(i => (
-                        <div key={i} className="w-[45px] h-[63px] border border-dashed border-white/20 rounded-lg" />
+                        <div key={i} className="w-[35px] h-[49px] sm:w-[45px] sm:h-[63px] border border-dashed border-white/20 rounded-lg" />
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* Message / Winner Display - above cards in stacking order */}
-                <div className="pointer-events-none relative z-10 mt-4">
+                {/* Message / Winner Display - wrap text on mobile so full message visible */}
+                <div className="pointer-events-none relative z-10 mt-2 sm:mt-4 w-full max-w-[min(100%,24rem)] px-1">
                   {gameState.phase === "roundEnd" && gameState.winners.length > 0 ? (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-4 py-2 text-center shadow-lg"
+                      className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-3 sm:px-4 py-2 text-center shadow-lg"
                     >
                       {gameState.winners.map((w, i) => {
                         const winner = gameState.players.find(p => p.id === w.playerId);
                         return (
-                          <div key={i} className="text-yellow-400 text-sm font-medium">
+                          <div key={i} className="text-yellow-400 text-xs sm:text-sm font-medium break-words">
                             <span className="font-bold">{winner?.name}</span> wins ${w.amount} with {w.handName}!
                           </div>
                         );
@@ -1322,20 +1323,20 @@ export function PokerGame() {
                       key={gameState.message}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="bg-black/40 backdrop-blur rounded-lg px-4 py-2 shadow-lg"
+                      className="bg-black/40 backdrop-blur rounded-lg px-3 sm:px-4 py-2 shadow-lg"
                     >
-                      <span className="text-sm font-medium text-white">{gameState.message}</span>
+                      <span className="text-xs sm:text-sm font-medium text-white break-words">{gameState.message}</span>
                     </motion.div>
                   )}
                 </div>
               </div>
 
-              {/* Human Player Section - spaced from table center */}
+              {/* Human Player Section - mobile friendly padding and wrap */}
               {humanPlayer && (
-                <div className="flex-shrink-0 mt-6">
-                  <div className="bg-[var(--color-dark-2)]/80 rounded-lg p-3 border border-[var(--color-dark-3)]">
+                <div className="flex-shrink-0 mt-4 sm:mt-6 w-full min-w-0">
+                  <div className="bg-[var(--color-dark-2)]/80 rounded-lg p-2 sm:p-3 border border-[var(--color-dark-3)]">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-1 gap-2">
+                    <div className="flex items-center justify-between mb-1 gap-2 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
                         <span className="font-heading">Your Hand</span>
                         {humanPlayer.isDealer && <span title="Dealer" className="text-sm">🔘</span>}
@@ -1354,10 +1355,10 @@ export function PokerGame() {
                       <div className="text-yellow-400 font-bold flex-shrink-0">${humanPlayer.chips}</div>
                     </div>
 
-                    {/* Cards and Actions Row */}
-                    <div className="flex items-center justify-center gap-6">
+                    {/* Cards and Actions Row - wrap on mobile, touch-friendly buttons */}
+                    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6">
                       {/* Your Cards */}
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5 sm:gap-2">
                         {humanPlayer.hand.map((card, i) => (
                           <motion.div
                             key={card.id}
@@ -1370,28 +1371,28 @@ export function PokerGame() {
                         ))}
                       </div>
 
-                      {/* Hand Strength */}
+                      {/* Hand Strength - allow wrap on mobile */}
                       {gameState.communityCards.length >= 3 && humanPlayer.hand.length === 2 && (
-                        <div className="text-sm text-[var(--muted-foreground)] whitespace-nowrap">
+                        <div className="text-xs sm:text-sm text-[var(--muted-foreground)] shrink-0">
                           {getBestHand(humanPlayer.hand, gameState.communityCards).name}
                         </div>
                       )}
 
-                      {/* Action Buttons */}
+                      {/* Action Buttons - touch-friendly min height, wrap on mobile */}
                       {isHumanTurn && (
-                        <div className="flex gap-2 relative z-10">
-                          <Button variant="outline" size="sm" onClick={() => handleFold()}>
+                        <div className="flex flex-wrap gap-2 relative z-10 justify-center">
+                          <Button variant="outline" size="sm" onClick={() => handleFold()} className="min-h-[44px] sm:min-h-0">
                             Fold
                           </Button>
                           
                           {gameState.currentBet === humanPlayer.currentBet && (
-                            <Button variant="outline" size="sm" onClick={() => handleCheck()}>
+                            <Button variant="outline" size="sm" onClick={() => handleCheck()} className="min-h-[44px] sm:min-h-0">
                               Check
                             </Button>
                           )}
                           
                           {gameState.currentBet > humanPlayer.currentBet && (
-                            <Button variant="primary" size="sm" onClick={() => handleCall()}>
+                            <Button variant="primary" size="sm" onClick={() => handleCall()} className="min-h-[44px] sm:min-h-0">
                               Call ${Math.min(gameState.currentBet - humanPlayer.currentBet, humanPlayer.chips)}
                             </Button>
                           )}
@@ -1405,10 +1406,11 @@ export function PokerGame() {
                                   setRaiseAmount(gameState.currentBet + gameState.minRaise);
                                   setShowRaiseSlider(true);
                                 }}
+                                className="min-h-[44px] sm:min-h-0"
                               >
                                 Raise
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => handleAllIn()}>
+                              <Button variant="outline" size="sm" onClick={() => handleAllIn()} className="min-h-[44px] sm:min-h-0">
                                 All-In
                               </Button>
                             </>
@@ -1416,10 +1418,10 @@ export function PokerGame() {
                         </div>
                       )}
 
-                      {/* Round End Actions */}
+                      {/* Round End Actions - touch-friendly */}
                       {gameState.phase === "roundEnd" && (
-                        <div className="relative z-10">
-                          <Button variant="primary" size="sm" onClick={startNewRound}>
+                        <div className="relative z-10 w-full sm:w-auto">
+                          <Button variant="primary" size="sm" onClick={startNewRound} className="min-h-[44px] w-full sm:w-auto sm:min-h-0">
                             {humanPlayer.chips > 0 || gameState.winners.some(w => w.playerId === humanPlayer.id) ? "Next Hand" : "Game Over"}
                           </Button>
                         </div>
@@ -1430,8 +1432,8 @@ export function PokerGame() {
               )}
             </div>
 
-            {/* Right Side - AI Players - slightly down from top */}
-            <div className="w-40 flex flex-col gap-3 justify-start flex-shrink-0 mt-16">
+            {/* Right Side - AI Players - narrower on mobile */}
+            <div className="w-20 sm:w-28 md:w-40 flex flex-col gap-2 sm:gap-3 justify-start flex-shrink-0 mt-8 sm:mt-16">
               {gameState.players.filter(p => !p.isHuman).slice(Math.ceil((gameState.players.length - 1) / 2)).map((player) => (
                 <PlayerCard key={player.id} player={player} isActive={player.id === currentPlayer?.id && !player.hasFolded} />
               ))}
@@ -1700,7 +1702,7 @@ export function PokerGame() {
         )}
       </AnimatePresence>
 
-      {/* Rules/Hand Rankings Modal */}
+      {/* Rules/Hand Rankings Modal - scrollable list, Got It fixed at bottom on mobile */}
       <AnimatePresence>
         {showRulesModal && (
           <motion.div
@@ -1714,37 +1716,42 @@ export function PokerGame() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl max-w-lg w-full max-h-[85vh] sm:max-h-[80vh] flex flex-col overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
-              <h2 className="text-2xl font-heading mb-4">Hand Rankings</h2>
-              
-              <div className="space-y-3 text-sm">
-                {[
-                  { name: "Royal Flush", desc: "A, K, Q, J, 10 of same suit", rank: 10 },
-                  { name: "Straight Flush", desc: "5 sequential cards of same suit", rank: 9 },
-                  { name: "Four of a Kind", desc: "4 cards of same rank", rank: 8 },
-                  { name: "Full House", desc: "3 of a kind + a pair", rank: 7 },
-                  { name: "Flush", desc: "5 cards of same suit", rank: 6 },
-                  { name: "Straight", desc: "5 sequential cards", rank: 5 },
-                  { name: "Three of a Kind", desc: "3 cards of same rank", rank: 4 },
-                  { name: "Two Pair", desc: "2 different pairs", rank: 3 },
-                  { name: "One Pair", desc: "2 cards of same rank", rank: 2 },
-                  { name: "High Card", desc: "Highest card wins", rank: 1 },
-                ].map((hand, i) => (
-                  <div key={hand.name} className="flex items-center justify-between bg-[var(--color-dark-3)]/30 rounded-lg p-3">
-                    <div>
-                      <span className="font-medium text-white">{hand.name}</span>
-                      <p className="text-xs text-[var(--muted-foreground)]">{hand.desc}</p>
+              {/* Scrollable content - only the list scrolls */}
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6">
+                <h2 className="text-xl sm:text-2xl font-heading mb-4">Hand Rankings</h2>
+                <div className="space-y-3 text-sm">
+                  {[
+                    { name: "Royal Flush", desc: "A, K, Q, J, 10 of same suit", rank: 10 },
+                    { name: "Straight Flush", desc: "5 sequential cards of same suit", rank: 9 },
+                    { name: "Four of a Kind", desc: "4 cards of same rank", rank: 8 },
+                    { name: "Full House", desc: "3 of a kind + a pair", rank: 7 },
+                    { name: "Flush", desc: "5 cards of same suit", rank: 6 },
+                    { name: "Straight", desc: "5 sequential cards", rank: 5 },
+                    { name: "Three of a Kind", desc: "3 cards of same rank", rank: 4 },
+                    { name: "Two Pair", desc: "2 different pairs", rank: 3 },
+                    { name: "One Pair", desc: "2 cards of same rank", rank: 2 },
+                    { name: "High Card", desc: "Highest card wins", rank: 1 },
+                  ].map((hand) => (
+                    <div key={hand.name} className="flex items-center justify-between bg-[var(--color-dark-3)]/30 rounded-lg p-3">
+                      <div>
+                        <span className="font-medium text-white">{hand.name}</span>
+                        <p className="text-xs text-[var(--muted-foreground)]">{hand.desc}</p>
+                      </div>
+                      <span className="text-yellow-400 font-bold">#{11 - hand.rank}</span>
                     </div>
-                    <span className="text-yellow-400 font-bold">#{11 - hand.rank}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
-              <Button variant="primary" className="w-full mt-6" onClick={() => setShowRulesModal(false)}>
-                Got It!
-              </Button>
+              {/* Got It button - fixed at bottom of modal, always visible (no scroll needed) */}
+              <div className="flex-shrink-0 p-4 sm:p-6 pt-0 sm:pt-0 border-t border-[var(--color-dark-3)] bg-[var(--color-dark-2)]">
+                <Button variant="primary" className="w-full min-h-[48px] sm:min-h-0" onClick={() => setShowRulesModal(false)}>
+                  Got It!
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}
