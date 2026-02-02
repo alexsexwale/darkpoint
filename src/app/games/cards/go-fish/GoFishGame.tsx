@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Confetti from "react-confetti";
 import { Button } from "@/components/ui";
 import {
   Card,
@@ -100,7 +101,26 @@ export function GoFishGame() {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showRankPicker, setShowRankPicker] = useState(false);
   const [pendingHumanGoFish, setPendingHumanGoFish] = useState<PendingHumanGoFish | null>(null);
+  const [showWinConfetti, setShowWinConfetti] = useState(false);
+  const [confettiSize, setConfettiSize] = useState({ width: 0, height: 0 });
   const aiThinkingRef = useRef(false);
+
+  // Confetti when human wins (has most books at game end)
+  useEffect(() => {
+    if (gameState.status !== "gameEnd" || gameState.players.length === 0) return;
+    const maxBooks = Math.max(...gameState.players.map(p => p.books.length));
+    const humanPlayer = gameState.players.find(p => p.type === "human");
+    if (humanPlayer && humanPlayer.books.length === maxBooks) {
+      setConfettiSize({ width: typeof window !== "undefined" ? window.innerWidth : 0, height: typeof window !== "undefined" ? window.innerHeight : 0 });
+      setShowWinConfetti(true);
+    }
+  }, [gameState.status, gameState.players]);
+
+  useEffect(() => {
+    if (!showWinConfetti) return;
+    const t = setTimeout(() => setShowWinConfetti(false), 5000);
+    return () => clearTimeout(t);
+  }, [showWinConfetti]);
 
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
   const isHumanTurn = currentPlayer?.type === "human";
@@ -491,7 +511,17 @@ export function GoFishGame() {
   const handRanks = humanPlayer ? getHandRanks(humanPlayer.hand) : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8 relative">
+      {showWinConfetti && confettiSize.width > 0 && confettiSize.height > 0 && (
+        <Confetti
+          width={confettiSize.width}
+          height={confettiSize.height}
+          recycle={false}
+          numberOfPieces={200}
+          colors={["#e87b35", "#22c55e", "#fbbf24", "#a855f7", "#ec4899"]}
+          style={{ position: "fixed", pointerEvents: "none" }}
+        />
+      )}
       <div className="container max-w-4xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

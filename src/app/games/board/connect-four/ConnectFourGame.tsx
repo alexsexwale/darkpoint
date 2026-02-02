@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Confetti from "react-confetti";
 import { Button } from "@/components/ui";
 
 type Difficulty = "easy" | "medium" | "hard" | "master";
@@ -296,6 +297,22 @@ export function ConnectFourGame() {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [hoverColumn, setHoverColumn] = useState<number | null>(null);
   const [lastDroppedCell, setLastDroppedCell] = useState<[number, number] | null>(null);
+  const [showWinConfetti, setShowWinConfetti] = useState(false);
+  const [confettiSize, setConfettiSize] = useState({ width: 0, height: 0 });
+
+  // Confetti when user wins
+  useEffect(() => {
+    if (gameState.status === "won") {
+      setConfettiSize({ width: typeof window !== "undefined" ? window.innerWidth : 0, height: typeof window !== "undefined" ? window.innerHeight : 0 });
+      setShowWinConfetti(true);
+    }
+  }, [gameState.status]);
+
+  useEffect(() => {
+    if (!showWinConfetti) return;
+    const t = setTimeout(() => setShowWinConfetti(false), 5000);
+    return () => clearTimeout(t);
+  }, [showWinConfetti]);
   const aiThinkingRef = useRef(false);
 
   // Start game
@@ -399,7 +416,17 @@ export function ConnectFourGame() {
   const difficultyInfo = DIFFICULTY_LABELS[gameState.difficulty];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8 relative">
+      {showWinConfetti && confettiSize.width > 0 && confettiSize.height > 0 && (
+        <Confetti
+          width={confettiSize.width}
+          height={confettiSize.height}
+          recycle={false}
+          numberOfPieces={200}
+          colors={["#e87b35", "#22c55e", "#fbbf24", "#a855f7", "#ec4899"]}
+          style={{ position: "fixed", pointerEvents: "none" }}
+        />
+      )}
       <div className="container max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

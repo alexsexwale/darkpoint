@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Confetti from "react-confetti";
 import { Button } from "@/components/ui";
 import {
   Card,
@@ -76,6 +77,22 @@ export function SolitaireGame() {
   const [autoCompleting, setAutoCompleting] = useState(false);
   const [selection, setSelection] = useState<SelectionData | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [showWinConfetti, setShowWinConfetti] = useState(false);
+  const [confettiSize, setConfettiSize] = useState({ width: 0, height: 0 });
+
+  // Confetti when user wins
+  useEffect(() => {
+    if (gameState.status === "won") {
+      setConfettiSize({ width: typeof window !== "undefined" ? window.innerWidth : 0, height: typeof window !== "undefined" ? window.innerHeight : 0 });
+      setShowWinConfetti(true);
+    }
+  }, [gameState.status]);
+
+  useEffect(() => {
+    if (!showWinConfetti) return;
+    const t = setTimeout(() => setShowWinConfetti(false), 5000);
+    return () => clearTimeout(t);
+  }, [showWinConfetti]);
 
   // Detect mobile device (portrait, landscape phone, or touch device)
   useEffect(() => {
@@ -477,7 +494,17 @@ export function SolitaireGame() {
     gameState.stock.length === 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8 relative">
+      {showWinConfetti && confettiSize.width > 0 && confettiSize.height > 0 && (
+        <Confetti
+          width={confettiSize.width}
+          height={confettiSize.height}
+          recycle={false}
+          numberOfPieces={200}
+          colors={["#e87b35", "#22c55e", "#fbbf24", "#a855f7", "#ec4899"]}
+          style={{ position: "fixed", pointerEvents: "none" }}
+        />
+      )}
       <div className="container max-w-5xl">
         {/* Header */}
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
