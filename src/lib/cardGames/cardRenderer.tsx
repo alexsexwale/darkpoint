@@ -72,10 +72,11 @@ export function PlayingCard({
   
   return (
     <div
-      className={`relative select-none ${className}`}
+      className={`relative select-none overflow-hidden rounded-lg ${className}`}
       style={{
         width,
         height,
+        borderRadius: CARD_RADIUS,
         ...style,
       }}
       draggable={draggable && !disabled && card.faceUp}

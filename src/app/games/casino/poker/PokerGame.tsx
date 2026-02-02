@@ -274,21 +274,27 @@ function PlayerCard({ player, isActive }: { player: PokerPlayer; isActive: boole
           : "border-[var(--color-dark-3)]"
       }`}
     >
-      <div className="flex items-center justify-between mb-1">
-        <span className="font-medium text-xs flex items-center gap-1 truncate">
-          {player.isDealer && <span title="Dealer">🔘</span>}
-          {player.name}
+      <div className="flex items-center justify-between mb-1 gap-1">
+        <span className="font-medium text-xs flex items-center gap-1 min-w-0 flex-1">
+          {player.isDealer && <span title="Dealer" className="flex-shrink-0">🔘</span>}
+          <span className="truncate">{player.name}</span>
+          {player.isSmallBlind && (
+            <span className="flex-shrink-0 text-[9px] font-semibold uppercase px-1 py-0.5 rounded bg-amber-500/30 text-amber-400 border border-amber-500/50" title="Small Blind">SB</span>
+          )}
+          {player.isBigBlind && (
+            <span className="flex-shrink-0 text-[9px] font-semibold uppercase px-1 py-0.5 rounded bg-amber-600/40 text-amber-300 border border-amber-500/60" title="Big Blind">BB</span>
+          )}
         </span>
-        <span className="text-xs text-yellow-400 font-bold">${player.chips}</span>
+        <span className="text-xs text-yellow-400 font-bold flex-shrink-0">${player.chips}</span>
       </div>
       
-      <div className="flex gap-1 justify-center mb-1">
+      <div className="flex gap-1 justify-center mb-1 overflow-hidden">
         {player.hand.map((card, ci) => (
           <PlayingCard key={ci} card={card} size="xs" />
         ))}
       </div>
 
-      <div className="text-center text-[10px] leading-tight">
+      <div className="text-center text-[10px] leading-tight relative z-10 bg-[var(--color-dark-2)]/95 rounded px-0.5 py-0.5 min-h-[1.25rem] flex flex-col justify-center">
         {player.currentBet > 0 && (
           <div className="text-[var(--muted-foreground)]">Bet: ${player.currentBet}</div>
         )}
@@ -306,16 +312,34 @@ function PlayerCard({ player, isActive }: { player: PokerPlayer; isActive: boole
   );
 }
 
+const GAME_OVER_MODAL_DELAY_MS = 1500;
+
 export function PokerGame() {
   const [gameState, setGameState] = useState<GameState>(createInitialState());
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [showGameOverModal, setShowGameOverModal] = useState(false);
   const [raiseAmount, setRaiseAmount] = useState(0);
   const [showRaiseSlider, setShowRaiseSlider] = useState(false);
   const aiThinkingRef = useRef(false);
   const showdownProcessedRef = useRef(false);
 
   const humanPlayer = gameState.players.find(p => p.isHuman);
+
+  // Delay Game Over modal by 1.5s after losing so the result can be seen.
+  // Don't show when human went all-in and WON this hand (they have 0 chips until Next Hand applies winnings).
+  useEffect(() => {
+    const humanWonThisHand = gameState.phase === "roundEnd" && gameState.winners.some(w => w.playerId === humanPlayer?.id);
+    const busted = humanPlayer && humanPlayer.chips === 0 && gameState.phase !== "idle" && !humanWonThisHand;
+    if (busted) {
+      const t = setTimeout(() => setShowGameOverModal(true), GAME_OVER_MODAL_DELAY_MS);
+      return () => {
+        clearTimeout(t);
+        setShowGameOverModal(false);
+      };
+    }
+    setShowGameOverModal(false);
+  }, [humanPlayer?.chips, humanPlayer?.id, gameState.phase, gameState.winners]);
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
 
   // Start new game
@@ -382,49 +406,50 @@ export function PokerGame() {
     setShowSetupModal(false);
 
     // Start the round
-    setTimeout(() => dealCards(deck, players, dealerIndex), 500);
+    setTimeout(() => dealCards(), 500);
   }, []);
 
-  // Deal hole cards
-  const dealCards = (deck: Card[], players: PokerPlayer[], dealerIndex: number) => {
-    const newDeck = [...deck];
-    const newPlayers = players.map((p, i) => {
-      const card1 = { ...newDeck.pop()!, faceUp: p.isHuman };
-      const card2 = { ...newDeck.pop()!, faceUp: p.isHuman };
-      return { ...p, hand: [card1, card2] };
+  // Deal hole cards (reads deck, players, blinds from state)
+  const dealCards = () => {
+    setGameState(prev => {
+      const newDeck = [...prev.deck];
+      const newPlayers = prev.players.map((p) => {
+        const card1 = { ...newDeck.pop()!, faceUp: p.isHuman };
+        const card2 = { ...newDeck.pop()!, faceUp: p.isHuman };
+        return { ...p, hand: [card1, card2] };
+      });
+
+      // Post blinds using current state amounts
+      const sbIndex = (prev.dealerIndex + 1) % newPlayers.length;
+      const bbIndex = (prev.dealerIndex + 2) % newPlayers.length;
+      const sbAmount = Math.min(prev.smallBlind, newPlayers[sbIndex].chips);
+      const bbAmount = Math.min(prev.bigBlind, newPlayers[bbIndex].chips);
+
+      newPlayers[sbIndex].chips -= sbAmount;
+      newPlayers[sbIndex].currentBet = sbAmount;
+      newPlayers[sbIndex].totalBet = sbAmount;
+      if (newPlayers[sbIndex].chips === 0) newPlayers[sbIndex].isAllIn = true;
+
+      newPlayers[bbIndex].chips -= bbAmount;
+      newPlayers[bbIndex].currentBet = bbAmount;
+      newPlayers[bbIndex].totalBet = bbAmount;
+      if (newPlayers[bbIndex].chips === 0) newPlayers[bbIndex].isAllIn = true;
+
+      const pot = sbAmount + bbAmount;
+      const currentPlayerIndex = (bbIndex + 1) % newPlayers.length;
+
+      return {
+        ...prev,
+        deck: newDeck,
+        players: newPlayers,
+        pot,
+        currentBet: prev.bigBlind,
+        minRaise: prev.bigBlind,
+        currentPlayerIndex,
+        lastRaiseIndex: bbIndex,
+        message: "Your turn",
+      };
     });
-
-    // Post blinds
-    const sbIndex = (dealerIndex + 1) % newPlayers.length;
-    const bbIndex = (dealerIndex + 2) % newPlayers.length;
-    
-    const sbAmount = Math.min(SMALL_BLIND, newPlayers[sbIndex].chips);
-    const bbAmount = Math.min(BIG_BLIND, newPlayers[bbIndex].chips);
-
-    newPlayers[sbIndex].chips -= sbAmount;
-    newPlayers[sbIndex].currentBet = sbAmount;
-    newPlayers[sbIndex].totalBet = sbAmount;
-    if (newPlayers[sbIndex].chips === 0) newPlayers[sbIndex].isAllIn = true;
-
-    newPlayers[bbIndex].chips -= bbAmount;
-    newPlayers[bbIndex].currentBet = bbAmount;
-    newPlayers[bbIndex].totalBet = bbAmount;
-    if (newPlayers[bbIndex].chips === 0) newPlayers[bbIndex].isAllIn = true;
-
-    const pot = sbAmount + bbAmount;
-    const currentPlayerIndex = (bbIndex + 1) % newPlayers.length;
-
-    setGameState(prev => ({
-      ...prev,
-      deck: newDeck,
-      players: newPlayers,
-      pot,
-      currentBet: BIG_BLIND,
-      minRaise: BIG_BLIND,
-      currentPlayerIndex,
-      lastRaiseIndex: bbIndex,
-      message: "Your turn",
-    }));
   };
 
   // Determine if it's the human's turn (computed, not state)
@@ -1061,10 +1086,21 @@ export function PokerGame() {
         return { ...p, chips: p.chips + winnings };
       });
 
-      // Remove busted players
+      // Remove busted players (keep human in so we can show game over modal)
+      const playerCountBefore = prev.players.length;
       players = players.filter(p => p.chips > 0 || p.isHuman);
+      const playerEliminated = players.length < playerCountBefore;
 
-      // Check if game over
+      // Increase blinds when a player is eliminated
+      const newSmallBlind = playerEliminated ? prev.smallBlind * 2 : prev.smallBlind;
+      const newBigBlind = playerEliminated ? prev.bigBlind * 2 : prev.bigBlind;
+
+      // Human is out of chips — stay in roundEnd so Game Over modal shows; don't start new round
+      if (players.find(p => p.isHuman)?.chips === 0) {
+        return { ...prev, players, phase: "roundEnd", winners: prev.winners, message: prev.message };
+      }
+
+      // Check if game over (only one player with chips left)
       if (players.filter(p => p.chips > 0).length <= 1) {
         const winner = players.find(p => p.chips > 0);
         return {
@@ -1105,6 +1141,8 @@ export function PokerGame() {
         pot: 0,
         sidePots: [],
         currentBet: 0,
+        smallBlind: newSmallBlind,
+        bigBlind: newBigBlind,
         dealerIndex: newDealerIndex,
         phase: "preflop",
         winners: [],
@@ -1125,12 +1163,11 @@ export function PokerGame() {
           return { ...p, hand: [card1, card2] };
         });
 
-        // Post blinds
+        // Post blinds using current state amounts
         const sbIndex = newPlayers.findIndex(p => p.isSmallBlind);
         const bbIndex = newPlayers.findIndex(p => p.isBigBlind);
-        
-        const sbAmount = Math.min(SMALL_BLIND, newPlayers[sbIndex].chips);
-        const bbAmount = Math.min(BIG_BLIND, newPlayers[bbIndex].chips);
+        const sbAmount = Math.min(prev.smallBlind, newPlayers[sbIndex].chips);
+        const bbAmount = Math.min(prev.bigBlind, newPlayers[bbIndex].chips);
 
         newPlayers[sbIndex].chips -= sbAmount;
         newPlayers[sbIndex].currentBet = sbAmount;
@@ -1153,8 +1190,8 @@ export function PokerGame() {
           deck: newDeck,
           players: newPlayers,
           pot,
-          currentBet: BIG_BLIND,
-          minRaise: BIG_BLIND,
+          currentBet: prev.bigBlind,
+          minRaise: prev.bigBlind,
           currentPlayerIndex,
           message: "Your turn",
         };
@@ -1191,12 +1228,12 @@ export function PokerGame() {
       </div>
 
       {/* Game Table */}
-      <div className="flex-1 flex flex-col min-h-0 px-8 md:px-16 pb-2">
+      <div className="flex-1 flex flex-col min-h-0 px-8 md:px-16 pb-2 relative">
         {gameState.phase === "idle" ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex-1 flex flex-col items-center justify-center text-center"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center text-center w-full max-w-lg px-4"
           >
             <div className="text-6xl mb-6">🎰</div>
             <h1 className="text-4xl font-heading mb-4 text-white">Texas Hold&apos;em</h1>
@@ -1208,28 +1245,35 @@ export function PokerGame() {
             </Button>
           </motion.div>
         ) : (
-          <div className="flex-1 flex gap-3 min-h-0 max-w-6xl mx-auto w-full">
-            {/* Left Side - AI Players */}
-            <div className="w-40 flex flex-col gap-2 justify-center flex-shrink-0">
+          <div className="flex-1 flex gap-4 min-h-0 max-w-6xl mx-auto w-full items-start pt-4">
+            {/* Left Side - AI Players - slightly down from top */}
+            <div className="w-40 flex flex-col gap-3 justify-start flex-shrink-0 mt-16">
               {gameState.players.filter(p => !p.isHuman).slice(0, Math.ceil((gameState.players.length - 1) / 2)).map((player) => (
                 <PlayerCard key={player.id} player={player} isActive={player.id === currentPlayer?.id && !player.hasFolded} />
               ))}
             </div>
 
-            {/* Center - Table */}
-            <div className="flex-1 flex flex-col min-h-0">
-              {/* Table Center - Pot, Cards, Message */}
-              <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+            {/* Center - Table: stretch to full height so content stays vertically centered (unchanged from before) */}
+            <div className="flex-1 flex flex-col min-h-0 justify-center self-stretch">
+              {/* Table Center - Pot, Cards, Message - generous spacing, centered, slightly higher */}
+              <div className="flex flex-col items-center flex-shrink-0 py-6 px-4 -mt-20">
+                {/* Blind amounts - visible throughout the game (this block only renders when not idle) */}
+                <div className="mb-3 text-sm text-[var(--muted-foreground)]">
+                  <span className="text-amber-400/90 font-medium">Blinds:</span>{" "}
+                  <span>SB ${gameState.smallBlind}</span>
+                  <span className="mx-1.5 text-white/50">/</span>
+                  <span>BB ${gameState.bigBlind}</span>
+                </div>
                 {/* Pot Display */}
-                <div className="mb-2">
+                <div className="mb-5">
                   <div className="bg-black/40 backdrop-blur rounded-full px-3 py-1 flex items-center gap-2">
                     <span className="text-xs">💰</span>
                     <span className="text-base font-bold text-yellow-400">Pot: ${gameState.pot}</span>
                   </div>
                 </div>
 
-                {/* Community Cards */}
-                <div className="flex justify-center gap-1.5 mb-2">
+                {/* Community Cards - isolated stacking so they don't cover text below */}
+                <div className="flex justify-center gap-1.5 mb-5 relative z-0">
                   {gameState.communityCards.length > 0 ? (
                     <AnimatePresence mode="popLayout">
                       {gameState.communityCards.map((card, i) => (
@@ -1238,6 +1282,7 @@ export function PokerGame() {
                           initial={{ opacity: 0, y: -20, rotateY: 180 }}
                           animate={{ opacity: 1, y: 0, rotateY: 0 }}
                           transition={{ delay: i * 0.1 }}
+                          className="overflow-hidden rounded-lg"
                         >
                           <PlayingCard card={card} size="sm" />
                         </motion.div>
@@ -1252,18 +1297,18 @@ export function PokerGame() {
                   )}
                 </div>
 
-                {/* Message / Winner Display */}
-                <div className="pointer-events-none mt-1">
+                {/* Message / Winner Display - above cards in stacking order */}
+                <div className="pointer-events-none relative z-10 mt-4">
                   {gameState.phase === "roundEnd" && gameState.winners.length > 0 ? (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-4 py-2 text-center"
+                      className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-4 py-2 text-center shadow-lg"
                     >
                       {gameState.winners.map((w, i) => {
                         const winner = gameState.players.find(p => p.id === w.playerId);
                         return (
-                          <div key={i} className="text-yellow-400 text-sm">
+                          <div key={i} className="text-yellow-400 text-sm font-medium">
                             <span className="font-bold">{winner?.name}</span> wins ${w.amount} with {w.handName}!
                           </div>
                         );
@@ -1274,7 +1319,7 @@ export function PokerGame() {
                       key={gameState.message}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="bg-black/40 backdrop-blur rounded-lg px-4 py-2"
+                      className="bg-black/40 backdrop-blur rounded-lg px-4 py-2 shadow-lg"
                     >
                       <span className="text-sm font-medium text-white">{gameState.message}</span>
                     </motion.div>
@@ -1282,22 +1327,28 @@ export function PokerGame() {
                 </div>
               </div>
 
-              {/* Human Player Section */}
+              {/* Human Player Section - spaced from table center */}
               {humanPlayer && (
-                <div className="flex-shrink-0">
-                  <div className="bg-[var(--color-dark-2)]/80 rounded-lg p-2 border border-[var(--color-dark-3)]">
+                <div className="flex-shrink-0 mt-6">
+                  <div className="bg-[var(--color-dark-2)]/80 rounded-lg p-3 border border-[var(--color-dark-3)]">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between mb-1 gap-2">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
                         <span className="font-heading">Your Hand</span>
                         {humanPlayer.isDealer && <span title="Dealer" className="text-sm">🔘</span>}
+                        {humanPlayer.isSmallBlind && (
+                          <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-400 border border-amber-500/50" title="Small Blind">SB</span>
+                        )}
+                        {humanPlayer.isBigBlind && (
+                          <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-amber-600/40 text-amber-300 border border-amber-500/60" title="Big Blind">BB</span>
+                        )}
                         {humanPlayer.currentBet > 0 && (
                           <span className="text-xs text-[var(--muted-foreground)]">
                             Bet: ${humanPlayer.currentBet}
                           </span>
                         )}
                       </div>
-                      <div className="text-yellow-400 font-bold">${humanPlayer.chips}</div>
+                      <div className="text-yellow-400 font-bold flex-shrink-0">${humanPlayer.chips}</div>
                     </div>
 
                     {/* Cards and Actions Row */}
@@ -1376,8 +1427,8 @@ export function PokerGame() {
               )}
             </div>
 
-            {/* Right Side - AI Players */}
-            <div className="w-40 flex flex-col gap-2 justify-center flex-shrink-0">
+            {/* Right Side - AI Players - slightly down from top */}
+            <div className="w-40 flex flex-col gap-3 justify-start flex-shrink-0 mt-16">
               {gameState.players.filter(p => !p.isHuman).slice(Math.ceil((gameState.players.length - 1) / 2)).map((player) => (
                 <PlayerCard key={player.id} player={player} isActive={player.id === currentPlayer?.id && !player.hasFolded} />
               ))}
@@ -1507,6 +1558,70 @@ export function PokerGame() {
             </motion.div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* Game Over Modal (out of chips) - shown after 1.5s delay; not when human won this hand (all-in) */}
+      <AnimatePresence>
+        {showGameOverModal && humanPlayer && humanPlayer.chips === 0 && gameState.phase !== "idle" && !gameState.winners.some(w => w.playerId === humanPlayer.id) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-8 max-w-md w-full text-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <motion.div
+                className="text-6xl mb-4"
+                animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
+                transition={{ duration: 0.5, repeat: 3 }}
+              >
+                😔
+              </motion.div>
+              <h2 className="text-2xl font-heading mb-2">Game Over!</h2>
+              <p className="text-[var(--muted-foreground)] mb-6">You&apos;re out of chips.</p>
+              <p className="text-sm text-[var(--muted-foreground)] mb-4">What would you like to do?</p>
+              <div className="flex flex-col gap-3">
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => {
+                    setShowGameOverModal(false);
+                    setGameState(prev => ({ ...prev, phase: "idle" }));
+                    setShowSetupModal(true);
+                  }}
+                >
+                  Change Difficulty
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setShowGameOverModal(false);
+                    startGame(gameState.difficulty, gameState.players.length);
+                  }}
+                >
+                  Play Again
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setShowGameOverModal(false);
+                    setGameState(prev => ({ ...prev, phase: "idle" }));
+                  }}
+                >
+                  Main Menu
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Setup Modal */}
