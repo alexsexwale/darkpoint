@@ -1417,7 +1417,7 @@ export function PokerGame() {
                       {gameState.phase === "roundEnd" && (
                         <div className="relative z-10">
                           <Button variant="primary" size="sm" onClick={startNewRound}>
-                            {humanPlayer.chips > 0 ? "Next Hand" : "Game Over"}
+                            {humanPlayer.chips > 0 || gameState.winners.some(w => w.playerId === humanPlayer.id) ? "Next Hand" : "Game Over"}
                           </Button>
                         </div>
                       )}
