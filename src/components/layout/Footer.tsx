@@ -237,6 +237,13 @@ export function Footer() {
             >
               Returns
             </Link>
+            <span className="text-white/20">|</span>
+            <Link
+              href="/newsletter"
+              className="text-white/60 hover:text-white transition-colors cursor-pointer"
+            >
+              Newsletter
+            </Link>
           </div>
         </div>
       </div>
