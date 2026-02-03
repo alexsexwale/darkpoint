@@ -182,10 +182,21 @@ export function RouletteGame() {
     const wheel = gameState.wheelType === "european" ? EUROPEAN_WHEEL : AMERICAN_WHEEL;
     const resultIndex = Math.floor(Math.random() * wheel.length);
     const result = wheel[resultIndex];
+    const totalBetThisSpin = gameState.totalBet;
+    const betsThisSpin = [...gameState.bets];
 
-    // Calculate rotation
+    // Rotation: CSS rotate(X) moves the wheel clockwise. The segment at top after rotation is the one
+    // with i*segmentAngle ≡ -X (mod 360). We want segment resultIndex at top, so X ≡ 360 - resultIndex*segmentAngle (mod 360).
+    // Use absolute target (not cumulative) so the wheel always lands on the correct number regardless of previous spins.
     const segmentAngle = 360 / wheel.length;
-    const targetRotation = 360 * 5 + (resultIndex * segmentAngle); // 5 full rotations + target
+    const targetMod360 = (360 - resultIndex * segmentAngle + 360) % 360;
+    // Spin at least 5 full rotations from current position, then land at targetMod360
+    setWheelRotation(prev => {
+      const minSpins = prev + 360 * 5;
+      const currentMod = minSpins % 360;
+      const diff = (targetMod360 - currentMod + 360) % 360;
+      return minSpins + diff;
+    });
 
     setGameState(prev => ({
       ...prev,
@@ -194,13 +205,10 @@ export function RouletteGame() {
       message: "Spinning...",
     }));
 
-    setWheelRotation(prev => prev + targetRotation);
-
-    // After spin completes
+    // After spin completes - use captured result and bets to avoid stale closure
     setTimeout(() => {
-      // Calculate winnings
       let totalWin = 0;
-      for (const bet of gameState.bets) {
+      for (const bet of betsThisSpin) {
         if (checkWin(bet, result)) {
           totalWin += bet.amount * (PAYOUTS[bet.type] + 1);
         }
@@ -214,7 +222,7 @@ export function RouletteGame() {
         winAmount: totalWin,
         history: [result, ...prev.history].slice(0, 20),
         message: totalWin > 0
-          ? `${result === 37 ? "00" : result} - You win $${totalWin - prev.totalBet}!`
+          ? `${result === 37 ? "00" : result} - You win $${totalWin - totalBetThisSpin}!`
           : `${result === 37 ? "00" : result} - No win`,
       }));
 
