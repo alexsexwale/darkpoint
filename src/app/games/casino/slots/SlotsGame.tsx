@@ -458,24 +458,26 @@ export function SlotsGame() {
                   </motion.div>
                 </div>
 
-                {/* Controls */}
-                <div className="flex items-center justify-between">
+                {/* Controls - wrap on mobile so all buttons fit */}
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 sm:justify-between">
                   {/* Bet Controls */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => changeBet(-1)}
                       disabled={gameState.bet <= 1 || gameState.phase === "spinning"}
+                      className="min-w-[36px] sm:min-w-0"
                     >
                       -
                     </Button>
-                    <span className="px-3 text-white font-bold">Bet: {gameState.bet}</span>
+                    <span className="px-2 sm:px-3 text-sm sm:text-base text-white font-bold whitespace-nowrap">Bet: {gameState.bet}</span>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => changeBet(1)}
                       disabled={gameState.bet >= 10 || gameState.phase === "spinning"}
+                      className="min-w-[36px] sm:min-w-0"
                     >
                       +
                     </Button>
@@ -484,6 +486,7 @@ export function SlotsGame() {
                       size="sm"
                       onClick={maxBet}
                       disabled={gameState.phase === "spinning"}
+                      className="min-w-[36px] sm:min-w-0"
                     >
                       Max
                     </Button>
@@ -498,7 +501,7 @@ export function SlotsGame() {
                       gameState.phase === "spinning" ||
                       (gameState.credits < totalBet && gameState.freeSpins === 0)
                     }
-                    className="px-12"
+                    className="px-6 sm:px-12 flex-shrink-0"
                   >
                     {gameState.freeSpins > 0 ? "FREE SPIN" : "SPIN"}
                   </Button>
@@ -509,6 +512,7 @@ export function SlotsGame() {
                     size="sm"
                     onClick={toggleAutoplay}
                     disabled={gameState.phase === "spinning"}
+                    className="flex-shrink-0"
                   >
                     Auto {gameState.autoplay ? "ON" : "OFF"}
                   </Button>

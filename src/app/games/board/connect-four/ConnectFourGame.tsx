@@ -418,16 +418,16 @@ export function ConnectFourGame() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8 relative">
       <div className="container max-w-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Link href="/games/board" className="text-[var(--muted-foreground)] hover:text-white transition-colors">
+        {/* Header - stack on mobile so title and buttons don't squash */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div className="flex items-center gap-4 min-w-0">
+            <Link href="/games/board" className="text-[var(--muted-foreground)] hover:text-white transition-colors flex-shrink-0" aria-label="Back to board games">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
-            <div>
-              <h1 className="text-2xl font-heading">Connect Four</h1>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-heading truncate">Connect Four</h1>
               {gameState.status === "playing" && (
                 <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
                   <span>{difficultyInfo.icon}</span>
@@ -436,7 +436,7 @@ export function ConnectFourGame() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
             {gameState.status === "playing" && (
               <Button variant="outline" size="sm" onClick={undoMove} disabled={gameState.moveHistory.length < 2}>
                 Undo

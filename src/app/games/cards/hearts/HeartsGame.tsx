@@ -573,27 +573,27 @@ export function HeartsGame() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8 relative">
       <div className="container max-w-5xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        {/* Header - stack on mobile so title and buttons don't squash */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div className="flex items-center gap-4 min-w-0">
             <Link
               href="/games/cards"
-              className="text-[var(--muted-foreground)] hover:text-white transition-colors"
+              className="text-[var(--muted-foreground)] hover:text-white transition-colors flex-shrink-0"
+              aria-label="Back to card games"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
-            <div>
-              <h1 className="text-2xl font-heading">Hearts</h1>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-heading truncate">Hearts</h1>
               <p className="text-sm text-[var(--muted-foreground)]">
                 vs AI 
                 {gameState.phase !== "idle" && ` • Round ${gameState.roundNumber}`}
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0 self-end sm:self-auto">
             {gameState.phase !== "idle" && (
               <Button variant="outline" size="sm" onClick={() => setShowScoreModal(true)}>
                 Scores

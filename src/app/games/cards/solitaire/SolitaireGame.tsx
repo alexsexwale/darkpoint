@@ -496,26 +496,25 @@ export function SolitaireGame() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8 relative">
       <div className="container max-w-5xl">
-        {/* Header */}
+        {/* Header - stack on mobile so title and buttons don't squash */}
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
               <Link
                 href="/games/cards"
-                className="text-[var(--muted-foreground)] hover:text-white transition-colors"
+                className="text-[var(--muted-foreground)] hover:text-white transition-colors flex-shrink-0"
+                aria-label="Back to card games"
               >
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </Link>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-heading">Solitaire</h1>
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-heading truncate">Solitaire</h1>
                 <p className="text-xs sm:text-sm text-[var(--muted-foreground)]">Klondike</p>
               </div>
             </div>
-
-            {/* Controls - Always visible */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
               <Button
                 variant="outline"
                 size="sm"
