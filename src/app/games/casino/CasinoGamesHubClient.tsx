@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface CasinoGame {
@@ -92,6 +93,7 @@ const DIFFICULTY_COLORS = {
 };
 
 export function CasinoGamesHubClient() {
+  const router = useRouter();
   const [hoveredGame, setHoveredGame] = useState<string | null>(null);
 
   return (
@@ -406,18 +408,19 @@ export function CasinoGamesHubClient() {
         </div>
       </section>
 
-      {/* Back Link */}
+      {/* Back to Game Zone Link */}
       <section className="py-8">
         <div className="container text-center">
-          <Link
-            href="/games"
-            className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-white transition-colors"
+          <button
+            type="button"
+            onClick={() => router.push("/games")}
+            className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-white transition-colors cursor-pointer bg-transparent border-0 font-inherit"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back to Game Zone
-          </Link>
+          </button>
         </div>
       </section>
     </div>
