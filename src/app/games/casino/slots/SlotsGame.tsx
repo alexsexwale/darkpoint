@@ -458,16 +458,16 @@ export function SlotsGame() {
                   </motion.div>
                 </div>
 
-                {/* Controls - wrap on mobile so all buttons fit */}
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 sm:justify-between">
-                  {/* Bet Controls */}
-                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                {/* Controls - two rows on mobile (bet row, then spin + auto) so nothing is cut off */}
+                <div className="w-full flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  {/* Bet Controls - full width on mobile */}
+                  <div className="flex items-center justify-center gap-1 sm:gap-2 flex-shrink-0">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => changeBet(-1)}
                       disabled={gameState.bet <= 1 || gameState.phase === "spinning"}
-                      className="min-w-[36px] sm:min-w-0"
+                      className="min-w-[44px] sm:min-w-0"
                     >
                       -
                     </Button>
@@ -477,7 +477,7 @@ export function SlotsGame() {
                       size="sm"
                       onClick={() => changeBet(1)}
                       disabled={gameState.bet >= 10 || gameState.phase === "spinning"}
-                      className="min-w-[36px] sm:min-w-0"
+                      className="min-w-[44px] sm:min-w-0"
                     >
                       +
                     </Button>
@@ -486,36 +486,36 @@ export function SlotsGame() {
                       size="sm"
                       onClick={maxBet}
                       disabled={gameState.phase === "spinning"}
-                      className="min-w-[36px] sm:min-w-0"
+                      className="min-w-[44px] sm:min-w-0"
                     >
                       Max
                     </Button>
                   </div>
 
-                  {/* Spin Button */}
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={spin}
-                    disabled={
-                      gameState.phase === "spinning" ||
-                      (gameState.credits < totalBet && gameState.freeSpins === 0)
-                    }
-                    className="px-6 sm:px-12 flex-shrink-0"
-                  >
-                    {gameState.freeSpins > 0 ? "FREE SPIN" : "SPIN"}
-                  </Button>
-
-                  {/* Autoplay */}
-                  <Button
-                    variant={gameState.autoplay ? "primary" : "outline"}
-                    size="sm"
-                    onClick={toggleAutoplay}
-                    disabled={gameState.phase === "spinning"}
-                    className="flex-shrink-0"
-                  >
-                    Auto {gameState.autoplay ? "ON" : "OFF"}
-                  </Button>
+                  {/* Spin + Auto - second row on mobile, touch-friendly */}
+                  <div className="flex items-center justify-center gap-2 sm:gap-3 flex-shrink-0">
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={spin}
+                      disabled={
+                        gameState.phase === "spinning" ||
+                        (gameState.credits < totalBet && gameState.freeSpins === 0)
+                      }
+                      className="px-8 sm:px-12 min-h-[44px]"
+                    >
+                      {gameState.freeSpins > 0 ? "FREE SPIN" : "SPIN"}
+                    </Button>
+                    <Button
+                      variant={gameState.autoplay ? "primary" : "outline"}
+                      size="sm"
+                      onClick={toggleAutoplay}
+                      disabled={gameState.phase === "spinning"}
+                      className="min-h-[44px] min-w-[80px] sm:min-w-0"
+                    >
+                      Auto {gameState.autoplay ? "ON" : "OFF"}
+                    </Button>
+                  </div>
                 </div>
               </div>
 
