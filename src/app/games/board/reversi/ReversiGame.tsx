@@ -439,16 +439,6 @@ export function ReversiGame() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--color-dark-1)] to-[var(--color-dark-2)] py-8 relative">
-      {showWinConfetti && confettiSize.width > 0 && confettiSize.height > 0 && (
-        <Confetti
-          width={confettiSize.width}
-          height={confettiSize.height}
-          recycle={false}
-          numberOfPieces={200}
-          colors={["#e87b35", "#22c55e", "#fbbf24", "#a855f7", "#ec4899"]}
-          style={{ position: "fixed", pointerEvents: "none" }}
-        />
-      )}
       <div className="container max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -625,13 +615,26 @@ export function ReversiGame() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" aria-hidden />
+              {showWinConfetti && confettiSize.width > 0 && confettiSize.height > 0 && (
+                <div className="absolute inset-0 pointer-events-none z-[1]">
+                  <Confetti
+                    width={confettiSize.width}
+                    height={confettiSize.height}
+                    recycle={false}
+                    numberOfPieces={200}
+                    colors={["#e87b35", "#22c55e", "#fbbf24", "#a855f7", "#ec4899"]}
+                    style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+                  />
+                </div>
+              )}
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-8 max-w-md w-full text-center"
+                className="relative z-[2] bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-8 max-w-md w-full text-center"
               >
                 <motion.div
                   className="text-6xl mb-4"
