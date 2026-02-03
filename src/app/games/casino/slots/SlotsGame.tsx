@@ -615,54 +615,58 @@ export function SlotsGame() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+              className="bg-[var(--color-dark-2)] border border-[var(--color-dark-3)] rounded-xl max-w-lg w-full max-h-[85vh] flex flex-col"
               onClick={e => e.stopPropagation()}
             >
-              <h2 className="text-2xl font-heading mb-4">Paytable &amp; Rules</h2>
+              <h2 className="text-2xl font-heading p-6 pb-0 flex-shrink-0">Paytable &amp; Rules</h2>
               
-              <div className="space-y-4 text-sm">
-                <div>
-                  <h3 className="font-bold text-white mb-2">Symbol Values (per bet)</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {SYMBOLS.filter(s => !s.isScatter).map(symbol => (
-                      <div key={symbol.id} className="flex items-center gap-2 bg-[var(--color-dark-3)]/50 rounded px-3 py-2">
-                        <span className="text-2xl">{symbol.emoji}</span>
-                        <div>
-                          <div className="text-white font-medium">{symbol.name}</div>
-                          <div className="text-[var(--muted-foreground)] text-xs">
-                            {symbol.isWild ? "Wild - Substitutes any" : `3x = ${symbol.value * 3}, 4x = ${symbol.value * 4}, 5x = ${symbol.value * 5}`}
+              <div className="flex-1 min-h-0 overflow-y-auto p-6 pt-4">
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <h3 className="font-bold text-white mb-2">Symbol Values (per bet)</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {SYMBOLS.filter(s => !s.isScatter).map(symbol => (
+                        <div key={symbol.id} className="flex items-center gap-2 bg-[var(--color-dark-3)]/50 rounded px-3 py-2">
+                          <span className="text-2xl">{symbol.emoji}</span>
+                          <div>
+                            <div className="text-white font-medium">{symbol.name}</div>
+                            <div className="text-[var(--muted-foreground)] text-xs">
+                              {symbol.isWild ? "Wild - Substitutes any" : `3x = ${symbol.value * 3}, 4x = ${symbol.value * 4}, 5x = ${symbol.value * 5}`}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-                
-                <div>
-                  <h3 className="font-bold text-white mb-1">Scatter Bonus</h3>
-                  <p className="text-[var(--muted-foreground)]">
-                    💫 3+ Scatters anywhere triggers Free Spins! (5 spins per scatter)
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="font-bold text-white mb-1">Paylines</h3>
-                  <p className="text-[var(--muted-foreground)]">
-                    9 paylines including horizontals, diagonals, and V-shapes. Match 3+ symbols from left to right.
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="font-bold text-white mb-1">Wild Symbol</h3>
-                  <p className="text-[var(--muted-foreground)]">
-                    ⭐ Wild substitutes for any symbol except Scatter. 5 Wilds = Jackpot!
-                  </p>
+                  
+                  <div>
+                    <h3 className="font-bold text-white mb-1">Scatter Bonus</h3>
+                    <p className="text-[var(--muted-foreground)]">
+                      💫 3+ Scatters anywhere triggers Free Spins! (5 spins per scatter)
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-bold text-white mb-1">Paylines</h3>
+                    <p className="text-[var(--muted-foreground)]">
+                      9 paylines including horizontals, diagonals, and V-shapes. Match 3+ symbols from left to right.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-bold text-white mb-1">Wild Symbol</h3>
+                    <p className="text-[var(--muted-foreground)]">
+                      ⭐ Wild substitutes for any symbol except Scatter. 5 Wilds = Jackpot!
+                    </p>
+                  </div>
                 </div>
               </div>
               
-              <Button variant="primary" className="w-full mt-6" onClick={() => setShowRulesModal(false)}>
-                Got It
-              </Button>
+              <div className="p-6 pt-4 flex-shrink-0 border-t border-[var(--color-dark-3)]">
+                <Button variant="primary" className="w-full min-h-[44px]" onClick={() => setShowRulesModal(false)}>
+                  Got It
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}
