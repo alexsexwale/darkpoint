@@ -319,7 +319,7 @@ export function SlotsGame() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-950 to-[var(--color-dark-1)]">
-      {/* Header */}
+      {/* Header: title, then Paytable/New Game, then Credits/Bet */}
       <div className="container px-4 sm:px-6 pt-6 sm:pt-8 pb-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -343,43 +343,46 @@ export function SlotsGame() {
             </Button>
           </div>
         </div>
+
+        {/* Spacer so New Game button doesn't touch content below */}
+        <div className="h-5 sm:h-4" aria-hidden />
+
+        {/* Credits / Bet row — below Paytable & New Game */}
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+          <div className="bg-black/30 backdrop-blur rounded-lg px-4 py-2 text-center">
+            <div className="text-xs text-[var(--muted-foreground)]">CREDITS</div>
+            <div className="text-xl font-bold text-yellow-400">{gameState.credits}</div>
+          </div>
+          <div className="bg-black/30 backdrop-blur rounded-lg px-4 py-2 text-center">
+            <div className="text-xs text-[var(--muted-foreground)]">BET</div>
+            <div className="text-xl font-bold text-purple-400">{totalBet}</div>
+          </div>
+          {gameState.freeSpins > 0 && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="bg-green-500/20 backdrop-blur rounded-lg px-4 py-2 text-center border border-green-500/50"
+            >
+              <div className="text-xs text-green-400">FREE SPINS</div>
+              <div className="text-xl font-bold text-green-400">{gameState.freeSpins}</div>
+            </motion.div>
+          )}
+          {gameState.winAmount > 0 && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="bg-yellow-500/20 backdrop-blur rounded-lg px-4 py-2 text-center border border-yellow-500/50"
+            >
+              <div className="text-xs text-yellow-400">WIN</div>
+              <div className="text-xl font-bold text-yellow-400">{gameState.winAmount}</div>
+            </motion.div>
+          )}
+        </div>
       </div>
 
       {/* Game Area */}
-      <div className="container px-4 sm:px-6 py-4">
+      <div className="container px-4 sm:px-6 pt-2 pb-4">
         <div className="max-w-3xl mx-auto">
-          {/* Credits Display */}
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-6">
-            <div className="bg-black/30 backdrop-blur rounded-lg px-4 py-2 text-center">
-              <div className="text-xs text-[var(--muted-foreground)]">CREDITS</div>
-              <div className="text-xl font-bold text-yellow-400">{gameState.credits}</div>
-            </div>
-            <div className="bg-black/30 backdrop-blur rounded-lg px-4 py-2 text-center">
-              <div className="text-xs text-[var(--muted-foreground)]">BET</div>
-              <div className="text-xl font-bold text-purple-400">{totalBet}</div>
-            </div>
-            {gameState.freeSpins > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="bg-green-500/20 backdrop-blur rounded-lg px-4 py-2 text-center border border-green-500/50"
-              >
-                <div className="text-xs text-green-400">FREE SPINS</div>
-                <div className="text-xl font-bold text-green-400">{gameState.freeSpins}</div>
-              </motion.div>
-            )}
-            {gameState.winAmount > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="bg-yellow-500/20 backdrop-blur rounded-lg px-4 py-2 text-center border border-yellow-500/50"
-              >
-                <div className="text-xs text-yellow-400">WIN</div>
-                <div className="text-xl font-bold text-yellow-400">{gameState.winAmount}</div>
-              </motion.div>
-            )}
-          </div>
-
           {gameState.phase === "idle" ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
