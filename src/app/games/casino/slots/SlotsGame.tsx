@@ -320,25 +320,25 @@ export function SlotsGame() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-950 to-[var(--color-dark-1)]">
       {/* Header */}
-      <div className="container pt-8 pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/games/casino" className="text-[var(--muted-foreground)] hover:text-white transition-colors">
+      <div className="container px-4 sm:px-6 pt-6 sm:pt-8 pb-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <Link href="/games/casino" className="flex-shrink-0 text-[var(--muted-foreground)] hover:text-white transition-colors p-1 -m-1" aria-label="Back to casino">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </Link>
-            <h1 className="text-2xl font-heading">Slot Machine</h1>
+            <h1 className="text-xl sm:text-2xl font-heading truncate">Slot Machine</h1>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-4 sm:gap-3 flex-shrink-0">
             <button
               onClick={() => setShowRulesModal(true)}
-              className="text-sm text-[var(--muted-foreground)] hover:text-white transition-colors"
+              className="text-sm text-[var(--muted-foreground)] hover:text-white transition-colors py-2 px-1 min-h-[44px] flex items-center sm:min-h-0 sm:py-0"
             >
               Paytable
             </button>
-            <Button variant="primary" size="sm" onClick={() => setShowSetupModal(true)}>
+            <Button variant="primary" size="sm" onClick={() => setShowSetupModal(true)} className="min-h-[44px]">
               New Game
             </Button>
           </div>
@@ -346,10 +346,10 @@ export function SlotsGame() {
       </div>
 
       {/* Game Area */}
-      <div className="container py-4">
+      <div className="container px-4 sm:px-6 py-4">
         <div className="max-w-3xl mx-auto">
           {/* Credits Display */}
-          <div className="flex justify-center gap-4 mb-6">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-6">
             <div className="bg-black/30 backdrop-blur rounded-lg px-4 py-2 text-center">
               <div className="text-xs text-[var(--muted-foreground)]">CREDITS</div>
               <div className="text-xl font-bold text-yellow-400">{gameState.credits}</div>
