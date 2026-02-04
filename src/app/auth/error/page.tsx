@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import { AuthErrorClient } from "./AuthErrorClient";
 
 export const metadata: Metadata = {
   title: "Authentication Error | Darkpoint",
@@ -8,6 +9,7 @@ export const metadata: Metadata = {
 
 export default function AuthErrorPage() {
   return (
+    <AuthErrorClient>
     <main className="min-h-screen bg-[var(--color-dark-1)] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
         <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
@@ -41,6 +43,7 @@ export default function AuthErrorPage() {
         </div>
       </div>
     </main>
+    </AuthErrorClient>
   );
 }
 

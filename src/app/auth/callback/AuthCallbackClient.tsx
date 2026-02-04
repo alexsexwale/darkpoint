@@ -21,13 +21,27 @@ export function AuthCallbackClient() {
     // Only allow relative paths to prevent open redirect
     const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
 
-    if (!code) {
+    if (!isSupabaseConfigured()) {
       router.replace("/auth/error");
       return;
     }
 
-    if (!isSupabaseConfigured()) {
-      router.replace("/auth/error");
+    async function hasSession(): Promise<boolean> {
+      const { data } = await supabase.auth.getSession();
+      return Boolean(data.session);
+    }
+
+    // No code: might be return from OAuth with session already set (e.g. fragment) or refresh
+    if (!code) {
+      (async () => {
+        if (await hasSession()) {
+          setStatus("success");
+          await refreshSession();
+          router.replace(next);
+        } else {
+          router.replace("/auth/error");
+        }
+      })();
       return;
     }
 
@@ -38,8 +52,13 @@ export function AuthCallbackClient() {
       const { data, error } = await supabase.auth.exchangeCodeForSession(codeToExchange);
       if (cancelled) return;
       if (error) {
-        // Session may still have been set (e.g. code already used, or link with existing account)
-        const session = data?.session ?? (await supabase.auth.getSession()).data.session;
+        // Session may be set asynchronously (e.g. link to existing account); check immediately and after short delay
+        let session = data?.session ?? (await supabase.auth.getSession()).data.session;
+        if (!session) {
+          await new Promise((r) => setTimeout(r, 150));
+          if (cancelled) return;
+          session = (await supabase.auth.getSession()).data.session ?? null;
+        }
         if (session) {
           setStatus("success");
           await refreshSession();
