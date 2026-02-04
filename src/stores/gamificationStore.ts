@@ -470,9 +470,17 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         .single();
 
       if (directProfile) {
-        // Profile exists - use it directly
+        // If profile has no avatar but OAuth provider supplied one (e.g. GitHub), sync it to user_profiles
+        const providerAvatar =
+          (user.user_metadata as { avatar_url?: string; picture?: string } | null)?.avatar_url ||
+          (user.user_metadata as { avatar_url?: string; picture?: string } | null)?.picture;
+        const profileAvatar = (directProfile as { avatar_url?: string | null }).avatar_url;
+        const resolvedAvatar = profileAvatar || (providerAvatar ?? null);
+        if (providerAvatar && !profileAvatar) {
+          await supabase.from("user_profiles").update({ avatar_url: providerAvatar }).eq("id", user.id);
+        }
         set({
-          userProfile: directProfile as UserProfile,
+          userProfile: { ...directProfile, avatar_url: resolvedAvatar } as UserProfile,
         });
 
         // Catch up referral processing if needed (best-effort, non-blocking)
@@ -682,14 +690,21 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
 
       const result = rpcResult.data as unknown as GamificationStatsResponse;
       const profileDetails = profileResult.data as { avatar_url: string | null; display_name: string | null; username: string | null; phone: string | null } | null;
-      
+      const providerAvatar =
+        (user.user_metadata as { avatar_url?: string; picture?: string } | null)?.avatar_url ||
+        (user.user_metadata as { avatar_url?: string; picture?: string } | null)?.picture;
+      const resolvedAvatar = profileDetails?.avatar_url || providerAvatar || null;
+      if (profileDetails && providerAvatar && !profileDetails.avatar_url) {
+        await supabase.from("user_profiles").update({ avatar_url: providerAvatar }).eq("id", user.id);
+      }
+
       if (result?.success && result.profile) {
         set({
           userProfile: {
             id: user.id,
             username: profileDetails?.username || null,
             display_name: profileDetails?.display_name || null,
-            avatar_url: profileDetails?.avatar_url || null,
+            avatar_url: resolvedAvatar,
             phone: profileDetails?.phone || null,
             total_spent: 0,
             total_orders: 0,
@@ -709,6 +724,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           userProfile: {
             id: user.id,
             ...profileDetails,
+            avatar_url: resolvedAvatar,
             total_xp: 0,
             current_level: 1,
             current_streak: 0,

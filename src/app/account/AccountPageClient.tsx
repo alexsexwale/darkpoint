@@ -150,9 +150,9 @@ export function AccountPageClient() {
         <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-main-1)]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="relative flex items-center gap-4">
           {/* Avatar */}
-          {userProfile?.avatar_url || user?.user_metadata?.avatar_url ? (
+          {(userProfile?.avatar_url || (user?.user_metadata as { avatar_url?: string; picture?: string })?.avatar_url || (user?.user_metadata as { avatar_url?: string; picture?: string })?.picture) ? (
             <img
-              src={userProfile?.avatar_url || user?.user_metadata?.avatar_url}
+              src={userProfile?.avatar_url || (user?.user_metadata as { avatar_url?: string; picture?: string })?.avatar_url || (user?.user_metadata as { avatar_url?: string; picture?: string })?.picture}
               alt={displayName}
               className="w-16 h-16 rounded-full object-cover"
             />

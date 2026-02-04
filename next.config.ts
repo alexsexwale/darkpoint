@@ -36,6 +36,17 @@ const nextConfig: NextConfig = {
         hostname: '*.supabase.co',
         pathname: '/storage/**',
       },
+      // OAuth provider avatars (GitHub, Google)
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
     ],
   },
   // Headers for PS2 emulator - SharedArrayBuffer requires cross-origin isolation

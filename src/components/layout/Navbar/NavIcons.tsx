@@ -59,7 +59,11 @@ export function NavIcons() {
     user?.user_metadata?.username || 
     user?.email?.split("@")[0] || 
     "User";
-  const userAvatar = userProfile?.avatar_url || user?.user_metadata?.avatar_url;
+  // Prefer profile avatar, then OAuth provider (GitHub uses avatar_url, Google uses picture)
+  const userAvatar =
+    userProfile?.avatar_url ||
+    (user?.user_metadata as { avatar_url?: string; picture?: string } | undefined)?.avatar_url ||
+    (user?.user_metadata as { avatar_url?: string; picture?: string } | undefined)?.picture;
   const userInitial = userDisplayName.charAt(0).toUpperCase();
 
   return (

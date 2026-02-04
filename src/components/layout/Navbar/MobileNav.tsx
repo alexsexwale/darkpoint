@@ -99,6 +99,10 @@ export function MobileNav() {
     children: item.children?.filter(child => !child.vipOnly || isVIP),
   }));
 
+  // Avatar: profile first, then OAuth provider (GitHub avatar_url, Google picture)
+  const meta = user?.user_metadata as { avatar_url?: string; picture?: string } | undefined;
+  const userAvatarUrl = user && (userProfile?.avatar_url || meta?.avatar_url || meta?.picture);
+
   // Wait for client-side hydration
   useEffect(() => {
     setMounted(true);
@@ -258,9 +262,9 @@ export function MobileNav() {
                   {/* User Info */}
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      {userProfile?.avatar_url || user.user_metadata?.avatar_url ? (
+                      {userAvatarUrl ? (
                         <Image
-                          src={userProfile?.avatar_url || user.user_metadata?.avatar_url}
+                          src={userAvatarUrl}
                           alt={userProfile?.display_name || user.user_metadata?.username || "User"}
                           width={48}
                           height={48}
