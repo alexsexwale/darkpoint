@@ -6,7 +6,7 @@ export default function AuthCallbackPage() {
     <Suspense
       fallback={
         <main className="min-h-screen bg-[var(--color-dark-1)] flex items-center justify-center p-4">
-          <div className="w-16 h-16 rounded-full border-2 border-[var(--color-primary)] border-t-transparent animate-spin" />
+          <div className="w-24 h-24 rounded-full border-2 border-[var(--color-dark-4)] border-t-[var(--color-main-1)] animate-spin" />
         </main>
       }
     >
