@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import type { Database, Tables } from "@/types/database";
+import type { Tables } from "@/types/database";
 import type {
   Achievement,
   SpinPrize,
@@ -477,8 +477,10 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         const profileAvatar = (directProfile as { avatar_url?: string | null }).avatar_url;
         const resolvedAvatar = profileAvatar || (providerAvatar ?? null);
         if (providerAvatar && !profileAvatar) {
-          const update: Database["public"]["Tables"]["user_profiles"]["Update"] = { avatar_url: providerAvatar };
-          await supabase.from("user_profiles").update(update).eq("id", user.id);
+          await supabase
+            .from("user_profiles")
+            .update({ avatar_url: providerAvatar } as never)
+            .eq("id", user.id);
         }
         set({
           userProfile: { ...directProfile, avatar_url: resolvedAvatar } as UserProfile,
@@ -696,8 +698,10 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
         (user.user_metadata as { avatar_url?: string; picture?: string } | null)?.picture;
       const resolvedAvatar = profileDetails?.avatar_url || providerAvatar || null;
       if (profileDetails && providerAvatar && !profileDetails.avatar_url) {
-        const update: Database["public"]["Tables"]["user_profiles"]["Update"] = { avatar_url: providerAvatar };
-        await supabase.from("user_profiles").update(update).eq("id", user.id);
+        await supabase
+          .from("user_profiles")
+          .update({ avatar_url: providerAvatar } as never)
+          .eq("id", user.id);
       }
 
       if (result?.success && result.profile) {
