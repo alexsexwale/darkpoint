@@ -35,9 +35,17 @@ export function AuthCallbackClient() {
     let cancelled = false;
 
     async function exchange() {
-      const { error } = await supabase.auth.exchangeCodeForSession(codeToExchange);
+      const { data, error } = await supabase.auth.exchangeCodeForSession(codeToExchange);
       if (cancelled) return;
       if (error) {
+        // Session may still have been set (e.g. code already used, or link with existing account)
+        const session = data?.session ?? (await supabase.auth.getSession()).data.session;
+        if (session) {
+          setStatus("success");
+          await refreshSession();
+          router.replace(next);
+          return;
+        }
         setStatus("error");
         router.replace("/auth/error");
         return;
