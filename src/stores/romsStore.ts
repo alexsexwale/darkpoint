@@ -18,9 +18,23 @@ export type Platform =
   | "ps2" 
   | "ps3" 
   | "psp" 
+  | "n64"
+  | "nds"
+  | "nes"
+  | "gb"
+  | "gba"
+  | "gamecube"
   | "dreamcast" 
+  | "gamegear"
+  | "genesis"
+  | "mastersystem"
   | "megacd" 
   | "saturn" 
+  | "snes"
+  | "atari7800"
+  | "atari2600"
+  | "atarijaguar"
+  | "atarilynx"
   | "xbox" 
   | "xbox360"
   | "amigacd"
@@ -33,7 +47,7 @@ export interface PlatformInfo {
   shortName: string;
   icon: string;
   description: string;
-  brand: "Sony" | "Sega" | "Microsoft" | "Commodore";
+  brand: "Sony" | "Nintendo" | "Sega" | "Atari" | "Microsoft" | "Commodore";
   note?: string;
 }
 
@@ -43,10 +57,26 @@ export const PLATFORMS: PlatformInfo[] = [
   { id: "ps2", name: "PlayStation 2", shortName: "PS2", icon: "🕹️", description: "PS2 classics library", brand: "Sony", note: "PS2 games are typically .iso files. Use the experimental PS2 emulator at /games/ps2 to play them." },
   { id: "ps3", name: "PlayStation 3", shortName: "PS3", icon: "🎯", description: "PS3 game collection", brand: "Sony", note: "PS3 games are very large (often 10GB+) and require RPCS3 emulator on PC." },
   { id: "psp", name: "PlayStation Portable", shortName: "PSP", icon: "📱", description: "PSP games on the go", brand: "Sony" },
+  // Nintendo
+  { id: "n64", name: "Nintendo 64", shortName: "N64", icon: "🕹️", description: "N64 classics", brand: "Nintendo", note: "N64 ROMs can be played with Project64, Mupen64Plus, or RetroArch." },
+  { id: "nds", name: "Nintendo DS", shortName: "NDS", icon: "📱", description: "DS game library", brand: "Nintendo", note: "DS ROMs can be played with DeSmuME or melonDS." },
+  { id: "nes", name: "Nintendo Entertainment System", shortName: "NES", icon: "🎮", description: "Classic NES games", brand: "Nintendo", note: "NES ROMs can be played with FCEUX, Nestopia, or RetroArch." },
+  { id: "gb", name: "Nintendo Game Boy", shortName: "GB", icon: "🔲", description: "Original Game Boy games", brand: "Nintendo", note: "Game Boy ROMs can be played with SameBoy, Gambatte, or RetroArch." },
+  { id: "gba", name: "Nintendo Game Boy Advance", shortName: "GBA", icon: "📲", description: "GBA game library", brand: "Nintendo", note: "GBA ROMs can be played with mGBA or VisualBoyAdvance." },
+  { id: "gamecube", name: "Nintendo GameCube", shortName: "GCN", icon: "🎯", description: "GameCube classics", brand: "Nintendo", note: "GameCube games can be played with Dolphin emulator." },
+  { id: "snes", name: "Super Nintendo Entertainment System", shortName: "SNES", icon: "🌟", description: "SNES game library", brand: "Nintendo", note: "SNES ROMs can be played with bsnes, Snes9x, or RetroArch." },
   // Sega
   { id: "dreamcast", name: "Sega Dreamcast", shortName: "DC", icon: "🌀", description: "Dreamcast classics", brand: "Sega", note: "Dreamcast games can be played with Redream or Flycast emulator." },
+  { id: "gamegear", name: "Sega Game Gear", shortName: "GG", icon: "📟", description: "Game Gear games", brand: "Sega", note: "Game Gear ROMs can be played with Genesis Plus GX or BlastEm." },
+  { id: "genesis", name: "Sega Genesis / Mega Drive", shortName: "Genesis", icon: "⚡", description: "Genesis & Mega Drive library", brand: "Sega", note: "Genesis ROMs can be played with Genesis Plus GX or BlastEm." },
+  { id: "mastersystem", name: "Sega Master System", shortName: "SMS", icon: "📺", description: "Master System games", brand: "Sega", note: "Master System ROMs can be played with Genesis Plus GX or Emulicious." },
   { id: "saturn", name: "Sega Saturn", shortName: "Saturn", icon: "🪐", description: "Saturn game library", brand: "Sega", note: "Saturn games require specialized emulators like Mednafen or Yabause." },
   { id: "megacd", name: "Sega Mega CD / Sega CD", shortName: "Mega CD", icon: "💿", description: "Mega CD / Sega CD games", brand: "Sega", note: "Mega CD games can be played with Genesis Plus GX or Kega Fusion." },
+  // Atari
+  { id: "atari7800", name: "Atari 7800", shortName: "7800", icon: "🕹️", description: "Atari 7800 library", brand: "Atari", note: "Atari 7800 ROMs can be played with ProSystem or RetroArch." },
+  { id: "atari2600", name: "Atari 2600", shortName: "2600", icon: "🎮", description: "Atari 2600 classics", brand: "Atari", note: "Atari 2600 ROMs can be played with Stella or RetroArch." },
+  { id: "atarijaguar", name: "Atari Jaguar", shortName: "Jaguar", icon: "🐆", description: "Atari Jaguar games", brand: "Atari", note: "Atari Jaguar games can be played with Virtual Jaguar or RetroArch." },
+  { id: "atarilynx", name: "Atari Lynx", shortName: "Lynx", icon: "📟", description: "Atari Lynx handheld games", brand: "Atari", note: "Atari Lynx ROMs can be played with Mednafen or RetroArch." },
   // Microsoft
   { id: "xbox", name: "Microsoft Xbox", shortName: "Xbox", icon: "🎮", description: "Original Xbox games", brand: "Microsoft", note: "Xbox games require XEMU emulator on PC." },
   { id: "xbox360", name: "Microsoft Xbox 360", shortName: "360", icon: "🔵", description: "Xbox 360 library", brand: "Microsoft", note: "Xbox 360 games are very large and require Xenia emulator on PC." },
@@ -128,7 +158,21 @@ const API_ENDPOINTS: Record<Platform, string> = {
   ps2: "/api/myrient/ps2",
   ps3: "/api/myrient/ps3",
   psp: "/api/myrient/psp",
+  n64: "/api/myrient/n64",
+  nds: "/api/myrient/nds",
+  nes: "/api/myrient/nes",
+  gb: "/api/myrient/gb",
+  gba: "/api/myrient/gba",
+  gamecube: "/api/myrient/gamecube",
+  snes: "/api/myrient/snes",
+  atari7800: "/api/myrient/atari7800",
+  atari2600: "/api/myrient/atari2600",
+  atarijaguar: "/api/myrient/atarijaguar",
+  atarilynx: "/api/myrient/atarilynx",
   dreamcast: "/api/myrient/dreamcast",
+  gamegear: "/api/myrient/gamegear",
+  genesis: "/api/myrient/genesis",
+  mastersystem: "/api/myrient/mastersystem",
   megacd: "/api/myrient/megacd",
   saturn: "/api/myrient/saturn",
   xbox: "/api/myrient/xbox",

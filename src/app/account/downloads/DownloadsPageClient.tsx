@@ -10,15 +10,30 @@ import type { Rom, Platform, PlatformInfo } from "@/stores/romsStore";
 // Group platforms by brand for the dropdown
 const PLATFORM_GROUPS = [
   { brand: "Sony", platforms: PLATFORMS.filter(p => p.brand === "Sony") },
+  { brand: "Nintendo", platforms: PLATFORMS.filter(p => p.brand === "Nintendo") },
   { brand: "Sega", platforms: PLATFORMS.filter(p => p.brand === "Sega") },
+  { brand: "Atari", platforms: PLATFORMS.filter(p => p.brand === "Atari") },
   { brand: "Microsoft", platforms: PLATFORMS.filter(p => p.brand === "Microsoft") },
   { brand: "Commodore", platforms: PLATFORMS.filter(p => p.brand === "Commodore") },
 ];
 
+function matchesConsoleSearch(platform: PlatformInfo, query: string): boolean {
+  if (!query.trim()) return true;
+  const q = query.toLowerCase().trim();
+  return (
+    platform.name.toLowerCase().includes(q) ||
+    platform.shortName.toLowerCase().includes(q) ||
+    platform.brand.toLowerCase().includes(q) ||
+    platform.description.toLowerCase().includes(q)
+  );
+}
+
 export function DownloadsPageClient() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [consoleSearch, setConsoleSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const consoleSearchInputRef = useRef<HTMLInputElement>(null);
 
   const {
     roms,
@@ -60,6 +75,20 @@ export function DownloadsPageClient() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Focus console search when dropdown opens
+  useEffect(() => {
+    if (isDropdownOpen) {
+      setConsoleSearch("");
+      requestAnimationFrame(() => consoleSearchInputRef.current?.focus());
+    }
+  }, [isDropdownOpen]);
+
+  // Filter platform groups by console search
+  const filteredPlatformGroups = PLATFORM_GROUPS.map((group) => ({
+    ...group,
+    platforms: group.platforms.filter((p) => matchesConsoleSearch(p, consoleSearch)),
+  })).filter((group) => group.platforms.length > 0);
+
   // Fetch ROMs when platform changes
   useEffect(() => {
     fetchRoms(currentPlatform);
@@ -69,6 +98,7 @@ export function DownloadsPageClient() {
   const handlePlatformSelect = (platform: Platform) => {
     setCurrentPlatform(platform);
     setIsDropdownOpen(false);
+    setConsoleSearch("");
   };
 
   // Handle download
@@ -155,39 +185,74 @@ export function DownloadsPageClient() {
                 transition={{ duration: 0.15 }}
                 className="absolute z-50 w-full mt-2 bg-[var(--color-dark-2)] border border-[var(--color-dark-4)] rounded-lg shadow-xl overflow-hidden"
               >
-                <div className="max-h-[400px] overflow-y-auto">
-                  {PLATFORM_GROUPS.map((group, groupIndex) => (
-                    <div key={group.brand}>
-                      {groupIndex > 0 && <div className="border-t border-[var(--color-dark-4)]" />}
-                      <div className="px-3 py-2 bg-[var(--color-dark-3)]/50">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                          {group.brand}
-                        </span>
+                {/* Console search */}
+                <div className="p-2 border-b border-[var(--color-dark-4)]">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg focus-within:border-[var(--color-main-1)] transition-colors">
+                    <svg className="w-4 h-4 text-[var(--muted-foreground)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      ref={consoleSearchInputRef}
+                      type="text"
+                      placeholder="Search consoles..."
+                      value={consoleSearch}
+                      onChange={(e) => setConsoleSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder-[var(--muted-foreground)] outline-none focus:ring-0 border-none"
+                    />
+                    {consoleSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setConsoleSearch("")}
+                        className="text-[var(--muted-foreground)] hover:text-white transition-colors"
+                        aria-label="Clear search"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="max-h-[340px] overflow-y-auto">
+                  {filteredPlatformGroups.length > 0 ? (
+                    filteredPlatformGroups.map((group, groupIndex) => (
+                      <div key={group.brand}>
+                        {groupIndex > 0 && <div className="border-t border-[var(--color-dark-4)]" />}
+                        <div className="px-3 py-2 bg-[var(--color-dark-3)]/50 sticky top-0 z-10">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+                            {group.brand}
+                          </span>
+                        </div>
+                        {group.platforms.map((platform) => (
+                          <button
+                            key={platform.id}
+                            onClick={() => handlePlatformSelect(platform.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-dark-3)] transition-colors ${
+                              currentPlatform === platform.id ? "bg-[var(--color-main-1)]/10 border-l-2 border-[var(--color-main-1)]" : ""
+                            }`}
+                          >
+                            <span className="text-xl">{platform.icon}</span>
+                            <div className="text-left flex-1">
+                              <p className={`font-medium ${currentPlatform === platform.id ? "text-[var(--color-main-1)]" : "text-white"}`}>
+                                {platform.name}
+                              </p>
+                              <p className="text-xs text-[var(--muted-foreground)]">{platform.description}</p>
+                            </div>
+                            {currentPlatform === platform.id && (
+                              <svg className="w-5 h-5 text-[var(--color-main-1)]" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
                       </div>
-                      {group.platforms.map((platform) => (
-                        <button
-                          key={platform.id}
-                          onClick={() => handlePlatformSelect(platform.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-dark-3)] transition-colors ${
-                            currentPlatform === platform.id ? "bg-[var(--color-main-1)]/10 border-l-2 border-[var(--color-main-1)]" : ""
-                          }`}
-                        >
-                          <span className="text-xl">{platform.icon}</span>
-                          <div className="text-left flex-1">
-                            <p className={`font-medium ${currentPlatform === platform.id ? "text-[var(--color-main-1)]" : "text-white"}`}>
-                              {platform.name}
-                            </p>
-                            <p className="text-xs text-[var(--muted-foreground)]">{platform.description}</p>
-                          </div>
-                          {currentPlatform === platform.id && (
-                            <svg className="w-5 h-5 text-[var(--color-main-1)]" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </button>
-                      ))}
+                    ))
+                  ) : (
+                    <div className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                      No consoles match &quot;{consoleSearch}&quot;
                     </div>
-                  ))}
+                  )}
                 </div>
               </motion.div>
             )}
