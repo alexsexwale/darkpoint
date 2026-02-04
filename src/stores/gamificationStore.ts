@@ -483,7 +483,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
             .eq("id", user.id);
         }
         set({
-          userProfile: { ...directProfile, avatar_url: resolvedAvatar } as UserProfile,
+          userProfile: { ...(directProfile as object), avatar_url: resolvedAvatar } as UserProfile,
         });
 
         // Catch up referral processing if needed (best-effort, non-blocking)
