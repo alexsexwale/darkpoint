@@ -32,6 +32,7 @@ export function DownloadsPageClient() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [consoleSearch, setConsoleSearch] = useState("");
+  const [romDetailRom, setRomDetailRom] = useState<Rom | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const consoleSearchInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,6 +101,15 @@ export function DownloadsPageClient() {
     setIsDropdownOpen(false);
     setConsoleSearch("");
   };
+
+  // Close ROM detail modal on Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setRomDetailRom(null);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
 
   // Handle download
   const startDownload = (rom: Rom) => {
@@ -434,6 +444,19 @@ export function DownloadsPageClient() {
                     </div>
                   </div>
 
+                  {/* Info Button */}
+                  <button
+                    type="button"
+                    onClick={() => setRomDetailRom(rom)}
+                    className="flex-shrink-0 w-9 h-9 rounded-lg bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] hover:border-[var(--color-main-1)]/50 hover:bg-[var(--color-dark-4)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--color-main-1)] transition-colors"
+                    title="View details"
+                    aria-label="View game details"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+
                   {/* Download Button */}
                   <Button
                     variant="outline"
@@ -525,6 +548,105 @@ export function DownloadsPageClient() {
             )}
           </div>
         )}
+
+        {/* ROM Detail Modal */}
+        <AnimatePresence>
+          {romDetailRom && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+              onClick={() => setRomDetailRom(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="w-full max-w-lg bg-[var(--color-dark-2)] border border-[var(--color-dark-4)] rounded-xl shadow-xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-dark-4)] bg-[var(--color-dark-3)]/50">
+                  <span className="text-sm font-medium text-[var(--muted-foreground)]">Game details</span>
+                  <button
+                    type="button"
+                    onClick={() => setRomDetailRom(null)}
+                    className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-white hover:bg-[var(--color-dark-4)] transition-colors"
+                    aria-label="Close"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="p-4 space-y-4">
+                  <div className="flex gap-4">
+                    <div className="w-14 h-14 flex-shrink-0 bg-gradient-to-br from-[var(--color-dark-4)] to-[var(--color-dark-3)] rounded-lg flex items-center justify-center text-2xl">
+                      {currentPlatformInfo?.icon || "🎮"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-white text-lg leading-snug break-words">
+                        {romDetailRom.title}
+                      </h3>
+                      <p className="text-xs text-[var(--muted-foreground)] mt-1 break-all">
+                        {romDetailRom.fileName}
+                      </p>
+                    </div>
+                  </div>
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <dt className="text-[var(--muted-foreground)]">Region</dt>
+                      <dd className="font-medium text-white mt-0.5">{romDetailRom.region}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--muted-foreground)]">File size</dt>
+                      <dd className="font-medium text-white mt-0.5">{romDetailRom.size}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--muted-foreground)]">Console</dt>
+                      <dd className="font-medium text-white mt-0.5">{romDetailRom.console}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[var(--muted-foreground)]">Platform</dt>
+                      <dd className="font-medium text-white mt-0.5">{romDetailRom.platform}</dd>
+                    </div>
+                  </dl>
+                  <div className="pt-2 flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setRomDetailRom(null)}>
+                      Close
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        startDownload(romDetailRom);
+                      }}
+                      disabled={downloadingId === romDetailRom.id}
+                    >
+                      {downloadingId === romDetailRom.id ? (
+                        <span className="flex items-center gap-2">
+                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Starting...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          Download
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Info Box */}
         <div className="bg-[var(--color-dark-2)]/50 border border-[var(--color-dark-3)] rounded-lg p-4 mt-6">
