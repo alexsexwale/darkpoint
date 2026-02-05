@@ -16,11 +16,18 @@ function getSupabaseAdmin() {
   }
 
   // Service role key must be the JWT from Project Settings > API > service_role (not anon).
+  // Explicitly set Authorization and apikey so GoTrue admin API receives the Bearer token.
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${supabaseServiceKey}`,
+        apikey: supabaseServiceKey,
+      },
     },
   });
 }
