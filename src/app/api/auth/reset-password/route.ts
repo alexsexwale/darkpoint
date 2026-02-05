@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Create admin Supabase client lazily to ensure env vars are available
+// Create admin Supabase client lazily to ensure env vars are available.
+// Uses full server-side auth options so the service_role key is sent as the Bearer token.
 function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!supabaseUrl || !supabaseServiceKey) {
     console.error("Missing Supabase environment variables:", {
@@ -14,8 +15,13 @@ function getSupabaseAdmin() {
     throw new Error("Supabase configuration is missing");
   }
 
+  // Service role key must be the JWT from Project Settings > API > service_role (not anon).
   return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { persistSession: false },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
   });
 }
 
@@ -165,8 +171,12 @@ export async function POST(request: Request) {
 
     if (updateError) {
       console.error("Error updating password:", updateError.message, updateError);
+      const isBearerError = /Bearer token|valid Bearer|authorization/i.test(updateError.message);
+      const userMessage = isBearerError
+        ? "Password reset is misconfigured on the server. Please contact support."
+        : `Failed to update password: ${updateError.message}`;
       return NextResponse.json(
-        { success: false, error: `Failed to update password: ${updateError.message}` },
+        { success: false, error: userMessage },
         { status: 500 }
       );
     }
