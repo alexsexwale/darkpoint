@@ -170,21 +170,19 @@ export default function NotFound() {
         >
           <p className="text-white/40 text-sm mb-4">Looking for something?</p>
           <div className="flex flex-wrap justify-center gap-4 text-sm">
+            <Link href="/store" className="text-[var(--color-main-1)] hover:underline">
+              Store
+            </Link>
+            <Link href="/games" className="text-[var(--color-main-1)] hover:underline">
+              Games
+            </Link>
             <Link href="/rewards" className="text-[var(--color-main-1)] hover:underline">
               Rewards
             </Link>
-            <span className="text-white/20">•</span>
-            <Link href="/news" className="text-[var(--color-main-1)] hover:underline">
-              News
-            </Link>
-            <span className="text-white/20">•</span>
-            <Link href="/faq" className="text-[var(--color-main-1)] hover:underline">
-              FAQ
-            </Link>
-            <span className="text-white/20">•</span>
             <Link href="/contact" className="text-[var(--color-main-1)] hover:underline">
               Contact
             </Link>
+            <span className="text-white/20">•</span>
           </div>
         </motion.div>
       </div>
