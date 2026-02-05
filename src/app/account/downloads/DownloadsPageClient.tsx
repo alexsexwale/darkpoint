@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AccountLayout } from "@/components/account";
 import { Button } from "@/components/ui";
 import { useRomsStore, PLATFORMS, SIZE_FILTERS } from "@/stores/romsStore";
 import type { Rom, Platform, PlatformInfo } from "@/stores/romsStore";
+import { useAuthStore, useAccountStore } from "@/stores";
+import type { UserRomDownload } from "@/stores/accountStore";
+import { supabase } from "@/lib/supabase";
+
+const PLACEHOLDER_IMAGE_PATH = "/images/placeholder-game.svg";
 
 // Group platforms by brand for the dropdown
 const PLATFORM_GROUPS = [
@@ -33,6 +38,10 @@ export function DownloadsPageClient() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [consoleSearch, setConsoleSearch] = useState("");
   const [romDetailRom, setRomDetailRom] = useState<Rom | null>(null);
+  const [romArtUrls, setRomArtUrls] = useState<Record<string, string>>({});
+  const [downloadsTab, setDownloadsTab] = useState<"library" | "my-downloads">("library");
+  const [redownloadingId, setRedownloadingId] = useState<string | null>(null);
+  const requestedArtIds = useRef<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
   const consoleSearchInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,6 +69,12 @@ export function DownloadsPageClient() {
     getPagedRoms,
     getTotalPages,
   } = useRomsStore();
+
+  const {
+    romDownloads,
+    isLoadingRomDownloads,
+    fetchRomDownloads,
+  } = useAccountStore();
 
   const pagedRoms = getPagedRoms();
   const totalPages = getTotalPages();
@@ -111,11 +126,74 @@ export function DownloadsPageClient() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
+  // Lazy-load game art for visible ROMs (requested IDs tracked in ref to avoid duplicate fetches)
+  const fetchArtForRom = useCallback((rom: Rom) => {
+    if (requestedArtIds.current.has(rom.id)) return;
+    requestedArtIds.current.add(rom.id);
+    const params = new URLSearchParams({
+      title: rom.title,
+      platform: rom.platform,
+    });
+    fetch(`/api/game-art?${params}`)
+      .then((res) => res.json())
+      .then((data: { imageUrl?: string | null }) => {
+        if (data?.imageUrl) {
+          setRomArtUrls((prev) => ({ ...prev, [rom.id]: data.imageUrl! }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    pagedRoms.forEach((rom) => fetchArtForRom(rom));
+    if (romDetailRom) fetchArtForRom(romDetailRom);
+  }, [pagedRoms, romDetailRom, fetchArtForRom]);
+
+  // Helper: get display image for a ROM (art URL or null for emoji fallback)
+  const getRomImageUrl = useCallback((rom: Rom): string | null => {
+    const url = romArtUrls[rom.id];
+    if (url && url !== PLACEHOLDER_IMAGE_PATH) return url;
+    return null;
+  }, [romArtUrls]);
+
   // Handle download
-  const startDownload = (rom: Rom) => {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  const startDownload = async (rom: Rom) => {
     if (!rom || !rom.downloadUrl) return;
     setDownloadingId(rom.id);
-    
+
+    if (isAuthenticated) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const res = await fetch("/api/account/rom-downloads", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              title: rom.title,
+              fileName: rom.fileName,
+              size: rom.size,
+              sizeBytes: rom.sizeBytes ?? 0,
+              region: rom.region,
+              downloadUrl: rom.downloadUrl,
+              console: rom.console,
+              platform: rom.platform,
+              imageUrl: Array.isArray(rom.imageUrl) && rom.imageUrl[0] ? rom.imageUrl[0] : undefined,
+            }),
+          });
+          if (!res.ok && res.status !== 401) {
+            console.warn("Failed to record ROM download:", await res.text());
+          }
+        }
+      } catch (err) {
+        console.warn("Could not record ROM download:", err);
+      }
+    }
+
     const a = document.createElement("a");
     const fileName = (rom.fileName || rom.title || "game") + ".zip";
     a.href = `/api/myrient/download?url=${encodeURIComponent(rom.downloadUrl)}&filename=${encodeURIComponent(fileName)}`;
@@ -128,6 +206,47 @@ export function DownloadsPageClient() {
       a.remove();
       setTimeout(() => setDownloadingId(null), 2000);
     });
+  };
+
+  const handleRedownload = async (row: UserRomDownload) => {
+    if (!row.download_url || !row.file_name) return;
+    setRedownloadingId(row.id);
+    try {
+      if (isAuthenticated) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await fetch("/api/account/rom-downloads", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              title: row.title,
+              fileName: row.file_name,
+              size: row.size,
+              sizeBytes: row.size_bytes ?? 0,
+              region: row.region,
+              downloadUrl: row.download_url,
+              console: row.console,
+              platform: row.platform,
+              imageUrl: row.image_url ?? undefined,
+            }),
+          });
+        }
+      }
+      const a = document.createElement("a");
+      a.href = `/api/myrient/download?url=${encodeURIComponent(row.download_url)}&filename=${encodeURIComponent(row.file_name)}`;
+      a.download = row.file_name;
+      a.rel = "noopener";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      requestAnimationFrame(() => a.remove());
+      await fetchRomDownloads();
+    } finally {
+      setTimeout(() => setRedownloadingId(null), 1500);
+    }
   };
 
   // Generate page numbers to show
@@ -162,6 +281,118 @@ export function DownloadsPageClient() {
   return (
     <AccountLayout title="ROM Library">
       <div className="space-y-6">
+        {/* Tabs: ROM Library | My Downloaded ROMs */}
+        <div className="flex gap-1 p-1 bg-[var(--color-dark-3)]/50 border border-[var(--color-dark-4)] rounded-lg w-fit">
+          <button
+            type="button"
+            onClick={() => setDownloadsTab("library")}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              downloadsTab === "library"
+                ? "bg-[var(--color-main-1)] text-white"
+                : "text-[var(--muted-foreground)] hover:text-white hover:bg-[var(--color-dark-4)]"
+            }`}
+          >
+            ROM Library
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDownloadsTab("my-downloads");
+              if (isAuthenticated) fetchRomDownloads();
+            }}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              downloadsTab === "my-downloads"
+                ? "bg-[var(--color-main-1)] text-white"
+                : "text-[var(--muted-foreground)] hover:text-white hover:bg-[var(--color-dark-4)]"
+            }`}
+          >
+            My Downloaded ROMs
+          </button>
+        </div>
+
+        {downloadsTab === "my-downloads" ? (
+          /* My Downloaded ROMs tab */
+          <div className="space-y-4">
+            {!isAuthenticated ? (
+              <div className="text-center py-12 bg-[var(--color-dark-3)]/30 rounded-lg">
+                <p className="text-[var(--muted-foreground)]">Sign in to see your download history.</p>
+              </div>
+            ) : isLoadingRomDownloads ? (
+              <div className="grid gap-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="animate-pulse flex items-center gap-4 p-4 bg-[var(--color-dark-3)]/30 rounded-lg">
+                    <div className="w-12 h-12 bg-[var(--color-dark-4)] rounded-lg" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-[var(--color-dark-4)] rounded w-1/3 mb-2" />
+                      <div className="h-3 bg-[var(--color-dark-4)] rounded w-1/4" />
+                    </div>
+                    <div className="h-8 w-24 bg-[var(--color-dark-4)] rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : romDownloads.length === 0 ? (
+              <div className="text-center py-12 bg-[var(--color-dark-3)]/30 rounded-lg">
+                <span className="text-4xl mb-4 block">📦</span>
+                <p className="text-[var(--muted-foreground)]">No downloaded ROMs yet.</p>
+                <p className="text-sm text-[var(--muted-foreground)] mt-1">Download games from the ROM Library to see them here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {romDownloads.map((row: UserRomDownload) => (
+                  <motion.div
+                    key={row.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-4 p-4 bg-[var(--color-dark-3)]/30 hover:bg-[var(--color-dark-3)]/50 rounded-lg transition-colors"
+                  >
+                    <div className="w-12 h-12 flex-shrink-0 bg-gradient-to-br from-[var(--color-dark-4)] to-[var(--color-dark-3)] rounded-lg flex items-center justify-center overflow-hidden">
+                      {row.image_url ? (
+                        <img src={row.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <img src={PLACEHOLDER_IMAGE_PATH} alt="" className="w-8 h-8 opacity-50" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-white truncate">{row.title}</h3>
+                      <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
+                        <span className="text-[var(--color-main-1)] font-medium">{row.region}</span>
+                        <span>•</span>
+                        <span>{row.size}</span>
+                        <span>•</span>
+                        <span>{row.console}</span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRedownload(row)}
+                      disabled={redownloadingId === row.id}
+                      className="flex-shrink-0"
+                    >
+                      {redownloadingId === row.id ? (
+                        <span className="flex items-center gap-2">
+                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Starting...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          Re-download
+                        </span>
+                      )}
+                    </Button>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
         {/* Console Selector Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <label className="block text-sm text-[var(--muted-foreground)] mb-2">Select Console</label>
@@ -425,11 +656,21 @@ export function DownloadsPageClient() {
                   transition={{ delay: index * 0.02 }}
                   className="flex items-center gap-4 p-4 bg-[var(--color-dark-3)]/30 hover:bg-[var(--color-dark-3)]/50 rounded-lg transition-colors group"
                 >
-                  {/* Game Icon */}
-                  <div className="w-12 h-12 flex-shrink-0 bg-gradient-to-br from-[var(--color-dark-4)] to-[var(--color-dark-3)] rounded-lg flex items-center justify-center">
-                    <span className="text-2xl opacity-60 group-hover:opacity-100 transition-opacity">
-                      {currentPlatformInfo?.icon || "🎮"}
-                    </span>
+                  {/* Game Icon / Cover */}
+                  <div className="w-12 h-12 flex-shrink-0 bg-gradient-to-br from-[var(--color-dark-4)] to-[var(--color-dark-3)] rounded-lg flex items-center justify-center overflow-hidden text-[var(--muted-foreground)]">
+                    {getRomImageUrl(rom) ? (
+                      <img
+                        src={getRomImageUrl(rom)!}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={PLACEHOLDER_IMAGE_PATH}
+                        alt=""
+                        className="w-8 h-8 opacity-50"
+                      />
+                    )}
                   </div>
 
                   {/* Game Info */}
@@ -582,8 +823,20 @@ export function DownloadsPageClient() {
                 </div>
                 <div className="p-4 space-y-4">
                   <div className="flex gap-4">
-                    <div className="w-14 h-14 flex-shrink-0 bg-gradient-to-br from-[var(--color-dark-4)] to-[var(--color-dark-3)] rounded-lg flex items-center justify-center text-2xl">
-                      {currentPlatformInfo?.icon || "🎮"}
+                    <div className="w-14 h-14 flex-shrink-0 bg-gradient-to-br from-[var(--color-dark-4)] to-[var(--color-dark-3)] rounded-lg flex items-center justify-center overflow-hidden text-[var(--muted-foreground)]">
+                      {romDetailRom && getRomImageUrl(romDetailRom) ? (
+                        <img
+                          src={getRomImageUrl(romDetailRom)!}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <img
+                          src={PLACEHOLDER_IMAGE_PATH}
+                          alt=""
+                          className="w-10 h-10 opacity-50"
+                        />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-white text-lg leading-snug break-words">
@@ -668,6 +921,8 @@ export function DownloadsPageClient() {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
     </AccountLayout>
   );

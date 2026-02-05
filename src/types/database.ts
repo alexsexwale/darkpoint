@@ -803,6 +803,50 @@ export interface Database {
           download_count?: number;
         };
       };
+      user_rom_downloads: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          file_name: string;
+          size: string;
+          size_bytes: number;
+          region: string;
+          download_url: string;
+          console: string;
+          platform: string;
+          image_url: string | null;
+          created_at: string;
+          last_downloaded_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          file_name: string;
+          size: string;
+          size_bytes?: number;
+          region: string;
+          download_url: string;
+          console: string;
+          platform: string;
+          image_url?: string | null;
+          created_at?: string;
+          last_downloaded_at?: string;
+        };
+        Update: {
+          title?: string;
+          file_name?: string;
+          size?: string;
+          size_bytes?: number;
+          region?: string;
+          download_url?: string;
+          console?: string;
+          platform?: string;
+          image_url?: string | null;
+          last_downloaded_at?: string;
+        };
+      };
       user_wishlist: {
         Row: {
           id: string;

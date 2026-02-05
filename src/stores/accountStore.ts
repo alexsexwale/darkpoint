@@ -11,6 +11,7 @@ export type OrderItem = Tables<"order_items">;
 export type ProductReview = Tables<"product_reviews">;
 export type ReviewReport = Tables<"review_reports">;
 export type UserDownload = Tables<"user_downloads">;
+export type UserRomDownload = Tables<"user_rom_downloads">;
 
 export interface OrderWithItems extends Order {
   items: OrderItem[];
@@ -53,6 +54,10 @@ interface AccountState {
   downloads: UserDownload[];
   isLoadingDownloads: boolean;
   
+  // ROM downloads (library)
+  romDownloads: UserRomDownload[];
+  isLoadingRomDownloads: boolean;
+  
   // Stats
   stats: UserStats | null;
   isLoadingStats: boolean;
@@ -74,6 +79,8 @@ interface AccountState {
   deleteReview: (id: string) => Promise<{ success: boolean; error?: string }>;
   
   fetchDownloads: () => Promise<void>;
+  
+  fetchRomDownloads: () => Promise<void>;
   
   fetchStats: () => Promise<void>;
   
@@ -99,6 +106,8 @@ export const useAccountStore = create<AccountState>((set, get) => ({
   isLoadingReviews: false,
   downloads: [],
   isLoadingDownloads: false,
+  romDownloads: [],
+  isLoadingRomDownloads: false,
   stats: null,
   isLoadingStats: false,
   
@@ -487,6 +496,28 @@ export const useAccountStore = create<AccountState>((set, get) => ({
     } catch (error) {
       console.error("Error fetching downloads:", error);
       set({ isLoadingDownloads: false });
+    }
+  },
+
+  fetchRomDownloads: async () => {
+    if (!isSupabaseConfigured()) return;
+
+    set({ isLoadingRomDownloads: true });
+
+    try {
+      const { data, error } = await supabase
+        .from("user_rom_downloads")
+        .select("*")
+        .order("last_downloaded_at", { ascending: false });
+
+      if (error) throw error;
+
+      set({ romDownloads: data || [], isLoadingRomDownloads: false });
+    } catch (err) {
+      const message = err && typeof err === "object" && "message" in err ? (err as { message?: string }).message : String(err);
+      const code = err && typeof err === "object" && "code" in err ? (err as { code?: string }).code : undefined;
+      console.error("Error fetching ROM downloads:", message || code || err);
+      set({ romDownloads: [], isLoadingRomDownloads: false });
     }
   },
   
