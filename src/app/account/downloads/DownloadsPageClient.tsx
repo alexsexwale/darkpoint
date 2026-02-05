@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AccountLayout } from "@/components/account";
 import { Button } from "@/components/ui";
@@ -10,7 +11,18 @@ import { useAuthStore, useAccountStore } from "@/stores";
 import type { UserRomDownload } from "@/stores/accountStore";
 import { supabase } from "@/lib/supabase";
 
+const VALID_PLATFORMS: Platform[] = PLATFORMS.map((p) => p.id);
+const VALID_SIZE_VALUES = SIZE_FILTERS.map((s) => s.value);
+
 const PLACEHOLDER_IMAGE_PATH = "/images/placeholder-game.svg";
+
+function scrollToTop() {
+  setTimeout(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, 0);
+}
 
 // Group platforms by brand for the dropdown
 const PLATFORM_GROUPS = [
@@ -41,6 +53,8 @@ export function DownloadsPageClient() {
   const [romArtUrls, setRomArtUrls] = useState<Record<string, string>>({});
   const [downloadsTab, setDownloadsTab] = useState<"library" | "my-downloads">("library");
   const [redownloadingId, setRedownloadingId] = useState<string | null>(null);
+  const [myDownloadsPage, setMyDownloadsPage] = useState(1);
+  const [myDownloadsPerPage, setMyDownloadsPerPage] = useState(25);
   const requestedArtIds = useRef<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
   const consoleSearchInputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +93,52 @@ export function DownloadsPageClient() {
   const pagedRoms = getPagedRoms();
   const totalPages = getTotalPages();
   const currentPlatformInfo = PLATFORMS.find(p => p.id === currentPlatform);
+
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const hasInitializedFromUrl = useRef(false);
+
+  // Initialize state from URL on mount
+  useEffect(() => {
+    if (hasInitializedFromUrl.current) return;
+    hasInitializedFromUrl.current = true;
+    const tab = searchParams.get("tab");
+    if (tab === "my-downloads" || tab === "library") {
+      setDownloadsTab(tab);
+      if (tab === "my-downloads") fetchRomDownloads();
+    }
+    const platformParam = searchParams.get("platform");
+    if (platformParam && VALID_PLATFORMS.includes(platformParam as Platform)) {
+      setCurrentPlatform(platformParam as Platform);
+    }
+    const q = searchParams.get("q") ?? "";
+    const region = searchParams.get("region") ?? "";
+    const size = searchParams.get("size") ?? "";
+    setSearchQuery(q);
+    setRegionFilter(region);
+    setSizeFilter(VALID_SIZE_VALUES.includes(size) ? size : "");
+    const pageNum = parseInt(searchParams.get("page") ?? "1", 10);
+    if (pageNum >= 1) setCurrentPage(pageNum);
+    const myPageNum = parseInt(searchParams.get("myPage") ?? "1", 10);
+    if (myPageNum >= 1) setMyDownloadsPage(myPageNum);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- run once on mount
+
+  // Sync state to URL when tab, platform, filters, search or page change (after initial URL read)
+  useEffect(() => {
+    if (!hasInitializedFromUrl.current) return;
+    const params = new URLSearchParams();
+    if (downloadsTab !== "library") params.set("tab", downloadsTab);
+    if (currentPlatform !== "psx") params.set("platform", currentPlatform);
+    if (searchQuery.trim()) params.set("q", searchQuery.trim());
+    if (regionFilter) params.set("region", regionFilter);
+    if (sizeFilter) params.set("size", sizeFilter);
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (myDownloadsPage > 1) params.set("myPage", String(myDownloadsPage));
+    const queryString = params.toString();
+    const url = queryString ? `${pathname}?${queryString}` : pathname;
+    router.replace(url, { scroll: false });
+  }, [pathname, router, downloadsTab, currentPlatform, searchQuery, regionFilter, sizeFilter, currentPage, myDownloadsPage]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -276,6 +336,34 @@ export function DownloadsPageClient() {
     return pages;
   };
 
+  // My Downloaded ROMs pagination (per-tab state)
+  const myDownloadsTotal = romDownloads.length;
+  const myDownloadsTotalPages = Math.max(1, Math.ceil(myDownloadsTotal / myDownloadsPerPage));
+  const effectiveMyPage = Math.min(myDownloadsPage, myDownloadsTotalPages);
+  const myDownloadsStart = (effectiveMyPage - 1) * myDownloadsPerPage;
+  const pagedRomDownloads = romDownloads.slice(myDownloadsStart, myDownloadsStart + myDownloadsPerPage);
+
+  const getMyDownloadsPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisiblePages = 5;
+    const total = myDownloadsTotalPages;
+    const current = effectiveMyPage;
+    if (total <= maxVisiblePages) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 3) pages.push("...");
+      const start = Math.max(2, current - 1);
+      const end = Math.min(total - 1, current + 1);
+      for (let i = start; i <= end; i++) {
+        if (!pages.includes(i)) pages.push(i);
+      }
+      if (current < total - 2) pages.push("...");
+      if (!pages.includes(total)) pages.push(total);
+    }
+    return pages;
+  };
+
   const hasActiveFilters = searchQuery || regionFilter || sizeFilter;
 
   return (
@@ -285,7 +373,10 @@ export function DownloadsPageClient() {
         <div className="flex gap-1 p-1 bg-[var(--color-dark-3)]/50 border border-[var(--color-dark-4)] rounded-lg w-fit">
           <button
             type="button"
-            onClick={() => setDownloadsTab("library")}
+            onClick={() => {
+              setDownloadsTab("library");
+              setCurrentPage(1);
+            }}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               downloadsTab === "library"
                 ? "bg-[var(--color-main-1)] text-white"
@@ -298,6 +389,7 @@ export function DownloadsPageClient() {
             type="button"
             onClick={() => {
               setDownloadsTab("my-downloads");
+              setMyDownloadsPage(1);
               if (isAuthenticated) fetchRomDownloads();
             }}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -337,8 +429,38 @@ export function DownloadsPageClient() {
                 <p className="text-sm text-[var(--muted-foreground)] mt-1">Download games from the ROM Library to see them here.</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {romDownloads.map((row: UserRomDownload) => (
+              <>
+                {/* My Downloads: Per page + summary */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Showing{" "}
+                    <span className="text-white font-medium">{myDownloadsStart + 1}</span>
+                    {" - "}
+                    <span className="text-white font-medium">{Math.min(myDownloadsStart + myDownloadsPerPage, myDownloadsTotal)}</span>
+                    {" of "}
+                    <span className="text-white font-medium">{myDownloadsTotal.toLocaleString()}</span>
+                    {" downloads"}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs text-[var(--muted-foreground)]">Per page</label>
+                    <select
+                      value={myDownloadsPerPage}
+                      onChange={(e) => {
+                        setMyDownloadsPerPage(Number(e.target.value));
+                        setMyDownloadsPage(1);
+                        scrollToTop();
+                      }}
+                      className="px-3 py-2 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-main-1)]"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                {pagedRomDownloads.map((row: UserRomDownload) => (
                   <motion.div
                     key={row.id}
                     initial={{ opacity: 0, y: 8 }}
@@ -388,7 +510,84 @@ export function DownloadsPageClient() {
                     </Button>
                   </motion.div>
                 ))}
-              </div>
+                </div>
+                {/* My Downloads pagination (store-style) */}
+                {myDownloadsTotalPages > 1 && (
+                  <div className="flex flex-col items-center gap-4 pt-4">
+                    <div className="text-sm text-white/40">
+                      Page <span className="text-[var(--color-main-1)] font-bold">{effectiveMyPage}</span> of <span className="font-medium text-white/60">{myDownloadsTotalPages}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (effectiveMyPage > 1) {
+                            setMyDownloadsPage((p) => Math.max(1, p - 1));
+                            scrollToTop();
+                          }
+                        }}
+                        disabled={effectiveMyPage === 1}
+                        className={`flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 ease-out ${
+                          effectiveMyPage === 1
+                            ? "bg-white/5 text-white/30 cursor-not-allowed"
+                            : "bg-white/10 text-white hover:bg-[var(--color-main-1)] hover:text-black hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-main-1)]/20"
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Prev
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {getMyDownloadsPageNumbers().map((page, index) =>
+                          typeof page === "number" ? (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => {
+                                setMyDownloadsPage(page);
+                                scrollToTop();
+                              }}
+                              className={`relative w-10 h-10 rounded-full font-bold text-sm transition-all duration-300 ease-out ${
+                                effectiveMyPage === page
+                                  ? "bg-gradient-to-br from-[var(--color-main-1)] to-[var(--color-main-2)] text-black scale-110 shadow-lg shadow-[var(--color-main-1)]/30"
+                                  : "bg-white/5 text-white/70 hover:bg-white/15 hover:text-white hover:scale-105"
+                              }`}
+                            >
+                              {page}
+                              {effectiveMyPage === page && (
+                                <span className="absolute inset-0 rounded-full animate-ping bg-[var(--color-main-1)]/30" style={{ animationDuration: "2s" }} />
+                              )}
+                            </button>
+                          ) : (
+                            <span key={index} className="px-2 text-white/40">•••</span>
+                          )
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (effectiveMyPage < myDownloadsTotalPages) {
+                            setMyDownloadsPage((p) => Math.min(myDownloadsTotalPages, p + 1));
+                            scrollToTop();
+                          }
+                        }}
+                        disabled={effectiveMyPage === myDownloadsTotalPages}
+                        className={`flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 ease-out ${
+                          effectiveMyPage === myDownloadsTotalPages
+                            ? "bg-white/5 text-white/30 cursor-not-allowed"
+                            : "bg-white/10 text-white hover:bg-[var(--color-main-1)] hover:text-black hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-main-1)]/20"
+                        }`}
+                      >
+                        Next
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
@@ -568,7 +767,10 @@ export function DownloadsPageClient() {
               <label className="block text-xs text-[var(--muted-foreground)] mb-1">Per Page</label>
               <select
                 value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  scrollToTop();
+                }}
                 className="w-full px-3 py-2 bg-[var(--color-dark-3)] border border-[var(--color-dark-4)] rounded-lg text-sm text-white focus:outline-none focus:border-[var(--color-main-1)]"
               >
                 <option value={10}>10</option>
@@ -727,51 +929,80 @@ export function DownloadsPageClient() {
               ))}
             </div>
 
-            {/* Pagination */}
+            {/* Pagination (store-style) */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-4">
-                {/* Previous Button */}
-                <button
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 rounded-lg bg-[var(--color-dark-3)] hover:bg-[var(--color-dark-4)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-
-                {/* Page Numbers */}
-                <div className="flex items-center gap-1">
-                  {getPageNumbers().map((page, index) => (
-                    typeof page === "number" ? (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentPage(page)}
-                        className={`min-w-[40px] px-3 py-2 rounded-lg transition-colors ${
-                          currentPage === page
-                            ? "bg-[var(--color-main-1)] text-white"
-                            : "bg-[var(--color-dark-3)] hover:bg-[var(--color-dark-4)] text-white"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ) : (
-                      <span key={index} className="px-2 text-[var(--muted-foreground)]">...</span>
-                    )
-                  ))}
+              <div className="flex flex-col items-center gap-4 pt-4">
+                <div className="text-sm text-white/40">
+                  Page <span className="text-[var(--color-main-1)] font-bold">{currentPage}</span> of <span className="font-medium text-white/60">{totalPages}</span>
                 </div>
-
-                {/* Next Button */}
-                <button
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-2 rounded-lg bg-[var(--color-dark-3)] hover:bg-[var(--color-dark-4)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (currentPage > 1) {
+                        setCurrentPage(currentPage - 1);
+                        scrollToTop();
+                      }
+                    }}
+                    disabled={currentPage === 1}
+                    className={`flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 ease-out ${
+                      currentPage === 1
+                        ? "bg-white/5 text-white/30 cursor-not-allowed"
+                        : "bg-white/10 text-white hover:bg-[var(--color-main-1)] hover:text-black hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-main-1)]/20"
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Prev
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {getPageNumbers().map((page, index) =>
+                      typeof page === "number" ? (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            setCurrentPage(page);
+                            scrollToTop();
+                          }}
+                          className={`relative w-10 h-10 rounded-full font-bold text-sm transition-all duration-300 ease-out ${
+                            currentPage === page
+                              ? "bg-gradient-to-br from-[var(--color-main-1)] to-[var(--color-main-2)] text-black scale-110 shadow-lg shadow-[var(--color-main-1)]/30"
+                              : "bg-white/5 text-white/70 hover:bg-white/15 hover:text-white hover:scale-105"
+                          }`}
+                        >
+                          {page}
+                          {currentPage === page && (
+                            <span className="absolute inset-0 rounded-full animate-ping bg-[var(--color-main-1)]/30" style={{ animationDuration: "2s" }} />
+                          )}
+                        </button>
+                      ) : (
+                        <span key={index} className="px-2 text-white/40">•••</span>
+                      )
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (currentPage < totalPages) {
+                        setCurrentPage(currentPage + 1);
+                        scrollToTop();
+                      }
+                    }}
+                    disabled={currentPage === totalPages}
+                    className={`flex items-center gap-1 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 ease-out ${
+                      currentPage === totalPages
+                        ? "bg-white/5 text-white/30 cursor-not-allowed"
+                        : "bg-white/10 text-white hover:bg-[var(--color-main-1)] hover:text-black hover:scale-105 hover:shadow-lg hover:shadow-[var(--color-main-1)]/20"
+                    }`}
+                  >
+                    Next
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
           </>
