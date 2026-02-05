@@ -110,20 +110,19 @@ export function ProductPageClient({ slug }: ProductPageClientProps) {
     router.replace(newUrl, { scroll: false });
   }, [pathname, router]);
   
+  // Sync URL when selectedAttributes change (after initial load from URL)
+  useEffect(() => {
+    if (!initializedFromUrlRef.current) return;
+    updateUrlWithAttributes(selectedAttributes);
+  }, [selectedAttributes, updateUrlWithAttributes]);
+
   // Handle attribute change for multi-dimensional variants
   const handleAttributeChange = useCallback((attribute: string, value: string) => {
-    setSelectedAttributes(prev => {
-      const newAttributes = {
-        ...prev,
-        [attribute]: value
-      };
-      
-      // Update URL with new attributes
-      updateUrlWithAttributes(newAttributes);
-      
-      return newAttributes;
-    });
-  }, [updateUrlWithAttributes]);
+    setSelectedAttributes(prev => ({
+      ...prev,
+      [attribute]: value
+    }));
+  }, []);
   
   // Reset selection when product changes
   useEffect(() => {
