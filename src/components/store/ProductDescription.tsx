@@ -2,59 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, stripHtml } from "@/lib/utils";
 
 interface ProductDescriptionProps {
   description: string;
   maxLength?: number;
   className?: string;
-}
-
-/**
- * Strip HTML tags and decode HTML entities from a string
- */
-function stripHtml(html: string): string {
-  if (!html) return "";
-  
-  // Remove HTML tags
-  let text = html
-    // Remove style tags and their content
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    // Remove script tags and their content
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    // Replace <br>, <br/>, <br /> with newlines
-    .replace(/<br\s*\/?>/gi, '\n')
-    // Replace closing block tags with newlines
-    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
-    // Replace list items with bullet points
-    .replace(/<li[^>]*>/gi, '• ')
-    // Remove all remaining HTML tags
-    .replace(/<[^>]+>/g, '')
-    // Decode common HTML entities
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&hellip;/g, '...')
-    .replace(/&mdash;/g, '—')
-    .replace(/&ndash;/g, '–')
-    .replace(/&bull;/g, '•')
-    // Decode numeric HTML entities
-    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
-    // Clean up multiple newlines
-    .replace(/\n{3,}/g, '\n\n')
-    // Clean up multiple spaces
-    .replace(/[ \t]+/g, ' ')
-    // Trim whitespace from each line
-    .split('\n')
-    .map(line => line.trim())
-    .join('\n')
-    // Trim start and end
-    .trim();
-
-  return text;
 }
 
 export function ProductDescription({ 

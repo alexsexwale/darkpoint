@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn, formatPrice, stripHtml } from "@/lib/utils";
 import { useCartStore, useWishlistStore } from "@/stores";
 import { Rating, Button } from "@/components/ui";
 import type { Product } from "@/types";
@@ -70,7 +70,7 @@ export function ProductList({ products }: ProductListProps) {
                   </div>
                   
                   <p className="text-sm text-white/60 line-clamp-2 mb-3">
-                    {product.shortDescription || product.description}
+                    {stripHtml(product.shortDescription || product.description || "")}
                   </p>
                   
                   <Rating value={product.rating} size="sm" className="mb-3" />
