@@ -822,8 +822,8 @@ export function DownloadsPageClient() {
                   </button>
                 </div>
                 <div className="p-4 space-y-4">
-                  <div className="flex gap-4">
-                    <div className="w-14 h-14 flex-shrink-0 bg-gradient-to-br from-[var(--color-dark-4)] to-[var(--color-dark-3)] rounded-lg flex items-center justify-center overflow-hidden text-[var(--muted-foreground)]">
+                  <div className="flex gap-5">
+                    <div className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 bg-gradient-to-br from-[var(--color-dark-4)] to-[var(--color-dark-3)] rounded-xl flex items-center justify-center overflow-hidden text-[var(--muted-foreground)] shadow-lg ring-1 ring-[var(--color-dark-4)]">
                       {romDetailRom && getRomImageUrl(romDetailRom) ? (
                         <img
                           src={getRomImageUrl(romDetailRom)!}
@@ -834,7 +834,7 @@ export function DownloadsPageClient() {
                         <img
                           src={PLACEHOLDER_IMAGE_PATH}
                           alt=""
-                          className="w-10 h-10 opacity-50"
+                          className="w-16 h-16 opacity-50"
                         />
                       )}
                     </div>
