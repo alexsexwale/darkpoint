@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendEmail, isResendConfigured } from "@/lib/resend";
+import { sendEmail, isResendConfigured, addContact } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -125,8 +125,9 @@ Need help? Contact us at support@darkpoint.co.za
 © ${new Date().getFullYear()} Darkpoint. All rights reserved.
     `.trim();
 
+    const normalizedEmail = email.toLowerCase().trim();
     const { error } = await sendEmail({
-      to: email,
+      to: normalizedEmail,
       subject: `👋 Welcome Back to Darkpoint, ${firstName}!`,
       html: emailHtml,
       text: textBody,
@@ -138,6 +139,17 @@ Need help? Contact us at support@darkpoint.co.za
         { error: "Failed to send email" },
         { status: 500 }
       );
+    }
+
+    // Add to Resend Audience (returning user signup)
+    const displayNameParts = (displayName || "").trim().split(/\s+/);
+    const { error: contactError } = await addContact({
+      email: normalizedEmail,
+      firstName: displayNameParts[0] || undefined,
+      lastName: displayNameParts.length > 1 ? displayNameParts.slice(1).join(" ") : undefined,
+    });
+    if (contactError) {
+      console.warn("Resend contact add (welcome-back):", contactError.message);
     }
 
     return NextResponse.json({ success: true });

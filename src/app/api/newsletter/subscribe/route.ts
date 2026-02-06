@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail, isResendConfigured } from "@/lib/resend";
+import { sendEmail, isResendConfigured, addContact } from "@/lib/resend";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -49,12 +49,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // Send welcome email if it's a new subscription
+    const normalizedEmail = email.toLowerCase().trim();
     const isNew = data?.is_new ?? true;
-    
+
+    // Send welcome email if it's a new subscription
     if (isNew && isResendConfigured()) {
       const { error } = await sendEmail({
-        to: email,
+        to: normalizedEmail,
         subject: "🎮 Welcome to Darkpoint! Your Gaming Journey Starts Here",
         html: generateNewsletterWelcomeEmail(email),
         text: generateNewsletterWelcomeText(email),
@@ -63,6 +64,13 @@ export async function POST(request: Request) {
         console.error("Error sending newsletter welcome email:", error);
         // Don't fail the subscription if email fails
       }
+    }
+
+    // Add to Resend Audience (for broadcasts/segments)
+    const { error: contactError } = await addContact({ email: normalizedEmail });
+    if (contactError) {
+      console.warn("Resend contact add (newsletter):", contactError.message);
+      // Don't fail the subscription if contact add fails (e.g. duplicate)
     }
 
     return NextResponse.json({

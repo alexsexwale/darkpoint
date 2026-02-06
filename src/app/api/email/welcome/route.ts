@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendEmail, isResendConfigured } from "@/lib/resend";
+import { sendEmail, isResendConfigured, addContact } from "@/lib/resend";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://darkpoint.co.za";
 
@@ -201,8 +201,9 @@ Game on!
 The Darkpoint Team
     `;
 
+    const normalizedEmail = email.toLowerCase().trim();
     const { error } = await sendEmail({
-      to: email,
+      to: normalizedEmail,
       subject: "🎮 Welcome to Darkpoint! Your 100 XP & Free Spin Await!",
       html: htmlBody,
       text: textBody,
@@ -214,6 +215,17 @@ The Darkpoint Team
         { success: false, error: "Failed to send email" },
         { status: 500 }
       );
+    }
+
+    // Add to Resend Audience (signup)
+    const [first, ...rest] = (displayName || "").trim().split(/\s+/);
+    const { error: contactError } = await addContact({
+      email: normalizedEmail,
+      firstName: first || undefined,
+      lastName: rest.length ? rest.join(" ") : undefined,
+    });
+    if (contactError) {
+      console.warn("Resend contact add (welcome):", contactError.message);
     }
 
     return NextResponse.json({ success: true, message: "Welcome email sent" });

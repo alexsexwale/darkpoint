@@ -41,3 +41,32 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ data: { id
 export function isResendConfigured(): boolean {
   return Boolean(RESEND_API_KEY);
 }
+
+const RESEND_AUDIENCE_ID = process.env.RESEND_AUDIENCE_ID;
+
+export interface AddContactOptions {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  unsubscribed?: boolean;
+}
+
+/**
+ * Add a contact to Resend Audience (for broadcasts, segments). No-op if RESEND_AUDIENCE_ID is not set.
+ * Call when a user signs up or subscribes to the newsletter.
+ */
+export async function addContact(options: AddContactOptions): Promise<{ data: { id?: string } | null; error: Error | null }> {
+  const resend = getResend();
+  if (!resend || !RESEND_AUDIENCE_ID) {
+    return { data: null, error: null }; // no-op when not configured
+  }
+  const { email, firstName, lastName, unsubscribed = false } = options;
+  const { data, error } = await resend.contacts.create({
+    audienceId: RESEND_AUDIENCE_ID,
+    email: email.toLowerCase().trim(),
+    ...(firstName && { firstName }),
+    ...(lastName && { lastName }),
+    unsubscribed,
+  });
+  return { data, error };
+}

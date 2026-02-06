@@ -77,10 +77,12 @@ CJ_API_KEY=your-cj-api-key
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
-# Resend (for transactional email: order confirmations, password reset, contact form, etc.)
+# Resend (for transactional email + audience contacts)
 RESEND_API_KEY=re_xxxx
 # Optional: sender address (default: support@darkpoint.co.za)
 RESEND_FROM_EMAIL=support@darkpoint.co.za
+# Optional: add signups/newsletter subs to Resend Audience (create audience at resend.com/audience, then set its ID)
+RESEND_AUDIENCE_ID=your-audience-id
 ```
 
 ### Development
