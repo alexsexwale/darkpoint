@@ -46,31 +46,104 @@ export function DetailsPageClient() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Linked auth methods (identities)
-  const [linkedIdentities, setLinkedIdentities] = useState<{ provider: string; identityId?: string }[]>([]);
+  // Linked auth methods (identities) – full objects for unlinkIdentity
+  type AuthIdentity = {
+    id?: string;
+    provider: string;
+    identity_data?: { user_name?: string; full_name?: string; email?: string; name?: string };
+    last_sign_in_at?: string;
+    created_at?: string;
+  };
+  const [linkedIdentities, setLinkedIdentities] = useState<AuthIdentity[]>([]);
+  const [authSectionError, setAuthSectionError] = useState<string | null>(null);
+  const [authSectionSuccess, setAuthSectionSuccess] = useState<string | null>(null);
+  const [linkingProvider, setLinkingProvider] = useState<string | null>(null);
+  const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
+  const [identityMenuOpen, setIdentityMenuOpen] = useState<string | null>(null);
 
-  // Load linked auth methods when user is present
-  useEffect(() => {
+  const loadIdentities = async () => {
     if (!user || !isSupabaseConfigured()) return;
-    (async () => {
-      try {
-        const { data } = await supabase.auth.getUserIdentities();
-        const list = data?.identities ?? [];
-        if (list.length > 0) {
-          setLinkedIdentities(
-            list.map((i: { provider: string; id?: string }) => ({ provider: i.provider, identityId: i.id }))
-          );
-          return;
-        }
-      } catch {
-        // getUserIdentities may not exist in older clients
+    setAuthSectionError(null);
+    try {
+      const { data } = await supabase.auth.getUserIdentities();
+      const list = (data?.identities ?? []) as AuthIdentity[];
+      if (list.length > 0) {
+        setLinkedIdentities(list);
+        return;
       }
-      // Fallback: identities from fresh getUser() (server returns full user with identities)
-      const { data: { user: freshUser } } = await supabase.auth.getUser();
-      const ids = (freshUser as { identities?: { provider: string }[] })?.identities ?? [];
-      setLinkedIdentities(ids.map((i) => ({ provider: i.provider })));
-    })();
+    } catch {
+      // getUserIdentities may not exist in older clients
+    }
+    const { data: { user: freshUser } } = await supabase.auth.getUser();
+    const ids = (freshUser as { identities?: AuthIdentity[] })?.identities ?? [];
+    setLinkedIdentities(ids);
+  };
+
+  useEffect(() => {
+    loadIdentities();
   }, [user]);
+
+  const handleLinkIdentity = async (provider: "google" | "github") => {
+    if (!isSupabaseConfigured()) return;
+    setAuthSectionError(null);
+    setAuthSectionSuccess(null);
+    setLinkingProvider(provider);
+    try {
+      const { data, error } = await supabase.auth.linkIdentity({
+        provider,
+        options: {
+          redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback?next=/account/details`,
+        },
+      });
+      if (error) {
+        setAuthSectionError(error.message);
+        setLinkingProvider(null);
+        return;
+      }
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      await loadIdentities();
+      setAuthSectionSuccess(`${provider === "github" ? "GitHub" : "Google"} linked.`);
+    } catch (err) {
+      setAuthSectionError(err instanceof Error ? err.message : "Failed to link account");
+    } finally {
+      setLinkingProvider(null);
+    }
+  };
+
+  const handleUnlinkIdentity = async (identity: AuthIdentity) => {
+    if (!isSupabaseConfigured()) return;
+    setIdentityMenuOpen(null);
+    setAuthSectionError(null);
+    setAuthSectionSuccess(null);
+    if (linkedIdentities.length < 2) {
+      setAuthSectionError("You need at least one other sign-in method before disconnecting this one.");
+      return;
+    }
+    setUnlinkingId(identity.id);
+    try {
+      const { error } = await supabase.auth.unlinkIdentity(identity);
+      if (error) {
+        setAuthSectionError(error.message);
+        return;
+      }
+      await loadIdentities();
+      const label = identity.provider === "github" ? "GitHub" : identity.provider === "google" ? "Google" : identity.provider;
+      setAuthSectionSuccess(`${label} disconnected.`);
+    } catch (err) {
+      setAuthSectionError(err instanceof Error ? err.message : "Failed to disconnect");
+    } finally {
+      setUnlinkingId(null);
+    }
+  };
+
+  const LINKABLE_PROVIDERS: { id: "google" | "github"; label: string }[] = [
+    { id: "google", label: "Google" },
+    { id: "github", label: "GitHub" },
+  ];
+  const linkedProviders = new Set(linkedIdentities.map((i) => i.provider));
 
   // Load user data on mount
   useEffect(() => {
@@ -608,34 +681,130 @@ export function DetailsPageClient() {
         </div>
       </form>
 
-      {/* Linked sign-in methods */}
+      {/* Authentication – linked accounts and link buttons */}
       <div className="max-w-xl mt-8 pt-8 border-t border-white/10">
-        <h3 className="font-heading text-xl mb-4">Linked sign-in methods</h3>
-        <p className="text-white/60 text-sm mb-4">
-          These are the ways you can sign in to your account. You can have more than one linked.
+        <h3 className="font-heading text-xl mb-2">Authentication</h3>
+        <p className="text-white/60 text-sm mb-6">
+          Link your account to third-party authentication providers.
         </p>
-        <div className="flex flex-wrap gap-3">
+
+        {authSectionError && (
+          <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            {authSectionError}
+          </div>
+        )}
+        {authSectionSuccess && (
+          <div className="mb-4 p-4 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
+            {authSectionSuccess}
+          </div>
+        )}
+
+        <div className="space-y-4 mb-6">
           {linkedIdentities.length === 0 ? (
-            <span className="text-white/50 text-sm">Loading…</span>
+            <p className="text-white/50 text-sm">Loading…</p>
           ) : (
-            linkedIdentities.map(({ provider }) => {
+            linkedIdentities.map((identity, index) => {
+              const identityKey = identity.id ?? `${identity.provider}-${index}`;
               const label =
-                provider === "email"
+                identity.provider === "email"
                   ? "Email"
-                  : provider === "phone"
+                  : identity.provider === "phone"
                     ? "Phone"
-                    : provider.charAt(0).toUpperCase() + provider.slice(1);
+                    : identity.provider.charAt(0).toUpperCase() + identity.provider.slice(1);
+              const username =
+                identity.identity_data?.user_name ? `@${identity.identity_data.user_name}` :
+                identity.identity_data?.email ?? identity.identity_data?.full_name ?? identity.identity_data?.name ?? null;
+              const connectedAt = identity.last_sign_in_at || identity.created_at;
+              const dateStr = connectedAt
+                ? new Date(connectedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                : null;
+              const canUnlink = linkedIdentities.length >= 2;
+              const isUnlinking = identity.id && unlinkingId === identity.id;
+
               return (
-                <span
-                  key={provider}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/90 text-sm"
+                <div
+                  key={identityKey}
+                  className="flex items-center gap-4 p-4 rounded-lg bg-white/5 border border-white/10"
                 >
-                  <span className="text-[var(--color-main-1)]">✓</span>
-                  {label}
-                </span>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-lg">
+                    {identity.provider === "github" ? (
+                      <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" /></svg>
+                    ) : identity.provider === "google" ? (
+                      <span className="text-white font-semibold text-sm">G</span>
+                    ) : (
+                      <span className="text-[var(--color-main-1)]">✓</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-white">{label}</p>
+                    {username && <p className="text-sm text-white/50 truncate">{username}</p>}
+                  </div>
+                  {dateStr && (
+                    <p className="hidden sm:block shrink-0 text-sm text-white/40">Connected on {dateStr}</p>
+                  )}
+                  {identity.provider !== "email" && identity.provider !== "phone" && identity.id && (
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIdentityMenuOpen(identityMenuOpen === identity.id ? null : identity.id)}
+                        className="p-2 rounded-full text-white/50 hover:bg-white/10 hover:text-white"
+                        aria-label="Options"
+                      >
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
+                      </button>
+                      {identityMenuOpen === identity.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" aria-hidden onClick={() => setIdentityMenuOpen(null)} />
+                          <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-white/10 bg-[var(--color-dark-2)] py-1 shadow-xl">
+                            <button
+                              type="button"
+                              onClick={() => handleUnlinkIdentity(identity)}
+                              disabled={!canUnlink || isUnlinking}
+                              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-400 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isUnlinking ? (
+                                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                              ) : (
+                                <span>Disconnect</span>
+                              )}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               );
             })
           )}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {LINKABLE_PROVIDERS.map(({ id, label }) => {
+            const isLinked = linkedProviders.has(id);
+            const isLoading = linkingProvider === id;
+            return (
+              <Button
+                key={id}
+                type="button"
+                variant="outline"
+                disabled={isLinked || !!linkingProvider}
+                onClick={() => handleLinkIdentity(id)}
+                className="min-w-[140px]"
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Linking…
+                  </span>
+                ) : isLinked ? (
+                  `Linked ${label}`
+                ) : (
+                  `Link ${label}`
+                )}
+              </Button>
+            );
+          })}
         </div>
       </div>
 
