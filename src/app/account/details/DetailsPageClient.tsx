@@ -114,7 +114,7 @@ export function DetailsPageClient() {
   };
 
   const handleUnlinkIdentity = async (identity: AuthIdentity) => {
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured() || !identity.id) return;
     setIdentityMenuOpen(null);
     setAuthSectionError(null);
     setAuthSectionSuccess(null);
