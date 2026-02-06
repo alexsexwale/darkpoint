@@ -32,10 +32,10 @@
     "howler": "^2.2.4",
     "next": "16.1.0",
     "photoswipe": "^5.4.4",
-    "postmark": "^4.0.5",
     "react": "19.2.3",
     "react-confetti": "^6.4.0",
     "react-dom": "19.2.3",
+    "resend": "^4.8.0",
     "sass": "^1.97.1",
     "zustand": "^5.0.9"
   },

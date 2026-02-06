@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendEmail, isResendConfigured } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,14 +14,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Postmark credentials from environment variables
-    const postmarkApiToken = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN;
-    const postmarkFromEmail = process.env.POSTMARK_FROM_EMAIL || "noreply@darkpoint.co.za";
-    const supportEmail = "support@darkpoint.co.za";
-
-    if (!postmarkApiToken) {
-      console.error("Postmark API token is not configured");
-      // Still return success - the report was saved to DB, just email failed
+    if (!isResendConfigured()) {
+      console.error("Resend API key is not configured");
       return NextResponse.json(
         { success: true, emailSent: false, message: "Report submitted but email notification failed" },
         { status: 200 }
@@ -38,19 +33,8 @@ export async function POST(request: NextRequest) {
 
     const formattedReason = reasonLabels[reason] || reason;
 
-    // Send email via Postmark API
-    const response = await fetch("https://api.postmarkapp.com/email", {
-      method: "POST",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "X-Postmark-Server-Token": postmarkApiToken,
-      },
-      body: JSON.stringify({
-        From: postmarkFromEmail,
-        To: supportEmail,
-        Subject: `🚨 Review Report: ${formattedReason}`,
-        HtmlBody: `
+    const supportEmail = "support@darkpoint.co.za";
+    const html = `
           <!DOCTYPE html>
           <html>
           <head>
@@ -131,8 +115,9 @@ export async function POST(request: NextRequest) {
             </div>
           </body>
           </html>
-        `,
-        TextBody: `
+        `;
+
+    const textBody = `
 🚨 REVIEW REPORTED
 
 Report Details
@@ -159,15 +144,17 @@ Actions Required
 
 ---
 This is an automated notification from Darkpoint Reviews System
-        `.trim(),
-        MessageStream: "outbound",
-      }),
+    `.trim();
+
+    const { error } = await sendEmail({
+      to: supportEmail,
+      subject: `🚨 Review Report: ${formattedReason}`,
+      html,
+      text: textBody,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Postmark API error:", errorData);
-      // Still return success - the report was saved to DB, just email failed
+    if (error) {
+      console.error("Resend API error:", error);
       return NextResponse.json(
         { success: true, emailSent: false, message: "Report submitted but email notification failed" },
         { status: 200 }

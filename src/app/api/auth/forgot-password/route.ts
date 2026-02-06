@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
-const POSTMARK_API_TOKEN = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN;
-const FROM_EMAIL = process.env.POSTMARK_FROM_EMAIL || "noreply@darkpoint.co.za";
+import { sendEmail, isResendConfigured } from "@/lib/resend";
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://darkpoint.co.za";
 
 // Create admin Supabase client for server-side operations
@@ -271,37 +271,24 @@ export async function POST(request: Request) {
     // Build reset link
     const resetLink = `${SITE_URL}/reset-password?token=${resetToken}`;
 
-    // Send email via Postmark
-    if (!POSTMARK_API_TOKEN) {
-      console.warn("Postmark API token not configured");
+    if (!isResendConfigured()) {
+      console.warn("Resend API key not configured");
       return NextResponse.json({
         success: true,
         message: "If an account with that email exists, a password reset link has been sent.",
-        // In dev, include the link for testing
         ...(process.env.NODE_ENV === "development" && { resetLink }),
       });
     }
 
-    const emailResponse = await fetch("https://api.postmarkapp.com/email", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-Postmark-Server-Token": POSTMARK_API_TOKEN,
-      },
-      body: JSON.stringify({
-        From: FROM_EMAIL,
-        To: normalizedEmail,
-        Subject: "🔐 Reset Your Darkpoint Password",
-        HtmlBody: buildResetEmailHTML(resetLink, displayName),
-        TextBody: buildResetEmailText(resetLink, displayName),
-        MessageStream: "outbound",
-      }),
+    const { error } = await sendEmail({
+      to: normalizedEmail,
+      subject: "🔐 Reset Your Darkpoint Password",
+      html: buildResetEmailHTML(resetLink, displayName),
+      text: buildResetEmailText(resetLink, displayName),
     });
 
-    if (!emailResponse.ok) {
-      const error = await emailResponse.text();
-      console.error("Postmark error:", error);
+    if (error) {
+      console.error("Resend error:", error);
       // Still return success to not reveal email existence
     }
 

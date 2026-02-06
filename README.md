@@ -76,6 +76,11 @@ CJ_API_KEY=your-cj-api-key
 # Supabase (for gamification features)
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# Resend (for transactional email: order confirmations, password reset, contact form, etc.)
+RESEND_API_KEY=re_xxxx
+# Optional: sender address (default: support@darkpoint.co.za)
+RESEND_FROM_EMAIL=support@darkpoint.co.za
 ```
 
 ### Development

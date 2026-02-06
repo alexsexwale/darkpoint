@@ -1,37 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendEmail, isResendConfigured } from "@/lib/resend";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Postmark email sending
 async function sendOrderConfirmationEmail(
   to: string,
   orderNumber: string,
   total: number,
   customerName: string
 ) {
-  const postmarkApiToken = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN;
-  const postmarkFromEmail = process.env.POSTMARK_FROM_EMAIL || "noreply@darkpoint.co.za";
-
-  if (!postmarkApiToken) {
-    console.warn("Postmark not configured, skipping order confirmation email");
+  if (!isResendConfigured()) {
+    console.warn("Resend not configured, skipping order confirmation email");
     return;
   }
 
-  try {
-    await fetch("https://api.postmarkapp.com/email", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-Postmark-Server-Token": postmarkApiToken,
-      },
-      body: JSON.stringify({
-        From: postmarkFromEmail,
-        To: to,
-        Subject: `Order Confirmed - ${orderNumber} | Darkpoint`,
-        HtmlBody: `
+  const html = `
           <!DOCTYPE html>
           <html>
           <head>
@@ -104,8 +89,9 @@ async function sendOrderConfirmationEmail(
             </div>
           </body>
           </html>
-        `,
-        TextBody: `
+        `;
+
+  const text = `
 Order Confirmed - ${orderNumber}
 
 Thank you for your purchase, ${customerName}!
@@ -124,52 +110,41 @@ View your order: https://darkpoint.co.za/account/orders
 Need help? Contact us at support@darkpoint.co.za
 
 © ${new Date().getFullYear()} Darkpoint. All rights reserved.
-        `.trim(),
-        MessageStream: "outbound",
-      }),
-    });
-    console.log("Order confirmation email sent to:", to);
-  } catch (error) {
+  `.trim();
+
+  const { error } = await sendEmail({
+    to,
+    subject: `Order Confirmed - ${orderNumber} | Darkpoint`,
+    html,
+    text,
+  });
+  if (error) {
     console.error("Failed to send order confirmation email:", error);
+  } else {
+    console.log("Order confirmation email sent to:", to);
   }
 }
 
 // Send notification to admin
 async function sendAdminNotification(orderNumber: string, total: number, customerEmail: string) {
-  const postmarkApiToken = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN;
-  const postmarkFromEmail = process.env.POSTMARK_FROM_EMAIL || "noreply@darkpoint.co.za";
-  const adminEmail = "support@darkpoint.co.za";
+  if (!isResendConfigured()) return;
 
-  if (!postmarkApiToken) return;
-
-  try {
-    await fetch("https://api.postmarkapp.com/email", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-Postmark-Server-Token": postmarkApiToken,
-      },
-      body: JSON.stringify({
-        From: postmarkFromEmail,
-        To: adminEmail,
-        Subject: `🛒 New Order: ${orderNumber} - R${total.toFixed(2)}`,
-        HtmlBody: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #e08821;">New Order Received!</h2>
-            <p><strong>Order Number:</strong> ${orderNumber}</p>
-            <p><strong>Total:</strong> R${total.toFixed(2)}</p>
-            <p><strong>Customer:</strong> ${customerEmail}</p>
-            <p><a href="https://darkpoint.co.za/admin/orders">View in Admin Panel</a></p>
-          </div>
-        `,
-        TextBody: `New Order: ${orderNumber}\nTotal: R${total.toFixed(2)}\nCustomer: ${customerEmail}`,
-        MessageStream: "outbound",
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send admin notification:", error);
-  }
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #e08821;">New Order Received!</h2>
+      <p><strong>Order Number:</strong> ${orderNumber}</p>
+      <p><strong>Total:</strong> R${total.toFixed(2)}</p>
+      <p><strong>Customer:</strong> ${customerEmail}</p>
+      <p><a href="https://darkpoint.co.za/admin/orders">View in Admin Panel</a></p>
+    </div>
+  `;
+  const { error } = await sendEmail({
+    to: "support@darkpoint.co.za",
+    subject: `🛒 New Order: ${orderNumber} - R${total.toFixed(2)}`,
+    html,
+    text: `New Order: ${orderNumber}\nTotal: R${total.toFixed(2)}\nCustomer: ${customerEmail}`,
+  });
+  if (error) console.error("Failed to send admin notification:", error);
 }
 
 export async function POST(request: NextRequest) {

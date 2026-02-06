@@ -1,5 +1,5 @@
 -- Migration: Password Reset Tokens
--- Description: Create table for storing password reset tokens (used with custom Postmark emails)
+-- Description: Create table for storing password reset tokens (used with custom Resend emails)
 
 -- Create password_reset_tokens table
 CREATE TABLE IF NOT EXISTS password_reset_tokens (

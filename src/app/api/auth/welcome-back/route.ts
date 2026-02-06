@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendEmail, isResendConfigured } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,11 +13,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const postmarkApiToken = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN;
-    const postmarkFromEmail = process.env.POSTMARK_FROM_EMAIL || "noreply@darkpoint.co.za";
-
-    if (!postmarkApiToken) {
-      console.error("Postmark API token is not configured");
+    if (!isResendConfigured()) {
+      console.error("Resend API key is not configured");
       return NextResponse.json(
         { error: "Email service is not configured" },
         { status: 500 }
@@ -103,19 +101,7 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    const response = await fetch("https://api.postmarkapp.com/email", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-Postmark-Server-Token": postmarkApiToken,
-      },
-      body: JSON.stringify({
-        From: postmarkFromEmail,
-        To: email,
-        Subject: `👋 Welcome Back to Darkpoint, ${firstName}!`,
-        HtmlBody: emailHtml,
-        TextBody: `
+    const textBody = `
 Welcome Back, ${firstName}!
 
 We're glad to see you again!
@@ -137,14 +123,17 @@ Browse store: https://darkpoint.co.za/store
 Need help? Contact us at support@darkpoint.co.za
 
 © ${new Date().getFullYear()} Darkpoint. All rights reserved.
-        `.trim(),
-        MessageStream: "outbound",
-      }),
+    `.trim();
+
+    const { error } = await sendEmail({
+      to: email,
+      subject: `👋 Welcome Back to Darkpoint, ${firstName}!`,
+      html: emailHtml,
+      text: textBody,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Postmark API error:", errorData);
+    if (error) {
+      console.error("Resend API error:", error);
       return NextResponse.json(
         { error: "Failed to send email" },
         { status: 500 }

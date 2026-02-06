@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
+import { sendEmail, isResendConfigured } from "@/lib/resend";
 
-const POSTMARK_API_TOKEN = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN;
-const FROM_EMAIL = process.env.POSTMARK_FROM_EMAIL || "noreply@darkpoint.co.za";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://darkpoint.co.za";
 
 interface WelcomeEmailRequest {
@@ -21,8 +20,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!POSTMARK_API_TOKEN) {
-      console.warn("Postmark API token not configured");
+    if (!isResendConfigured()) {
+      console.warn("Resend API key not configured");
       return NextResponse.json(
         { success: true, message: "Email skipped (not configured)" },
         { status: 200 }
@@ -202,27 +201,15 @@ Game on!
 The Darkpoint Team
     `;
 
-    // Send via Postmark
-    const response = await fetch("https://api.postmarkapp.com/email", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "X-Postmark-Server-Token": POSTMARK_API_TOKEN,
-      },
-      body: JSON.stringify({
-        From: FROM_EMAIL,
-        To: email,
-        Subject: "🎮 Welcome to Darkpoint! Your 100 XP & Free Spin Await!",
-        HtmlBody: htmlBody,
-        TextBody: textBody,
-        MessageStream: "outbound",
-      }),
+    const { error } = await sendEmail({
+      to: email,
+      subject: "🎮 Welcome to Darkpoint! Your 100 XP & Free Spin Await!",
+      html: htmlBody,
+      text: textBody,
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("Postmark error:", error);
+    if (error) {
+      console.error("Resend error:", error);
       return NextResponse.json(
         { success: false, error: "Failed to send email" },
         { status: 500 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendEmail, isResendConfigured } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,50 +23,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Postmark credentials from environment variables
-    const postmarkApiToken = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_API_TOKEN;
-    const postmarkFromEmail = process.env.POSTMARK_FROM_EMAIL || "noreply@darkpoint.co.za";
-    const postmarkToEmail = process.env.POSTMARK_TO_EMAIL || "support@darkpoint.co.za";
-
-    if (!postmarkApiToken) {
-      console.error("Postmark API token is not configured");
+    if (!isResendConfigured()) {
+      console.error("Resend API key is not configured");
       return NextResponse.json(
         { error: "Email service is not configured. Please try again later." },
         { status: 500 }
       );
     }
 
-    // Send email via Postmark API
-    const response = await fetch("https://api.postmarkapp.com/email", {
-      method: "POST",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "X-Postmark-Server-Token": postmarkApiToken,
-      },
-      body: JSON.stringify({
-        From: postmarkFromEmail,
-        To: postmarkToEmail,
-        Subject: `New Contact Form Submission from ${name}`,
-        HtmlBody: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #e08821; border-bottom: 2px solid #e08821; padding-bottom: 10px;">
-              New Contact Form Submission
-            </h2>
-            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
-              <p><strong>Name:</strong> ${name}</p>
-              <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
-              <p><strong>Message:</strong></p>
-              <div style="background-color: white; padding: 15px; border-left: 3px solid #e08821; margin-top: 10px;">
-                ${message.replace(/\n/g, "<br>")}
-              </div>
-            </div>
-            <p style="color: #666; font-size: 12px; margin-top: 20px;">
-              This email was sent from the Darkpoint contact form.
-            </p>
+    const toEmail = process.env.RESEND_TO_EMAIL || "support@darkpoint.co.za";
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #e08821; border-bottom: 2px solid #e08821; padding-bottom: 10px;">
+          New Contact Form Submission
+        </h2>
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
+          <p><strong>Message:</strong></p>
+          <div style="background-color: white; padding: 15px; border-left: 3px solid #e08821; margin-top: 10px;">
+            ${message.replace(/\n/g, "<br>")}
           </div>
-        `,
-        TextBody: `
+        </div>
+        <p style="color: #666; font-size: 12px; margin-top: 20px;">
+          This email was sent from the Darkpoint contact form.
+        </p>
+      </div>
+    `;
+    const textBody = `
 New Contact Form Submission
 
 Name: ${name}
@@ -76,22 +61,23 @@ ${message}
 
 ---
 This email was sent from the Darkpoint contact form.
-        `.trim(),
-        ReplyTo: email,
-        MessageStream: "outbound",
-      }),
+    `.trim();
+
+    const { error } = await sendEmail({
+      to: toEmail,
+      subject: `New Contact Form Submission from ${name}`,
+      html,
+      text: textBody,
+      replyTo: email,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Postmark API error:", errorData);
+    if (error) {
+      console.error("Resend API error:", error);
       return NextResponse.json(
         { error: "Failed to send email. Please try again later." },
         { status: 500 }
       );
     }
-
-    const result = await response.json();
 
     return NextResponse.json(
       {
