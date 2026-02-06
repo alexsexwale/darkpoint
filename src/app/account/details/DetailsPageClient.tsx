@@ -46,6 +46,32 @@ export function DetailsPageClient() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Linked auth methods (identities)
+  const [linkedIdentities, setLinkedIdentities] = useState<{ provider: string; identityId?: string }[]>([]);
+
+  // Load linked auth methods when user is present
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured()) return;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUserIdentities();
+        const list = data?.identities ?? [];
+        if (list.length > 0) {
+          setLinkedIdentities(
+            list.map((i: { provider: string; id?: string }) => ({ provider: i.provider, identityId: i.id }))
+          );
+          return;
+        }
+      } catch {
+        // getUserIdentities may not exist in older clients
+      }
+      // Fallback: identities from fresh getUser() (server returns full user with identities)
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
+      const ids = (freshUser as { identities?: { provider: string }[] })?.identities ?? [];
+      setLinkedIdentities(ids.map((i) => ({ provider: i.provider })));
+    })();
+  }, [user]);
+
   // Load user data on mount
   useEffect(() => {
     if (user) {
@@ -581,6 +607,37 @@ export function DetailsPageClient() {
           </Button>
         </div>
       </form>
+
+      {/* Linked sign-in methods */}
+      <div className="max-w-xl mt-8 pt-8 border-t border-white/10">
+        <h3 className="font-heading text-xl mb-4">Linked sign-in methods</h3>
+        <p className="text-white/60 text-sm mb-4">
+          These are the ways you can sign in to your account. You can have more than one linked.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {linkedIdentities.length === 0 ? (
+            <span className="text-white/50 text-sm">Loading…</span>
+          ) : (
+            linkedIdentities.map(({ provider }) => {
+              const label =
+                provider === "email"
+                  ? "Email"
+                  : provider === "phone"
+                    ? "Phone"
+                    : provider.charAt(0).toUpperCase() + provider.slice(1);
+              return (
+                <span
+                  key={provider}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white/90 text-sm"
+                >
+                  <span className="text-[var(--color-main-1)]">✓</span>
+                  {label}
+                </span>
+              );
+            })
+          )}
+        </div>
+      </div>
 
       {/* Delete Account Section */}
       <div className="max-w-xl mt-12 pt-8 border-t border-red-500/30">
