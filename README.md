@@ -85,6 +85,9 @@ RESEND_FROM_EMAIL=support@darkpoint.co.za
 RESEND_AUDIENCE_ID=your-audience-id
 ```
 
+**Supabase Auth – account linking**  
+For users to link Google/GitHub (and other providers) from Account Details, enable **Manual linking** in the [Supabase Dashboard](https://supabase.com/dashboard): **Authentication → Providers** → turn on the manual linking option. See [Identity linking](https://supabase.com/docs/guides/auth/auth-identity-linking).
+
 ### Development
 
 ```bash

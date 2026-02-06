@@ -90,7 +90,16 @@ export function DetailsPageClient() {
         },
       });
       if (error) {
-        setAuthSectionError(error.message);
+        const msg = error.message.toLowerCase();
+        if (msg.includes("manual linking") || msg.includes("manual_link")) {
+          setAuthSectionError(
+            "Linking additional sign-in methods is not enabled for this site. " +
+            "Site owners: enable Manual Linking in the Supabase Dashboard under Authentication → Providers, " +
+            "or see the guide: https://supabase.com/docs/guides/auth/auth-identity-linking"
+          );
+        } else {
+          setAuthSectionError(error.message);
+        }
         setLinkingProvider(null);
         return;
       }
@@ -101,7 +110,16 @@ export function DetailsPageClient() {
       await loadIdentities();
       setAuthSectionSuccess(`${provider === "github" ? "GitHub" : "Google"} linked.`);
     } catch (err) {
-      setAuthSectionError(err instanceof Error ? err.message : "Failed to link account");
+      const message = err instanceof Error ? err.message : "Failed to link account";
+      if (message.toLowerCase().includes("manual linking")) {
+        setAuthSectionError(
+          "Linking additional sign-in methods is not enabled for this site. " +
+          "Site owners: enable Manual Linking in the Supabase Dashboard under Authentication → Providers, " +
+          "or see: https://supabase.com/docs/guides/auth/auth-identity-linking"
+        );
+      } else {
+        setAuthSectionError(message);
+      }
     } finally {
       setLinkingProvider(null);
     }
