@@ -73,7 +73,7 @@ export function ForgotPasswordPageClient() {
 
               <div className="bg-[var(--color-dark-3)]/50 rounded-lg p-4 mb-6 text-left">
                 <p className="text-sm text-white/60 mb-2">
-                  <strong className="text-white/80">📧 What to do next:</strong>
+                  <strong className="text-white/80">What to do next:</strong>
                 </p>
                 <ul className="text-sm text-white/60 space-y-2">
                   <li className="flex items-start gap-2">
