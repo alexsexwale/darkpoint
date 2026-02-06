@@ -8,6 +8,7 @@ import { AccountLayout } from "@/components/account";
 import { Button, PhoneInput, formatPhoneForDisplay } from "@/components/ui";
 import { useAuthStore, useGamificationStore, useAccountStore } from "@/stores";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import type { UserIdentity } from "@supabase/supabase-js";
 
 export function DetailsPageClient() {
   const router = useRouter();
@@ -46,15 +47,8 @@ export function DetailsPageClient() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Linked auth methods (identities) – full objects for unlinkIdentity
-  type AuthIdentity = {
-    id?: string;
-    provider: string;
-    identity_data?: { user_name?: string; full_name?: string; email?: string; name?: string };
-    last_sign_in_at?: string;
-    created_at?: string;
-  };
-  const [linkedIdentities, setLinkedIdentities] = useState<AuthIdentity[]>([]);
+  // Linked auth methods (identities) – full UserIdentity for unlinkIdentity
+  const [linkedIdentities, setLinkedIdentities] = useState<UserIdentity[]>([]);
   const [authSectionError, setAuthSectionError] = useState<string | null>(null);
   const [authSectionSuccess, setAuthSectionSuccess] = useState<string | null>(null);
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null);
@@ -66,7 +60,7 @@ export function DetailsPageClient() {
     setAuthSectionError(null);
     try {
       const { data } = await supabase.auth.getUserIdentities();
-      const list = (data?.identities ?? []) as AuthIdentity[];
+      const list = data?.identities ?? [];
       if (list.length > 0) {
         setLinkedIdentities(list);
         return;
@@ -75,7 +69,7 @@ export function DetailsPageClient() {
       // getUserIdentities may not exist in older clients
     }
     const { data: { user: freshUser } } = await supabase.auth.getUser();
-    const ids = (freshUser as { identities?: AuthIdentity[] })?.identities ?? [];
+    const ids = freshUser?.identities ?? [];
     setLinkedIdentities(ids);
   };
 
@@ -113,7 +107,7 @@ export function DetailsPageClient() {
     }
   };
 
-  const handleUnlinkIdentity = async (identity: AuthIdentity) => {
+  const handleUnlinkIdentity = async (identity: UserIdentity) => {
     if (!isSupabaseConfigured() || !identity.id) return;
     setIdentityMenuOpen(null);
     setAuthSectionError(null);
