@@ -233,6 +233,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       const { data: ordersData, error: ordersError } = await supabase
         .from("orders")
         .select("*")
+        .neq("status", "pending")
         .order("created_at", { ascending: false });
       
       if (ordersError) throw ordersError;
