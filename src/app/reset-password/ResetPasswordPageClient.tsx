@@ -5,12 +5,14 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
-import { useUIStore } from "@/stores";
+import { useUIStore, useAuthStore } from "@/stores";
+import { supabase } from "@/lib/supabase";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const { openSignIn } = useUIStore();
+  const { updatePassword } = useAuthStore();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,6 +23,7 @@ function ResetPasswordForm() {
   const [error, setError] = useState("");
   const [tokenError, setTokenError] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [isSupabaseRecovery, setIsSupabaseRecovery] = useState(false);
 
   // Password strength indicators
   const passwordChecks = {
@@ -32,9 +35,36 @@ function ResetPasswordForm() {
 
   const passwordStrength = Object.values(passwordChecks).filter(Boolean).length;
 
-  // Validate token on mount
+  // Validate on mount: Supabase recovery (hash) or custom token (query)
   useEffect(() => {
-    async function validateToken() {
+    async function validate() {
+      if (typeof window === "undefined") return;
+
+      const hash = window.location.hash || "";
+      const hasSupabaseRecovery = hash.includes("type=recovery");
+
+      if (hasSupabaseRecovery) {
+        setIsSupabaseRecovery(true);
+        try {
+          // Client may need a moment to recover session from URL hash
+          let session = (await supabase.auth.getSession()).data.session;
+          for (let i = 0; i < 5 && !session; i++) {
+            await new Promise((r) => setTimeout(r, 200));
+            session = (await supabase.auth.getSession()).data.session;
+          }
+          if (session?.user) {
+            setUserEmail(session.user.email || "");
+            window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          } else {
+            setTokenError("Invalid or expired reset link. Please request a new one.");
+          }
+        } catch {
+          setTokenError("Invalid or expired reset link. Please request a new one.");
+        }
+        setIsValidating(false);
+        return;
+      }
+
       if (!token) {
         setTokenError("No reset token provided. Please request a new password reset link.");
         setIsValidating(false);
@@ -57,14 +87,13 @@ function ResetPasswordForm() {
       }
     }
 
-    validateToken();
+    validate();
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // Validate password
     if (!passwordChecks.length) {
       setError("Password must be at least 8 characters long");
       return;
@@ -78,20 +107,27 @@ function ResetPasswordForm() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
-      });
+      if (isSupabaseRecovery) {
+        const result = await updatePassword(password);
+        if (!result.success) {
+          setError(result.error || "Failed to reset password. Please try again.");
+          return;
+        }
+        setIsSuccess(true);
+      } else {
+        const response = await fetch("/api/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, password }),
+        });
+        const data = await response.json();
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        setError(data.error || "Failed to reset password. Please try again.");
-        return;
+        if (!response.ok || !data.success) {
+          setError(data.error || "Failed to reset password. Please try again.");
+          return;
+        }
+        setIsSuccess(true);
       }
-
-      setIsSuccess(true);
     } catch (err) {
       setError("An error occurred. Please try again later.");
     } finally {

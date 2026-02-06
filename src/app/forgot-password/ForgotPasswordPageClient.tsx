@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
-import { useUIStore } from "@/stores";
+import { useUIStore, useAuthStore } from "@/stores";
 
 export function ForgotPasswordPageClient() {
   const [email, setEmail] = useState("");
@@ -12,6 +12,7 @@ export function ForgotPasswordPageClient() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
   const { openSignIn } = useUIStore();
+  const { resetPassword } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,16 +20,10 @@ export function ForgotPasswordPageClient() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      const result = await resetPassword(email);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "Something went wrong. Please try again.");
+      if (!result.success) {
+        setError(result.error || "Something went wrong. Please try again.");
         return;
       }
 
