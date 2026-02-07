@@ -185,7 +185,8 @@ export function EasterEggProvider({ children }: EasterEggProviderProps) {
         setShowMidnightEffect(true);
         setTimeout(() => setShowMidnightEffect(false), 10000); // 10 second effect
         if (isNewDiscovery) {
-          addXP(200, "bonus", "Midnight Visitor Bonus!");
+          const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+          addXP(200, "bonus", "Midnight Visitor Bonus!", `midnight_${today}`);
           saveDiscoveredEgg(type);
         }
         setShowReward({

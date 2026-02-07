@@ -385,24 +385,19 @@ export async function POST(request: NextRequest) {
       }
 
       // ============================================
-      // IDEMPOTENCY CHECK - Prevent duplicate rewards
+      // IDEMPOTENCY - Atomic claim: only proceed if we are the one who set rewards_processed
       // ============================================
-      
-      // Re-fetch order to check rewards_processed flag (might have been set by another process)
-      const { data: freshOrder } = await supabase
+      const { data: claimedRow } = await supabase
         .from("orders")
-        .select("rewards_processed")
+        .update({ rewards_processed: true, updated_at: new Date().toISOString() })
         .eq("id", order.id)
-        .single();
+        .eq("rewards_processed", false)
+        .select("id")
+        .maybeSingle();
 
-      if (freshOrder?.rewards_processed) {
+      if (!claimedRow) {
         console.log("Rewards already processed for order:", order.order_number, "- skipping");
       } else {
-        // Mark as processed IMMEDIATELY to prevent race conditions
-        await supabase
-          .from("orders")
-          .update({ rewards_processed: true, updated_at: new Date().toISOString() })
-          .eq("id", order.id);
 
         const orderTotal = (order.total as number) - ((order.discount_amount as number) || 0);
         const baseXpAmount = Math.max(Math.floor(orderTotal / 10), 10); // Minimum 10 XP
@@ -433,21 +428,25 @@ export async function POST(request: NextRequest) {
 
         console.log("XP calculation:", baseXpAmount, "base *", xpMultiplier, "=", xpAmount, "(bonus:", bonusXp, ")");
 
-        // ============================================
-        // DIRECT DATABASE OPERATIONS (No RPC functions)
-        // ============================================
-
-        // 1. Update user profile stats directly
-        console.log("Updating user stats for:", userId);
-        const { data: currentProfile, error: profileFetchError } = await supabase
+        // Fetch profile once for potential profile update and First Timer check
+        const { data: currentProfile } = await supabase
           .from("user_profiles")
           .select("total_xp, total_orders, total_spent")
           .eq("id", userId)
           .single();
 
-        if (profileFetchError) {
-          console.error("Failed to fetch user profile:", profileFetchError);
-        } else {
+        // Only award XP if not already awarded for this order (e.g. by process-rewards)
+        const { data: existingXp } = await supabase
+          .from("xp_transactions")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("action", "purchase")
+          .eq("reference_id", order.id)
+          .maybeSingle();
+
+        if (!existingXp) {
+          // 1. Update user profile stats directly
+          console.log("Updating user stats for:", userId);
           const { error: profileUpdateError } = await supabase
             .from("user_profiles")
             .update({
@@ -464,32 +463,32 @@ export async function POST(request: NextRequest) {
           } else {
             console.log("User profile updated: +", xpAmount, "XP, total_orders +1");
           }
-        }
 
-        // 2. Log XP transaction directly (with multiplier info)
-        console.log("Logging XP transaction:", xpAmount);
-        const xpDescription = xpMultiplier > 1 
-          ? `Purchase: Order ${order.order_number} (R${orderTotal.toFixed(2)}) [${xpMultiplier}x multiplier: ${baseXpAmount} + ${bonusXp} bonus]`
-          : `Purchase: Order ${order.order_number} (R${orderTotal.toFixed(2)})`;
-        
-        const { error: xpError } = await supabase
-          .from("xp_transactions")
-          .insert({
-            user_id: userId,
-            amount: xpAmount,
-            action: "purchase",
-            description: xpDescription,
-            created_at: new Date().toISOString(),
-          });
+          // 2. Log XP transaction (with reference_id for deduplication)
+          console.log("Logging XP transaction:", xpAmount);
+          const xpDescription = xpMultiplier > 1 
+            ? `Purchase: Order ${order.order_number} (R${orderTotal.toFixed(2)}) [${xpMultiplier}x multiplier: ${baseXpAmount} + ${bonusXp} bonus]`
+            : `Purchase: Order ${order.order_number} (R${orderTotal.toFixed(2)})`;
+          
+          const { error: xpError } = await supabase
+            .from("xp_transactions")
+            .insert({
+              user_id: userId,
+              amount: xpAmount,
+              action: "purchase",
+              description: xpDescription,
+              reference_id: order.id,
+              created_at: new Date().toISOString(),
+            });
 
-        if (xpError) {
-          console.error("Failed to log XP transaction:", xpError);
-        } else {
-          console.log("XP transaction logged successfully");
-        }
+          if (xpError) {
+            console.error("Failed to log XP transaction:", xpError);
+          } else {
+            console.log("XP transaction logged successfully");
+          }
 
-        // 3. Update multiplier tracking if active
-        if (multiplierRecord && bonusXp > 0) {
+          // 3. Update multiplier tracking if active
+          if (multiplierRecord && bonusXp > 0) {
           await supabase
             .from("user_xp_multipliers")
             .update({
@@ -515,6 +514,7 @@ export async function POST(request: NextRequest) {
               updated_at: new Date().toISOString(),
             })
             .eq("id", multiplierRecord.id);
+          }
         }
 
       // 3. Award First Timer achievement directly (if this is their first order)

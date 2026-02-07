@@ -487,6 +487,7 @@ export interface Database {
           amount: number; // INTEGER
           action: XPAction; // ENUM
           description: string | null; // VARCHAR(255)
+          reference_id: string | null; // TEXT, for deduplication (e.g. order_id, midnight_YYYY-MM-DD)
           created_at: string; // TIMESTAMPTZ
         };
         Insert: {
@@ -495,6 +496,7 @@ export interface Database {
           amount: number;
           action: XPAction;
           description?: string | null;
+          reference_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -503,6 +505,7 @@ export interface Database {
           amount?: number;
           action?: XPAction;
           description?: string | null;
+          reference_id?: string | null;
           created_at?: string;
         };
       };

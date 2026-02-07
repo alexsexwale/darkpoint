@@ -55,34 +55,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if already processed FIRST (before any operations)
-    if (order.rewards_processed) {
+    // Atomic claim: only we proceed if our update actually changed a row (prevents race with webhook)
+    const { data: claimedRow } = await supabase
+      .from("orders")
+      .update({ rewards_processed: true, updated_at: new Date().toISOString() })
+      .eq("id", orderId)
+      .eq("rewards_processed", false)
+      .select("id")
+      .maybeSingle();
+
+    if (!claimedRow) {
       return NextResponse.json({
         success: false,
         already_processed: true,
         error: "Rewards already processed for this order",
-      });
-    }
-
-    // Mark as processed IMMEDIATELY to prevent race conditions
-    await supabase
-      .from("orders")
-      .update({ rewards_processed: true, updated_at: new Date().toISOString() })
-      .eq("id", orderId)
-      .eq("rewards_processed", false); // Only update if not already processed (atomic check)
-
-    // Re-check if we successfully claimed the processing
-    const { data: claimCheck } = await supabase
-      .from("orders")
-      .select("rewards_processed")
-      .eq("id", orderId)
-      .single();
-
-    // If it was already processed by someone else, stop
-    if (!claimCheck || claimCheck.rewards_processed === false) {
-      return NextResponse.json({
-        success: false,
-        error: "Another process is handling rewards",
       });
     }
 
@@ -121,41 +107,55 @@ export async function POST(request: NextRequest) {
     const xpAmount = Math.floor(baseXpAmount * xpMultiplier);
     const bonusXp = xpAmount - baseXpAmount;
 
-    // Process rewards (we've already claimed exclusivity above)
+    // Skip XP if already awarded for this order (e.g. by webhook) - reference_id deduplication
+    const { data: existingXp } = await supabase
+      .from("xp_transactions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("action", "purchase")
+      .eq("reference_id", orderId)
+      .maybeSingle();
+
+    if (!existingXp) {
+      // Update profile
+      await supabase
+        .from("user_profiles")
+        .update({
+          total_xp: (profile?.total_xp || 0) + xpAmount,
+          total_orders: (profile?.total_orders || 0) + 1,
+          total_spent: (profile?.total_spent || 0) + orderTotal,
+          last_purchase_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      // Log XP with reference_id so same order cannot award twice
+      const xpDescription = xpMultiplier > 1 
+        ? `Purchase: Order ${order.order_number} [${xpMultiplier}x: ${baseXpAmount} + ${bonusXp} bonus]`
+        : `Purchase: Order ${order.order_number}`;
+      
+      await supabase.from("xp_transactions").insert({
+        user_id: userId,
+        amount: xpAmount,
+        action: "purchase",
+        description: xpDescription,
+        reference_id: orderId,
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    // Process rewards (profile/XP above; rest below)
     {
-        // Update profile
-        await supabase
-          .from("user_profiles")
-          .update({
-            total_xp: (profile?.total_xp || 0) + xpAmount,
-            total_orders: (profile?.total_orders || 0) + 1,
-            total_spent: (profile?.total_spent || 0) + orderTotal,
-            last_purchase_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", userId);
-
-        // Log XP (with multiplier info)
-        const xpDescription = xpMultiplier > 1 
-          ? `Purchase: Order ${order.order_number} [${xpMultiplier}x: ${baseXpAmount} + ${bonusXp} bonus]`
-          : `Purchase: Order ${order.order_number}`;
-        
-        await supabase.from("xp_transactions").insert({
-          user_id: userId,
-          amount: xpAmount,
-          action: "purchase",
-          description: xpDescription,
-          created_at: new Date().toISOString(),
-        });
-
-        results.xp_awarded = xpAmount;
-        if (xpMultiplier > 1) {
-          results.multiplier_applied = xpMultiplier;
-          results.bonus_xp = bonusXp;
+        if (!existingXp) {
+          results.xp_awarded = xpAmount;
+          if (xpMultiplier > 1) {
+            results.multiplier_applied = xpMultiplier;
+            results.bonus_xp = bonusXp;
+          }
         }
 
-        // Update multiplier tracking if active
-        if (multiplierRecord && bonusXp > 0) {
+        // Update multiplier tracking if active (only when we awarded XP)
+        if (!existingXp && multiplierRecord && bonusXp > 0) {
           await supabase
             .from("user_xp_multipliers")
             .update({

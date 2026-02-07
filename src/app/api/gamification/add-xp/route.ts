@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { amount, action, description } = body;
+    const { amount, action, description, referenceId } = body;
     
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid XP amount" }, { status: 400 });
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       p_amount: amount,
       p_action: action,
       p_description: description || `Earned from ${action}`,
+      p_reference_id: referenceId ?? null,
     });
     
     if (rpcError) {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      xp_awarded: result.total_xp_earned || amount,
+      xp_awarded: result.duplicate ? 0 : (result.total_xp_earned ?? amount),
       base_xp: result.base_xp || amount,
       bonus_xp: result.bonus_xp || 0,
       multiplier: result.multiplier_applied || 1,

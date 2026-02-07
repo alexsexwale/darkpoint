@@ -262,8 +262,8 @@ interface GamificationActions {
   // Rewards shop
   purchaseReward: (rewardId: string) => Promise<{ success: boolean; error?: string }>;
 
-  // XP
-  addXP: (amount: number, action: string, description?: string) => Promise<boolean>;
+  // XP (referenceId optional; when set, server only awards once per reference for deduplication)
+  addXP: (amount: number, action: string, description?: string, referenceId?: string) => Promise<boolean>;
   addXPLocal: (amount: number, action: string, description?: string) => boolean;
 
   // Achievement check
@@ -1192,7 +1192,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
   },
 
   // Add XP - uses server-side API for proper permissions
-  addXP: async (amount, action, description) => {
+  addXP: async (amount, action, description, referenceId) => {
     if (!isSupabaseConfigured()) {
       console.warn("Supabase not configured - XP will not persist");
       return false;
@@ -1228,6 +1228,7 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           amount,
           action,
           description: description || `Earned from ${action}`,
+          ...(referenceId != null && referenceId !== "" && { referenceId }),
         }),
       });
 
@@ -1628,56 +1629,32 @@ export const useGamificationStore = create<GamificationStore>()((set, get) => ({
           if (achievementType) {
             get().trackQuestRewardedAction(achievementType);
           }
-          
-          // Quest completed - add XP with multiplier applied (async, don't wait)
+          // XP is awarded only by update_quest_progress RPC (single source of truth; prevents duplicate XP)
           (async () => {
-            console.log(`=== Quest Completed: ${q.title} ===`);
-            console.log(`Quest XP Reward: ${q.xpReward}`);
-            
-            // Get active multiplier to calculate correct XP
+            await get().updateQuestProgressWithDB(questId, progressToAdd, quest.requirement.count, quest.xpReward);
+            await get().fetchUserProfile();
             const activeMultiplier = get().activeMultiplier;
             const multiplierValue = activeMultiplier?.multiplier_value || activeMultiplier?.multiplier || 1;
             const baseXP = q.xpReward;
             const finalXP = multiplierValue > 1 ? Math.round(baseXP * multiplierValue) : baseXP;
             const bonusXP = finalXP - baseXP;
-            
-            console.log(`Multiplier: ${multiplierValue}, Base XP: ${baseXP}, Final XP: ${finalXP}`);
-            
-            // Add XP via database FIRST (this persists the XP)
-            console.log("Calling addXP...");
-            const success = await get().addXP(q.xpReward, "quest", `Quest: ${q.title}`);
-            console.log(`addXP result: ${success}`);
-            
-            if (success) {
-              // Show notification ONLY after XP is confirmed saved
-              if (multiplierValue > 1 && bonusXP > 0) {
-                get().addNotification({
-                  type: "reward",
-                  title: "🎯 Quest Complete!",
-                  message: `${q.title} - +${finalXP} XP (${baseXP} + ${bonusXP} bonus from ${multiplierValue}x)`,
-                  icon: "✅",
-                  xpAmount: finalXP,
-                });
-              } else {
-                get().addNotification({
-                  type: "reward",
-                  title: "🎯 Quest Complete!",
-                  message: `${q.title} - +${baseXP} XP`,
-                  icon: "✅",
-                  xpAmount: baseXP,
-                });
-              }
-            } else {
-              // XP failed to save - show error
+            if (multiplierValue > 1 && bonusXP > 0) {
               get().addNotification({
-                type: "error",
-                title: "⚠️ Quest Error",
-                message: `${q.title} completed but XP failed to save. Please refresh.`,
-                icon: "❌",
+                type: "reward",
+                title: "🎯 Quest Complete!",
+                message: `${q.title} - +${finalXP} XP (${baseXP} + ${bonusXP} bonus from ${multiplierValue}x)`,
+                icon: "✅",
+                xpAmount: finalXP,
+              });
+            } else {
+              get().addNotification({
+                type: "reward",
+                title: "🎯 Quest Complete!",
+                message: `${q.title} - +${baseXP} XP`,
+                icon: "✅",
+                xpAmount: baseXP,
               });
             }
-            
-            // Check achievements after quest completion (with XP dedup)
             await get().checkAchievements();
           })();
         }
