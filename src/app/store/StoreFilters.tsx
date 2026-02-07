@@ -23,7 +23,7 @@ interface StoreFiltersProps {
 }
 
 const PRICE_MIN = 0;
-const PRICE_MAX = 500;
+const PRICE_MAX = 20000;
 
 export function StoreFilters({
   categories,
@@ -77,11 +77,11 @@ export function StoreFilters({
     (params: Record<string, string | undefined>) => {
       const newParams = new URLSearchParams(searchParams.toString());
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== "" && value !== "false" && value !== "0" && value !== "500") {
+        if (value !== undefined && value !== "" && value !== "false" && value !== "0" && value !== "20000") {
           // Don't include default values
           if (key === "minPrice" && value === "0") {
             newParams.delete(key);
-          } else if (key === "maxPrice" && value === "500") {
+          } else if (key === "maxPrice" && value === "20000") {
             newParams.delete(key);
           } else {
             newParams.set(key, value);

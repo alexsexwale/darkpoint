@@ -609,6 +609,9 @@ export function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               minute: "2-digit",
             })}
           </p>
+          <p className="text-xs text-white/50 mt-1">
+            We&apos;ll email you when your order status changes.
+          </p>
         </div>
         {order.trackingNumber && (
           <div className="text-right">

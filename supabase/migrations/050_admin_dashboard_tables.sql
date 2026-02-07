@@ -259,15 +259,15 @@ BEGIN
   RETURN QUERY
   SELECT
     COALESCE(SUM(CASE WHEN o.payment_status = 'paid' THEN o.total ELSE 0 END), 0) as total_revenue,
-    COUNT(DISTINCT o.id) as total_orders,
+    COUNT(DISTINCT CASE WHEN NOT (o.status = 'pending' AND o.payment_status = 'pending') THEN o.id END) as total_orders,
     (SELECT COUNT(*) FROM user_profiles) as total_members,
     COUNT(DISTINCT CASE WHEN o.status = 'pending' THEN o.id END) as pending_orders,
     COALESCE(SUM(CASE WHEN o.payment_status = 'paid' AND o.created_at >= CURRENT_DATE THEN o.total ELSE 0 END), 0) as today_revenue,
-    COUNT(DISTINCT CASE WHEN o.created_at >= CURRENT_DATE THEN o.id END) as today_orders,
+    COUNT(DISTINCT CASE WHEN NOT (o.status = 'pending' AND o.payment_status = 'pending') AND o.created_at >= CURRENT_DATE THEN o.id END) as today_orders,
     COALESCE(SUM(CASE WHEN o.payment_status = 'paid' AND o.created_at >= CURRENT_DATE - INTERVAL '7 days' THEN o.total ELSE 0 END), 0) as week_revenue,
-    COUNT(DISTINCT CASE WHEN o.created_at >= CURRENT_DATE - INTERVAL '7 days' THEN o.id END) as week_orders,
+    COUNT(DISTINCT CASE WHEN NOT (o.status = 'pending' AND o.payment_status = 'pending') AND o.created_at >= CURRENT_DATE - INTERVAL '7 days' THEN o.id END) as week_orders,
     COALESCE(SUM(CASE WHEN o.payment_status = 'paid' AND o.created_at >= CURRENT_DATE - INTERVAL '30 days' THEN o.total ELSE 0 END), 0) as month_revenue,
-    COUNT(DISTINCT CASE WHEN o.created_at >= CURRENT_DATE - INTERVAL '30 days' THEN o.id END) as month_orders
+    COUNT(DISTINCT CASE WHEN NOT (o.status = 'pending' AND o.payment_status = 'pending') AND o.created_at >= CURRENT_DATE - INTERVAL '30 days' THEN o.id END) as month_orders
   FROM orders o;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -284,7 +284,7 @@ BEGIN
   SELECT
     DATE(o.created_at) as date,
     COALESCE(SUM(CASE WHEN o.payment_status = 'paid' THEN o.total ELSE 0 END), 0) as revenue,
-    COUNT(DISTINCT o.id) as orders
+    COUNT(DISTINCT CASE WHEN NOT (o.status = 'pending' AND o.payment_status = 'pending') THEN o.id END) as orders
   FROM orders o
   WHERE o.created_at >= CURRENT_DATE - (days_back || ' days')::INTERVAL
   GROUP BY DATE(o.created_at)
