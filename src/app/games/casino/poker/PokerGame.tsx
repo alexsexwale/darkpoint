@@ -57,6 +57,8 @@ interface GameState {
   message: string;
   winners: { playerId: number; amount: number; handName: string }[];
   lastRaiseIndex: number;
+  /** Refunds for uncalled all-in excess (playerId -> amount returned) */
+  uncalledRefunds: Record<number, number>;
 }
 
 const INITIAL_CHIPS = 1000;
@@ -259,6 +261,7 @@ const createInitialState = (): GameState => ({
   message: "",
   winners: [],
   lastRaiseIndex: -1,
+  uncalledRefunds: {},
 });
 
 // Player Card Component for AI players - compact on mobile
@@ -1049,7 +1052,7 @@ export function PokerGame() {
     return { action: "fold" };
   };
 
-  // Handle showdown
+  // Handle showdown: side pots + uncalled bet refunds (per poker rules)
   useEffect(() => {
     if (gameState.phase !== "showdown") {
       showdownProcessedRef.current = false;
@@ -1059,51 +1062,82 @@ export function PokerGame() {
     showdownProcessedRef.current = true;
 
     const activePlayers = gameState.players.filter(p => !p.hasFolded);
-    
+
     // Reveal all hands
     const revealedPlayers = gameState.players.map(p => ({
       ...p,
       hand: p.hand.map(c => ({ ...c, faceUp: true })),
     }));
 
-    // Evaluate hands
-    const playerHands = activePlayers.map(p => ({
-      player: p,
-      hand: getBestHand(p.hand, gameState.communityCards),
+    // Unique total bet levels (ascending) for side pots
+    const levels = [...new Set(activePlayers.map(p => p.totalBet))].sort((a, b) => a - b);
+    const uncalledRefunds: Record<number, number> = {};
+    const winnerAmounts: Record<number, number> = {};
+    let lastLevel = 0;
+    let bestHandName = "";
+
+    for (const level of levels) {
+      const increment = level - lastLevel;
+      const eligible = activePlayers.filter(p => p.totalBet >= level);
+
+      if (eligible.length === 1) {
+        // Uncalled: return this amount to the player who overbet
+        const pid = eligible[0].id;
+        uncalledRefunds[pid] = (uncalledRefunds[pid] || 0) + increment;
+      } else {
+        // Pot at this level: best hand among eligible wins
+        const potAmount = increment * eligible.length;
+        const eligibleHands = eligible.map(p => ({
+          player: p,
+          hand: getBestHand(p.hand, gameState.communityCards),
+        }));
+        eligibleHands.sort((a, b) => compareHands(b.hand, a.hand));
+        const bestInPot = eligibleHands[0].hand;
+        if (!bestHandName) bestHandName = bestInPot.name;
+        const potWinners = eligibleHands.filter(e => compareHands(e.hand, bestInPot) === 0);
+        const amountEach = Math.floor(potAmount / potWinners.length);
+        const remainder = potAmount - amountEach * potWinners.length;
+        potWinners.forEach((pw, i) => {
+          const amt = amountEach + (i === 0 ? remainder : 0);
+          winnerAmounts[pw.player.id] = (winnerAmounts[pw.player.id] || 0) + amt;
+        });
+      }
+      lastLevel = level;
+    }
+
+    const winnerResults = Object.entries(winnerAmounts).map(([playerId, amount]) => ({
+      playerId: Number(playerId),
+      amount,
+      handName: bestHandName || "Winner",
     }));
-
-    // Sort by hand strength
-    playerHands.sort((a, b) => compareHands(b.hand, a.hand));
-
-    // Find winners (could be ties)
-    const bestHand = playerHands[0].hand;
-    const winners = playerHands.filter(ph => compareHands(ph.hand, bestHand) === 0);
-
-    const winAmount = Math.floor(gameState.pot / winners.length);
-    const winnerResults = winners.map(w => ({
-      playerId: w.player.id,
-      amount: winAmount,
-      handName: w.hand.name,
-    }));
+    const winnerNames = winnerResults.length
+      ? gameState.players.filter(p => winnerAmounts[p.id]).map(p => p.name)
+      : [];
+    const message =
+      winnerResults.length === 0
+        ? "Showdown"
+        : winnerResults.length === 1
+          ? `${winnerNames[0]} wins with ${bestHandName}!`
+          : `Split pot! ${winnerNames.join(" and ")} win with ${bestHandName}`;
 
     setGameState(prev => ({
       ...prev,
       players: revealedPlayers,
       phase: "roundEnd",
       winners: winnerResults,
-      message: winners.length === 1
-        ? `${winners[0].player.name} wins with ${winners[0].hand.name}!`
-        : `Split pot! ${winners.map(w => w.player.name).join(" and ")} win with ${bestHand.name}`,
+      uncalledRefunds,
+      message,
     }));
   }, [gameState.phase]);
 
   // Apply winnings and start new round
   const startNewRound = () => {
     setGameState(prev => {
-      // Apply winnings
+      // Apply winnings and uncalled bet refunds (excess all-in returned per poker rules)
       let players = prev.players.map(p => {
         const winnings = prev.winners.filter(w => w.playerId === p.id).reduce((sum, w) => sum + w.amount, 0);
-        return { ...p, chips: p.chips + winnings };
+        const refund = prev.uncalledRefunds[p.id] ?? 0;
+        return { ...p, chips: p.chips + winnings + refund };
       });
 
       // Remove busted players (keep human in so we can show game over modal)
@@ -1166,6 +1200,7 @@ export function PokerGame() {
         dealerIndex: newDealerIndex,
         phase: "preflop",
         winners: [],
+        uncalledRefunds: {},
         message: "",
       };
     });
