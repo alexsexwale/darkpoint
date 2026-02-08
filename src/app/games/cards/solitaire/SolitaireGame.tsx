@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Confetti from "react-confetti";
@@ -79,6 +79,10 @@ export function SolitaireGame() {
   const [isMobile, setIsMobile] = useState(false);
   const [showWinConfetti, setShowWinConfetti] = useState(false);
   const [confettiSize, setConfettiSize] = useState({ width: 0, height: 0 });
+  /** Snapshot of moves/time when game was won — so modal doesn't keep updating during auto-complete */
+  const [winStats, setWinStats] = useState<{ moves: number; time: number } | null>(null);
+  const stateRef = useRef(gameState);
+  stateRef.current = gameState;
 
   // Confetti when user wins
   useEffect(() => {
@@ -135,10 +139,11 @@ export function SolitaireGame() {
       );
       if (totalInFoundations === 52) {
         setGameState(prev => ({ ...prev, status: "won" }));
+        setWinStats({ moves: gameState.moves, time: elapsedTime });
         setShowWinModal(true);
       }
     }
-  }, [gameState.foundations, gameState.status]);
+  }, [gameState.foundations, gameState.status, gameState.moves, elapsedTime]);
 
   // Deal new game
   const dealNewGame = useCallback(() => {
@@ -173,6 +178,7 @@ export function SolitaireGame() {
     setHistory([]);
     setElapsedTime(0);
     setShowWinModal(false);
+    setWinStats(null);
     setAutoCompleting(false);
   }, []);
 
@@ -217,9 +223,9 @@ export function SolitaireGame() {
     });
   }, [gameState.status, saveState]);
 
-  // Move card to foundation
+  // Move card to foundation (use ref so auto-complete loop sees "won" and stops)
   const moveToFoundation = useCallback((card: Card, fromWaste = false, tableauIndex?: number, cardIndex?: number) => {
-    if (gameState.status !== "playing") return false;
+    if (stateRef.current.status !== "playing") return false;
 
     const foundation = gameState.foundations[card.suit];
     const topCard = foundation.length > 0 ? foundation[foundation.length - 1] : null;
@@ -251,7 +257,7 @@ export function SolitaireGame() {
         });
       }
 
-      newState.moves = prev.moves + 1;
+      newState.moves = prev.status === "won" ? prev.moves : prev.moves + 1;
       return newState;
     });
 
@@ -331,14 +337,13 @@ export function SolitaireGame() {
     setAutoCompleting(true);
 
     const tryMove = (): boolean => {
-      // Try moving from waste
+      // Try moving from waste (use return value so loop stops when game is won)
       if (gameState.waste.length > 0) {
         const card = gameState.waste[0];
         const foundation = gameState.foundations[card.suit];
         const topCard = foundation.length > 0 ? foundation[foundation.length - 1] : null;
         if (canStackOnFoundation(card, topCard)) {
-          moveToFoundation(card, true);
-          return true;
+          return moveToFoundation(card, true);
         }
       }
 
@@ -351,8 +356,7 @@ export function SolitaireGame() {
             const foundation = gameState.foundations[card.suit];
             const topCard = foundation.length > 0 ? foundation[foundation.length - 1] : null;
             if (canStackOnFoundation(card, topCard)) {
-              moveToFoundation(card, false, i, tableau.length - 1);
-              return true;
+              return moveToFoundation(card, false, i, tableau.length - 1);
             }
           }
         }
@@ -796,7 +800,6 @@ export function SolitaireGame() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              onClick={() => setShowWinModal(false)}
             >
               <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" aria-hidden />
               {showWinConfetti && confettiSize.width > 0 && confettiSize.height > 0 && (
@@ -832,21 +835,24 @@ export function SolitaireGame() {
                 <div className="flex justify-center gap-6 mb-6">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-[var(--color-main-1)]">
-                      {formatTime(elapsedTime)}
+                      {formatTime(winStats?.time ?? elapsedTime)}
                     </div>
                     <div className="text-xs text-[var(--muted-foreground)]">Time</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-[var(--color-main-1)]">
-                      {gameState.moves}
+                      {winStats?.moves ?? gameState.moves}
                     </div>
                     <div className="text-xs text-[var(--muted-foreground)]">Moves</div>
                   </div>
                 </div>
                 <div className="flex gap-3 justify-center">
-                  <Button variant="outline" onClick={() => setShowWinModal(false)}>
-                    Close
-                  </Button>
+                  <Link
+                    href="/games/cards"
+                    className="inline-flex items-center justify-center rounded-md border border-[var(--color-dark-3)] bg-transparent px-4 py-2 text-sm font-medium text-white hover:bg-white/10 transition-colors nk-btn nk-btn-outline nk-btn-md"
+                  >
+                    Main menu
+                  </Link>
                   <Button variant="primary" onClick={dealNewGame}>
                     Play Again
                   </Button>
