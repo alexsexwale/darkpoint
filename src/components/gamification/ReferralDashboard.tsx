@@ -194,7 +194,7 @@ export function ReferralDashboard({ className }: ReferralDashboardProps) {
       x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(referralLink)}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`,
       whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${referralLink}`)}`,
-      discord: `https://discord.gg/darkpoint`,
+      discord: `https://discord.gg/MRS2Y7rcDF`,
     };
     window.open(urls[platform], "_blank", "width=600,height=400");
   };
